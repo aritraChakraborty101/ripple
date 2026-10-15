@@ -53,3 +53,33 @@ export function stabilityTone(value: number, ousting: number): Tone {
   if (value < 40) return 'warning';
   return 'calm';
 }
+
+/** Every country, relation or route an effect touches, as country IDs. */
+function countriesTouched(game: GameState, effect: DecisionDef['effects'][number]): string[] {
+  if (effect.type !== 'modify' && effect.type !== 'adjust') return [];
+  const { kind, id } = effect.target;
+  if (kind === 'country') return [id];
+  if (kind === 'relation') return id.split('__');
+  if (kind === 'link') {
+    const link = game.world.links[id];
+    return link ? [link.from, link.to] : [];
+  }
+  return [];
+}
+
+/**
+ * Decisions that concern a country: those whose effects change relations with
+ * it or routes to and from it. The player's own country is excluded, since
+ * almost every decision touches it.
+ */
+export function decisionsConcerning(game: GameState, countryId: string): DecisionDef[] {
+  if (countryId === game.rules.playerCountry) return [];
+  return Object.keys(game.defs.decisions)
+    .sort()
+    .map((id) => game.defs.decisions[id]!)
+    .filter((def) =>
+      [...def.costs, ...def.effects, ...def.failureEffects].some((e) =>
+        countriesTouched(game, e).includes(countryId),
+      ),
+    );
+}

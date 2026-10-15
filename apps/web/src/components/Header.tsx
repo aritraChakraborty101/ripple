@@ -1,56 +1,92 @@
-import { effectiveStat, type GameState } from '@ripple/engine';
+import { effectiveStat, sortedIds, type GameState } from '@ripple/engine';
 import { SPEEDS, type ClockState } from '../game/clock';
 import { stabilityTone } from '../game/describe';
 import { ARCHETYPE_LABELS, formatChange, formatDate, formatPrice } from '../game/format';
 import { actions } from '../game/store';
+import { Sparkline } from './Sparkline';
 
 interface Props {
   readonly game: GameState;
   readonly clock: ClockState;
+  readonly history: Readonly<Record<string, readonly number[]>>;
+  readonly onOpenHome: () => void;
 }
 
-export function Header({ game, clock }: Props) {
+/** Everything you need at a glance: your country, your numbers, the markets and the clock. */
+export function Header({ game, clock, history, onOpenHome }: Props) {
   const id = game.rules.playerCountry;
   const country = game.world.countries[id]!;
+  const { ousting } = game.rules;
   const stat = (name: string) => effectiveStat(game, { kind: 'country', id, stat: name });
-  const oil = game.world.resources.oil;
-  const oilPrice = oil ? effectiveStat(game, { kind: 'resource', id: 'oil', stat: 'price' }) : 0;
-  const oilUp = oil ? oilPrice > oil.basePrice : false;
+  const stability = stat(ousting.stat);
+  const tone = stabilityTone(stability, ousting.below);
 
   return (
-    <header className="header">
+    <header className="topbar">
       <div className="identity">
         <h1>{country.name}</h1>
-        <span className="muted">{ARCHETYPE_LABELS[country.archetype]}</span>
+        <span className="muted small">{ARCHETYPE_LABELS[country.archetype]}</span>
       </div>
 
-      <dl className="stats">
+      <div className="stats">
         <div className="stat">
-          <dt>Treasury</dt>
-          <dd>{stat('treasury')} bn</dd>
+          <span className="stat-label">Treasury</span>
+          <span className="stat-value">{stat('treasury')} bn</span>
         </div>
         <div className="stat">
-          <dt>Stability</dt>
-          <dd className={`tone-${stabilityTone(stat('stability'), game.rules.ousting.below)}`}>
-            {stat('stability')}
-          </dd>
+          <span className="stat-label">Influence</span>
+          <span className="stat-value">{stat('influence')}</span>
         </div>
-        {oil && (
-          <div className="stat">
-            <dt>Crude</dt>
-            <dd>
-              {formatPrice(oilPrice)}
-              <span className={`delta ${oilUp ? 'up-bad' : 'calm'}`}>
-                {formatChange(oilPrice, oil.basePrice)}
+        <button
+          type="button"
+          className={`stat stat-button gauge-mini ${tone}`}
+          onClick={onOpenHome}
+          title="Stability: open the Home tab"
+        >
+          <span className="stat-label">Stability</span>
+          <span className="stat-value">{stability}</span>
+          <span className="meter" aria-hidden="true">
+            <span style={{ width: `${Math.max(0, Math.min(100, stability))}%` }} />
+            <span className="meter-mark" style={{ left: `${ousting.below}%` }} />
+          </span>
+          {game.lowStabilityTicks > 0 && (
+            <span className="countdown" role="status">
+              Ousted in {ousting.forTicks - game.lowStabilityTicks}d
+            </span>
+          )}
+        </button>
+      </div>
+
+      <ul className="tickers" aria-label="Markets">
+        {sortedIds(game.world.resources).map((rid) => {
+          const resource = game.world.resources[rid]!;
+          const price = effectiveStat(game, { kind: 'resource', id: rid, stat: 'price' });
+          const pct = ((price - resource.basePrice) * 100) / resource.basePrice;
+          const level = pct >= 30 ? 'critical' : pct >= 10 ? 'warning' : 'calm';
+          const color =
+            level === 'critical'
+              ? 'var(--critical)'
+              : level === 'warning'
+                ? 'var(--warning)'
+                : 'var(--accent)';
+          return (
+            <li key={rid} className={`ticker ${level}`}>
+              <span className="ticker-name">{resource.name}</span>
+              <span className="ticker-price">{formatPrice(price)}</span>
+              <span className={`ticker-change tone-${level}`}>
+                {formatChange(price, resource.basePrice)}
               </span>
-            </dd>
-          </div>
-        )}
-        <div className="stat">
-          <dt>Influence</dt>
-          <dd>{stat('influence')}</dd>
-        </div>
-      </dl>
+              <Sparkline
+                values={history[rid] ?? [price]}
+                base={resource.basePrice}
+                tone={color}
+                width={64}
+                height={20}
+              />
+            </li>
+          );
+        })}
+      </ul>
 
       <div className="clock">
         <span className="date" aria-live="polite">
@@ -76,13 +112,13 @@ export function Header({ game, clock }: Props) {
               </svg>
             )}
           </button>
-          {SPEEDS.map((speed) => (
+          {SPEEDS.map((speed, i) => (
             <button
               key={speed}
               type="button"
               aria-pressed={!clock.paused && clock.speed === speed}
               onClick={() => actions.setSpeed(speed)}
-              title={`Speed ${speed}× (key ${SPEEDS.indexOf(speed) + 1})`}
+              title={`Speed ${speed}× (key ${i + 1})`}
             >
               {speed}×
             </button>

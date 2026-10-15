@@ -3,8 +3,10 @@ import type { Speed } from './clock';
 import { firstCrisis } from './scenario';
 import {
   advanceSession,
+  dismissAlert,
   issueDecision,
   newSession,
+  setAutoPause,
   setPaused,
   setSpeed,
   type Session,
@@ -28,10 +30,17 @@ function update(next: Session): void {
 }
 
 export const actions = {
-  togglePause: () => update(setPaused(session, !session.clock.paused)),
-  setSpeed: (speed: Speed) => update(setSpeed(session, speed)),
+  /** Resuming also clears the crisis banner: the player has seen it. */
+  togglePause: () => {
+    const resuming = session.clock.paused;
+    const next = setPaused(session, !session.clock.paused);
+    update(resuming ? dismissAlert(next) : next);
+  },
+  setSpeed: (speed: Speed) => update(dismissAlert(setSpeed(session, speed))),
   issue: (decision: string) => update(issueDecision(session, decision)),
-  newGame: () => update(newSession(firstCrisis, freshSeed())),
+  dismissAlert: () => update(dismissAlert(session)),
+  setAutoPause: (on: boolean) => update(setAutoPause(session, on)),
+  newGame: () => update(newSession(firstCrisis, freshSeed(), session.autoPause)),
 };
 
 let frame = 0;

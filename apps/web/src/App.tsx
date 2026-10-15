@@ -1,29 +1,39 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { CrisisBanner } from './components/CrisisBanner';
 import { DecisionsDialog } from './components/DecisionsDialog';
-import { Dispatches } from './components/Dispatches';
 import { GameOver } from './components/GameOver';
 import { Header } from './components/Header';
-import { HomeFront } from './components/HomeFront';
-import { Markets } from './components/Markets';
-import { Relations } from './components/Relations';
+import { MapDrawer } from './components/MapDrawer';
+import { SidePanel, type Tab } from './components/SidePanel';
 import { Unfolding } from './components/Unfolding';
 import { WorldMap } from './components/WorldMap';
 import { SPEEDS } from './game/clock';
+import type { Selection } from './game/selection';
 import { actions, startLoop, useSession } from './game/store';
 
-function useKeyboardShortcuts(openDecisions: () => void): void {
+interface Shortcuts {
+  readonly openOrders: () => void;
+  readonly clearSelection: () => void;
+}
+
+function useKeyboardShortcuts({ openOrders, clearSelection }: Shortcuts): void {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (document.querySelector('dialog[open]')) return;
+      if (event.key === 'Escape') {
+        clearSelection();
+        return;
+      }
       const target = event.target as HTMLElement | null;
       if (target && ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(target.tagName)) return;
+      if (target?.getAttribute('role') === 'button') return;
       if (event.code === 'Space') {
         event.preventDefault();
         actions.togglePause();
         return;
       }
       if (event.key === 'd' || event.key === 'D') {
-        openDecisions();
+        openOrders();
         return;
       }
       const speed = SPEEDS[Number(event.key) - 1];
@@ -31,58 +41,81 @@ function useKeyboardShortcuts(openDecisions: () => void): void {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [openDecisions]);
+  }, [openOrders, clearSelection]);
 }
 
 export function App() {
   const session = useSession();
-  const [decisionsOpen, setDecisionsOpen] = useState(false);
+  const [ordersOpen, setOrdersOpen] = useState(false);
+  const [tab, setTab] = useState<Tab>('news');
+  const [selection, setSelection] = useState<Selection>(null);
   useEffect(() => startLoop(), []);
-  useKeyboardShortcuts(() => setDecisionsOpen(true));
 
-  const { game } = session;
+  const openOrders = useCallback(() => setOrdersOpen(true), []);
+  const clearSelection = useCallback(() => setSelection(null), []);
+  useKeyboardShortcuts({ openOrders, clearSelection });
+
+  const { game, alert } = session;
+  const selectCountry = useCallback((id: string) => setSelection({ kind: 'country', id }), []);
+
+  // A new game starts with nothing selected.
+  useEffect(() => {
+    setSelection(null);
+  }, [game.seed]);
+
+  const respondToAlert = () => {
+    if (alert?.country) setSelection({ kind: 'country', id: alert.country });
+    else setOrdersOpen(true);
+    actions.dismissAlert();
+  };
 
   return (
     <div className="app">
-      <Header game={game} clock={session.clock} />
+      <Header
+        game={game}
+        clock={session.clock}
+        history={session.history}
+        onOpenHome={() => setTab('home')}
+      />
       <div className="body">
-        <main className="main">
-          <WorldMap game={game} paused={session.clock.paused} />
-          <Unfolding game={game} onOpenOrders={() => setDecisionsOpen(true)} />
-          <Markets game={game} history={session.history} />
-          <div className="panels">
-            <HomeFront game={game} />
-            <Relations game={game} />
-          </div>
-          <p className="hint">
-            <kbd>Space</kbd> pauses and resumes. <kbd>1</kbd>–<kbd>4</kbd> set the speed.{' '}
-            <kbd>D</kbd> opens your orders. Hover a route to see what it carries.
-          </p>
-        </main>
-        <aside className="rail">
-          <button
-            type="button"
-            className="button primary wide"
-            onClick={() => setDecisionsOpen(true)}
-            disabled={game.outcome !== null}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-              <path
-                d="M8 3v10M3 8h10"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
+        <main className="stage">
+          <div className="map-area">
+            <WorldMap
+              game={game}
+              paused={session.clock.paused}
+              selection={selection}
+              onSelect={setSelection}
+              alertCountry={alert?.country ?? null}
+            />
+            {alert && (
+              <CrisisBanner
+                alert={alert}
+                paused={session.clock.paused}
+                onRespond={respondToAlert}
               />
-            </svg>
-            Sign an order
-          </button>
-          <Dispatches dispatches={session.dispatches} />
-          <button type="button" className="text-button" onClick={actions.newGame}>
-            Start a new game
-          </button>
-        </aside>
+            )}
+            {selection && (
+              <MapDrawer
+                game={game}
+                selection={selection}
+                dispatches={session.dispatches}
+                onSelect={setSelection}
+              />
+            )}
+          </div>
+          <Unfolding game={game} onOpenOrders={openOrders} />
+        </main>
+        <SidePanel
+          game={game}
+          dispatches={session.dispatches}
+          tab={tab}
+          onTab={setTab}
+          autoPause={session.autoPause}
+          onOpenOrders={openOrders}
+          onSelectCountry={selectCountry}
+        />
       </div>
-      <DecisionsDialog game={game} open={decisionsOpen} onClose={() => setDecisionsOpen(false)} />
+      <DecisionsDialog game={game} open={ordersOpen} onClose={() => setOrdersOpen(false)} />
       <GameOver game={game} tallies={session.tallies} startTreasury={session.startTreasury} />
     </div>
   );

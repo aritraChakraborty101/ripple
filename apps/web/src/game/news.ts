@@ -20,6 +20,8 @@ import { formatDate, formatPrice } from './format';
 
 export type { Severity };
 
+export type DispatchSource = 'world' | 'order' | 'market' | 'outcome';
+
 export interface Dispatch {
   readonly id: string;
   readonly tick: number;
@@ -28,8 +30,9 @@ export interface Dispatch {
   readonly severity: Severity;
   readonly headline: string;
   readonly detail?: string;
-  /** True for news about the player's own orders. */
-  readonly mine?: boolean;
+  readonly source: DispatchSource;
+  /** The country the news concerns, when there is one, for linking to it on the map. */
+  readonly country?: string;
 }
 
 export const BAND_PERCENT = 10;
@@ -64,25 +67,26 @@ function priceDraft(
   price: number,
   band: number,
   tick: number,
-) {
+): DispatchDraft {
   const resource = state.world.resources[resourceId]!;
   const pct = Math.round(((price - resource.basePrice) * 100) / resource.basePrice);
   if (band === 0) {
     return {
       tick,
       tag: 'Markets',
-      severity: 'info' as const,
+      severity: 'info',
       headline: `${resource.name} back near its normal price`,
       detail: `Now ${formatPrice(price)}.`,
+      source: 'market',
     };
   }
   return {
     tick,
     tag: 'Markets',
-    severity:
-      pct >= 30 ? ('critical' as const) : pct > 0 ? ('warning' as const) : ('info' as const),
+    severity: pct >= 30 ? 'critical' : pct > 0 ? 'warning' : 'info',
     headline: `${resource.name} now ${Math.abs(pct)}% ${pct > 0 ? 'above' : 'below'} normal`,
     detail: `Trading at ${formatPrice(price)} against a normal ${formatPrice(resource.basePrice)}.`,
+    source: 'market',
   };
 }
 
@@ -97,6 +101,8 @@ function eventDraft(state: GameState, event: EngineEvent): DispatchDraft | null 
         severity: def.severity,
         headline: def.headline,
         ...(def.detail ? { detail: def.detail } : {}),
+        source: 'world',
+        ...(state.world.countries[def.tag] ? { country: def.tag } : {}),
       };
     }
     case 'decision_issued': {
@@ -108,7 +114,7 @@ function eventDraft(state: GameState, event: EngineEvent): DispatchDraft | null 
         severity: 'info',
         headline: `Order signed: ${def.name}`,
         detail: `Outcome expected around ${formatDate(event.dueTick)}.`,
-        mine: true,
+        source: 'order',
       };
     }
     case 'decision_resolved': {
@@ -121,7 +127,7 @@ function eventDraft(state: GameState, event: EngineEvent): DispatchDraft | null 
         headline: event.success
           ? def.successHeadline
           : (def.failureHeadline ?? `${def.name}: it did not work`),
-        mine: true,
+        source: 'order',
       };
     }
     case 'game_over':
@@ -133,6 +139,7 @@ function eventDraft(state: GameState, event: EngineEvent): DispatchDraft | null 
           event.result === 'ousted'
             ? 'The government falls after weeks of unrest'
             : 'Your term ends with the government still standing',
+        source: 'outcome',
       };
     default:
       return null;
@@ -172,4 +179,9 @@ export function dispatchesFor(
   }
 
   return { news: { bands, nextId }, dispatches };
+}
+
+/** True for news that should interrupt the player: a critical world event. */
+export function isAlert(dispatch: Dispatch): boolean {
+  return dispatch.source === 'world' && dispatch.severity === 'critical';
 }
