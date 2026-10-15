@@ -3,17 +3,22 @@ import type { Speed } from './clock';
 import { firstCrisis } from './scenario';
 import {
   advanceSession,
-  devSetChokepoint,
+  issueDecision,
   newSession,
   setPaused,
   setSpeed,
   type Session,
 } from './session';
 
-/** A fixed seed for now; a new-game screen will pick one later. */
-const SEED = 2026;
+/**
+ * A new random seed per game. Randomness is fine here: the seed is chosen
+ * outside the engine, and everything after it is deterministic.
+ */
+function freshSeed(): number {
+  return Math.floor(Math.random() * 2 ** 31);
+}
 
-let session: Session = newSession(firstCrisis, SEED);
+let session: Session = newSession(firstCrisis, freshSeed());
 const listeners = new Set<() => void>();
 
 function update(next: Session): void {
@@ -25,8 +30,8 @@ function update(next: Session): void {
 export const actions = {
   togglePause: () => update(setPaused(session, !session.clock.paused)),
   setSpeed: (speed: Speed) => update(setSpeed(session, speed)),
-  setChokepoint: (id: string, open: boolean) => update(devSetChokepoint(session, id, open)),
-  reset: () => update(newSession(firstCrisis, SEED)),
+  issue: (decision: string) => update(issueDecision(session, decision)),
+  newGame: () => update(newSession(firstCrisis, freshSeed())),
 };
 
 let frame = 0;

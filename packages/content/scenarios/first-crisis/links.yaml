@@ -29,6 +29,14 @@
   to: corvan
   capacity: 5
 
+# Planned overland pipeline that avoids the strait. It carries nothing until
+# the player funds it (decision: overland_pipeline).
+- id: oil_veskar_aldoria_overland
+  resource: oil
+  from: veskar
+  to: aldoria
+  capacity: 0
+
 # Grain: 35 units of demand, all supplied by Orrin.
 - id: grain_orrin_aldoria
   resource: grain

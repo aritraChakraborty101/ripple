@@ -1,16 +1,7 @@
 import type { EngineEvent } from './events';
+import { applyOrders, type Order } from './orders';
 import type { GameState } from './state';
 import { SYSTEMS } from './systems';
-
-/**
- * An order issued by a player or an AI. Real order types (dispatch envoy,
- * set tariff, ...) arrive with the decision system; this placeholder keeps
- * the step signature stable.
- */
-export interface Order {
-  readonly kind: string;
-  readonly issuedBy: string;
-}
 
 export interface StepResult {
   readonly state: GameState;
@@ -18,13 +9,16 @@ export interface StepResult {
 }
 
 /**
- * Simulate the current day, then advance the clock by one tick.
- * Pure: the same state and orders always give the same result.
+ * Sign the given orders, simulate the current day, then advance the clock by
+ * one tick. Pure: the same state and orders always give the same result.
+ * Once the game is over, nothing changes.
  */
 export function step(state: GameState, orders: readonly Order[]): StepResult {
-  void orders;
-  let current = state;
-  const events: EngineEvent[] = [];
+  if (state.outcome) return { state, events: [] };
+
+  const signed = applyOrders(state, orders);
+  let current = signed.state;
+  const events: EngineEvent[] = [...signed.events];
   for (const system of SYSTEMS) {
     const result = system.run(current);
     current = result.state;

@@ -1,17 +1,23 @@
 # Domestic factions. Only Aldoria has them for now; other countries get them
 # when computer countries start reacting to domestic pressure.
+#
+# satisfaction: 0 to 100. power: how strongly the faction's mood moves stability.
+# sensitivity: how much each price weighs on them, in basis points (10000 = all).
 
 - id: aldoria_industry
   name: Industry
   country: aldoria
   stats: { satisfaction: 55, power: 40 }
+  sensitivity: { oil: 6000, steel: 4000 }
 
 - id: aldoria_workers
   name: Workers
   country: aldoria
   stats: { satisfaction: 60, power: 35 }
+  sensitivity: { oil: 5000, grain: 5000 }
 
 - id: aldoria_military
   name: Military
   country: aldoria
   stats: { satisfaction: 58, power: 25 }
+  sensitivity: { oil: 3000 }

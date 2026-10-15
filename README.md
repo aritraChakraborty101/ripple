@@ -2,7 +2,7 @@
 
 A pausable real-time geopolitics game. You lead one country in a living, fictional world, and small decisions ripple outward in ways you didn't intend.
 
-Status: early development. The world simulates and runs in the browser; crises and decisions are next.
+Status: early development, playable. Crises arise on their own, you respond with orders, and you can be ousted.
 
 ## Repository layout
 
@@ -12,7 +12,7 @@ Status: early development. The world simulates and runs in the browser; crises a
 | `packages/content` | Countries, links, events and decisions as data, with their schemas |
 | `apps/web`         | Browser client; runs the engine locally for single player          |
 | `apps/server`      | Authoritative multiplayer server (later)                           |
-| `tools`            | Developer scripts                                                  |
+| `tools`            | Developer scripts, including the balance report (`pnpm balance`)   |
 | `docs`             | Design doc link and decision records                               |
 
 The engine depends on nothing else in the repo. Both apps depend on the engine and content, never on each other.

@@ -1,0 +1,17 @@
+{
+  "name": "@ripple/tools",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Developer scripts: balance reports and other experiments.",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@ripple/content": "workspace:*",
+    "@ripple/engine": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5"
+  }
+}

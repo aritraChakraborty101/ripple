@@ -1,0 +1,8 @@
+# Starting relations, from -100 (hostile) to 100 (allied). Pairs not listed start at 0.
+
+- { between: [aldoria, corvan], value: -10 }
+- { between: [aldoria, thessa], value: 5 }
+- { between: [aldoria, veskar], value: 10 }
+- { between: [aldoria, orrin], value: 30 }
+- { between: [corvan, thessa], value: 25 }
+- { between: [thessa, veskar], value: 10 }

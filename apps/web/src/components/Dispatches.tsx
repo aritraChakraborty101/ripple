@@ -27,8 +27,10 @@ export function Dispatches({ dispatches }: Props) {
           {dispatches.map((d) => (
             <li key={d.id} className="dispatch">
               <div className="dispatch-meta">
-                <span className={`dot ${d.severity}`} />
-                <span className={`dispatch-tag ${d.severity === 'critical' ? 'critical' : ''}`}>
+                <span className={`dot ${d.mine ? 'mine' : d.severity}`} />
+                <span
+                  className={`dispatch-tag ${d.mine ? 'mine' : d.severity === 'critical' ? 'critical' : ''}`}
+                >
                   {d.tag}
                 </span>
                 <span className="muted">· {formatShortDate(d.tick)}</span>

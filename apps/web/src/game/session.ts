@@ -1,25 +1,35 @@
 /**
  * The running game in the browser: engine state plus everything the UI needs
- * around it (clock, dispatches, price history). React reads it through
- * useSyncExternalStore; the animation loop advances it.
+ * around it (clock, dispatches, price history, a few tallies for the end
+ * screen). React reads it through useSyncExternalStore; the animation loop
+ * advances it.
  */
 
 import {
+  applyOrders,
   createGame,
   effectiveStat,
-  setChokepointOpen,
   sortedIds,
   step,
+  type EngineEvent,
   type GameState,
   type ScenarioDef,
 } from '@ripple/engine';
 import { advanceClock, initialClock, type ClockState, type Speed } from './clock';
-import { customDispatch, dispatchesFor, initialNews, type Dispatch, type NewsState } from './news';
+import { dispatchesFor, initialNews, type Dispatch, type NewsState } from './news';
 
 /** Days of price history kept for sparklines. */
 export const HISTORY_DAYS = 120;
 /** Dispatches kept in the feed. */
-export const MAX_DISPATCHES = 50;
+export const MAX_DISPATCHES = 60;
+
+export interface Tallies {
+  /** Critical world events: strait closures, explosions, troop build-ups. */
+  readonly crises: number;
+  readonly ordersSigned: number;
+  readonly ordersSucceeded: number;
+  readonly ordersFailed: number;
+}
 
 export interface Session {
   readonly game: GameState;
@@ -29,6 +39,9 @@ export interface Session {
   readonly dispatches: readonly Dispatch[];
   /** Effective price per resource per day, oldest first. */
   readonly history: Readonly<Record<string, readonly number[]>>;
+  readonly tallies: Tallies;
+  /** The player's treasury at the start, for the end-of-game summary. */
+  readonly startTreasury: number;
 }
 
 function priceOf(game: GameState, resource: string): number {
@@ -47,6 +60,39 @@ function recordHistory(
   return next;
 }
 
+function tally(tallies: Tallies, game: GameState, events: readonly EngineEvent[]): Tallies {
+  let { crises, ordersSigned, ordersSucceeded, ordersFailed } = tallies;
+  for (const e of events) {
+    if (e.kind === 'event_fired' && game.defs.events[e.event]?.severity === 'critical') crises += 1;
+    if (e.kind === 'decision_issued') ordersSigned += 1;
+    if (e.kind === 'decision_resolved') {
+      if (e.success) ordersSucceeded += 1;
+      else ordersFailed += 1;
+    }
+  }
+  return { crises, ordersSigned, ordersSucceeded, ordersFailed };
+}
+
+/** Fold one batch of engine events (a day, or a signing) into the session. */
+function absorb(
+  session: Session,
+  game: GameState,
+  events: readonly EngineEvent[],
+  tick?: number,
+): Session {
+  const { news, dispatches } = dispatchesFor(session.news, events, game, tick);
+  return {
+    ...session,
+    game,
+    news,
+    dispatches: [...dispatches.reverse(), ...session.dispatches].slice(0, MAX_DISPATCHES),
+    tallies: tally(session.tallies, game, events),
+    // The clock stops when the game ends.
+    clock:
+      game.outcome && !session.clock.paused ? { ...session.clock, paused: true } : session.clock,
+  };
+}
+
 export function newSession(scenario: ScenarioDef, seed: number): Session {
   const game = createGame(scenario, seed);
   return {
@@ -55,64 +101,50 @@ export function newSession(scenario: ScenarioDef, seed: number): Session {
     news: initialNews,
     dispatches: [],
     history: recordHistory({}, game),
+    tallies: { crises: 0, ordersSigned: 0, ordersSucceeded: 0, ordersFailed: 0 },
+    startTreasury: effectiveStat(game, {
+      kind: 'country',
+      id: game.rules.playerCountry,
+      stat: 'treasury',
+    }),
   };
 }
 
 /** Simulate one day and collect its dispatches. */
 export function tickSession(session: Session): Session {
   const result = step(session.game, []);
-  const { news, dispatches } = dispatchesFor(session.news, result.events, result.state);
-  return {
-    ...session,
-    game: result.state,
-    news,
-    dispatches: [...dispatches.reverse(), ...session.dispatches].slice(0, MAX_DISPATCHES),
-    history: recordHistory(session.history, result.state),
-  };
+  const next = absorb(session, result.state, result.events);
+  return { ...next, history: recordHistory(session.history, result.state) };
 }
 
 /** Advance by real elapsed time, simulating however many days are due. */
 export function advanceSession(session: Session, elapsedMs: number): Session {
+  if (session.game.outcome) return session;
   const { clock, ticks } = advanceClock(session.clock, elapsedMs);
   let next: Session = clock === session.clock ? session : { ...session, clock };
-  for (let i = 0; i < ticks; i += 1) {
+  for (let i = 0; i < ticks && !next.game.outcome; i += 1) {
     next = tickSession(next);
   }
   return next;
 }
 
+/**
+ * Sign a decision now, even while paused: costs are paid at once and the
+ * outcome is scheduled. Invalid orders change nothing (the UI checks first).
+ */
+export function issueDecision(session: Session, decision: string): Session {
+  const by = session.game.rules.playerCountry;
+  const result = applyOrders(session.game, [{ kind: 'decide', decision, by }]);
+  if (result.events.every((e) => e.kind === 'order_rejected')) return session;
+  return absorb(session, result.state, result.events, session.game.tick);
+}
+
 export function setPaused(session: Session, paused: boolean): Session {
+  if (session.game.outcome) return session;
   return { ...session, clock: { ...session.clock, paused } };
 }
 
 export function setSpeed(session: Session, speed: Speed): Session {
+  if (session.game.outcome) return session;
   return { ...session, clock: { ...session.clock, speed, paused: false } };
-}
-
-/**
- * Developer tool, temporary: open or close a chokepoint directly. Once events
- * and decisions exist, the controlling country will do this inside the game.
- */
-export function devSetChokepoint(session: Session, id: string, open: boolean): Session {
-  const chokepoint = session.game.world.chokepoints[id];
-  if (!chokepoint || chokepoint.open === open) return session;
-  const controller = session.game.world.countries[chokepoint.controlledBy];
-  const tag = controller?.name ?? 'World';
-  const { news, dispatch } = customDispatch(session.news, {
-    tick: session.game.tick,
-    tag,
-    severity: open ? 'info' : 'critical',
-    headline: open
-      ? `${tag} reopens the ${chokepoint.name}`
-      : `${tag} closes the ${chokepoint.name}`,
-    detail: open
-      ? 'Shipping through it resumes.'
-      : 'Trade routes through it carry nothing until it reopens.',
-  });
-  return {
-    ...session,
-    game: setChokepointOpen(session.game, id, open),
-    news,
-    dispatches: [dispatch, ...session.dispatches].slice(0, MAX_DISPATCHES),
-  };
 }

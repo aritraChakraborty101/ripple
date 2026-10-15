@@ -1,0 +1,140 @@
+# Orders the player can sign. Costs are paid at once; effects arrive after
+# durationDays. chance is the odds of success in basis points (10000 = certain).
+# treasury is in billions.
+
+- id: envoy_corvan
+  name: Send an envoy to Corvan
+  description: Talks to ease tensions over the strait. Takes about two weeks, and may fail.
+  requires:
+    stat: { target: country.aldoria.influence, above: 7 }
+  unavailableText: Needs at least 8 influence.
+  costs:
+    - adjust: { target: country.aldoria.influence, by: -8 }
+  durationDays: 14
+  cooldownDays: 75
+  chance: 6000
+  effects:
+    - relation: { between: [aldoria, corvan], by: 18, days: 120 }
+  failureEffects:
+    - relation: { between: [aldoria, corvan], by: -5, days: 30 }
+  successHeadline: Talks in Corvan ease tensions
+  failureHeadline: Talks in Corvan break down
+
+- id: envoy_veskar
+  name: Send an envoy to Veskar
+  description: Ask Veskar for a discount on crude. Takes about two weeks, and may fail.
+  requires:
+    stat: { target: country.aldoria.influence, above: 7 }
+  unavailableText: Needs at least 8 influence.
+  costs:
+    - adjust: { target: country.aldoria.influence, by: -8 }
+  durationDays: 14
+  cooldownDays: 60
+  chance: 5500
+  effects:
+    - modify: { target: resource.oil.price, pct: -1000, days: 60 }
+    - relation: { between: [aldoria, veskar], by: 10, days: 120 }
+  failureEffects:
+    - relation: { between: [aldoria, veskar], by: -5, days: 30 }
+  successHeadline: Veskar agrees to discount its crude
+  failureHeadline: Veskar refuses any discount
+
+- id: transit_fees
+  name: Pay Corvan transit fees
+  description: Pay Corvan generously for passage through the strait. Buys goodwill at once.
+  requires:
+    stat: { target: country.aldoria.treasury, above: 29 }
+  unavailableText: Needs 30 bn in the treasury.
+  costs:
+    - adjust: { target: country.aldoria.treasury, by: -30 }
+  cooldownDays: 90
+  effects:
+    - relation: { between: [aldoria, corvan], by: 10, days: 90 }
+  successHeadline: Aldoria pays Corvan for safe passage
+
+- id: fuel_subsidy
+  name: Subsidize fuel
+  description: Shield households and industry from fuel prices for three months.
+  requires:
+    stat: { target: country.aldoria.treasury, above: 39 }
+  unavailableText: Needs 40 bn in the treasury.
+  costs:
+    - adjust: { target: country.aldoria.treasury, by: -40 }
+  cooldownDays: 90
+  effects:
+    - modify: { target: faction.aldoria_workers.satisfaction, add: 12, days: 90 }
+    - modify: { target: faction.aldoria_industry.satisfaction, add: 6, days: 90 }
+  successHeadline: Fuel subsidy takes effect
+
+- id: release_reserves
+  name: Release strategic oil reserves
+  description: Sell from national stockpiles to cut crude prices for about six weeks. Once only.
+  requires:
+    noFlag: reserves_used
+  unavailableText: The reserves have already been used.
+  costs:
+    - setFlag: reserves_used
+  durationDays: 3
+  effects:
+    - modify: { target: resource.oil.price, pct: -2000, days: 45 }
+  successHeadline: Strategic reserves reach the market
+
+- id: overland_pipeline
+  name: Fund an overland pipeline
+  description: Build a pipeline from Veskar that avoids the strait. Expensive, and takes about four months.
+  requires:
+    all:
+      - noFlag: pipeline_built
+      - stat: { target: country.aldoria.treasury, above: 89 }
+  unavailableText: Needs 90 bn, and can only be built once.
+  costs:
+    - adjust: { target: country.aldoria.treasury, by: -90 }
+  durationDays: 120
+  effects:
+    - adjust: { target: link.oil_veskar_aldoria_overland.capacity, by: 15 }
+    - setFlag: pipeline_built
+  successHeadline: The overland pipeline opens
+
+# A policy: it stays in force until lifted. Industry's boost lasts as long as
+# the tariff does; lifting it ends that boost (endEffectsOf) and wins back only
+# part of Thessa's goodwill.
+- id: steel_tariff
+  name: Raise steel tariffs on Thessa
+  description: Protect Aldorian industry and raise revenue. Thessa will not take it well. Stays in force until you lift it.
+  requires:
+    noFlag: steel_tariff_active
+  unavailableText: Tariffs on Thessa are already in force.
+  cooldownDays: 90
+  policyFlag: steel_tariff_active
+  effects:
+    - adjust: { target: country.aldoria.treasury, by: 35 }
+    - relation: { between: [aldoria, thessa], by: -30 }
+    - modify: { target: faction.aldoria_industry.satisfaction, add: 8 }
+    - setFlag: steel_tariff_active
+  successHeadline: Steel tariffs on Thessa take effect
+
+- id: lift_steel_tariff
+  name: Lift steel tariffs on Thessa
+  description: End the tariffs. Thessa recovers about half its lost goodwill, industry loses its protection, and the revenue already raised is kept.
+  requires:
+    flag: steel_tariff_active
+  unavailableText: No steel tariffs are in force.
+  effects:
+    - endEffectsOf: { decision: steel_tariff }
+    - clearFlag: steel_tariff_active
+    - relation: { between: [aldoria, thessa], by: 15 }
+    - modify: { target: faction.aldoria_industry.satisfaction, add: -5, days: 60 }
+  successHeadline: Steel tariffs on Thessa are lifted
+
+- id: address_nation
+  name: Address the nation
+  description: A televised appeal for unity. A small, short-lived lift in stability.
+  requires:
+    stat: { target: country.aldoria.influence, above: 4 }
+  unavailableText: Needs at least 5 influence.
+  costs:
+    - adjust: { target: country.aldoria.influence, by: -5 }
+  cooldownDays: 60
+  effects:
+    - modify: { target: country.aldoria.stability, add: 4, days: 30 }
+  successHeadline: The leader's address steadies the public mood

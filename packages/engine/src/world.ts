@@ -20,12 +20,37 @@ export interface Country {
   readonly demand: Readonly<Record<string, number>>;
 }
 
-/** A group inside a country with its own demands, such as industry or workers. */
+/**
+ * A group inside a country with its own demands, such as industry or workers.
+ * `stats.satisfaction` (0 to 100) and `stats.power` (how much it moves stability).
+ */
 export interface Faction {
   readonly id: string;
   readonly name: string;
   readonly country: string;
   readonly stats: Stats;
+  /**
+   * How much each resource's price weighs on this faction, in basis points
+   * summing to at most 10000. Workers feel grain; industry feels oil and steel.
+   */
+  readonly sensitivity: Readonly<Record<string, number>>;
+}
+
+/**
+ * How two countries regard each other, from -100 (hostile) to 100 (allied).
+ * One entity per unordered pair, so modifiers and the why-trace work on it.
+ */
+export interface Relation {
+  readonly id: string;
+  readonly a: string;
+  readonly b: string;
+  /** `stats.value` is the relation score. */
+  readonly stats: Stats;
+}
+
+/** The stable ID of the relation between two countries, in either order. */
+export function relationId(a: string, b: string): string {
+  return a < b ? `${a}__${b}` : `${b}__${a}`;
 }
 
 /** A tradable commodity. `stats.price` is the market price in cents. */
@@ -62,16 +87,18 @@ export interface World {
   readonly resources: Readonly<Record<string, Resource>>;
   readonly links: Readonly<Record<string, Link>>;
   readonly chokepoints: Readonly<Record<string, Chokepoint>>;
+  readonly relations: Readonly<Record<string, Relation>>;
 }
 
 /** Entity kinds that carry stats, and so can be targeted by modifiers. */
-export type StatEntityKind = 'country' | 'faction' | 'resource' | 'link';
+export type StatEntityKind = 'country' | 'faction' | 'resource' | 'link' | 'relation';
 
 const COLLECTION: Record<StatEntityKind, keyof World> = {
   country: 'countries',
   faction: 'factions',
   resource: 'resources',
   link: 'links',
+  relation: 'relations',
 };
 
 /** Keys of a record in a stable order. Never iterate entities any other way. */

@@ -17,8 +17,6 @@ pnpm --filter @ripple/web build   # static site in apps/web/dist
 | `src/game/news.ts`     | Turns world changes into dispatches, one per 10% price band crossed           |
 | `src/game/store.ts`    | The animation loop and the store React subscribes to                          |
 | `src/map/layout.ts`    | Map shapes and anchor points per country and chokepoint                       |
-| `src/components/`      | Header and clock, map, markets, dispatches, temporary developer tools         |
+| `src/components/`      | Header and clock, map, orders, policies, markets, home front, relations, news |
 
 The engine never sees real time. The clock decides how many days are due and calls the engine's pure `step()` once per day, so the browser game and a future server run the exact same simulation.
-
-The developer tools panel (close or reopen the strait, restart) is temporary. Crises and decisions will happen inside the game in the next update.

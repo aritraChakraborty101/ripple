@@ -1,4 +1,12 @@
-import { effectiveStat, isLinkOpen, sortedIds, type GameState, type Link } from '@ripple/engine';
+import {
+  effectiveStat,
+  isLinkOpen,
+  relationId,
+  sortedIds,
+  type GameState,
+  type Link,
+} from '@ripple/engine';
+import { relationTone } from '../game/describe';
 import {
   CHOKEPOINT_POSITIONS,
   COUNTRY_SHAPES,
@@ -64,9 +72,26 @@ export function WorldMap({ game, paused }: Props) {
           const shape = COUNTRY_SHAPES[id];
           if (!shape) return null;
           const isPlayer = id === player;
+          // Other countries' borders warm up as relations with the player sour.
+          const tone = isPlayer
+            ? 'calm'
+            : relationTone(
+                effectiveStat(game, {
+                  kind: 'relation',
+                  id: relationId(player, id),
+                  stat: 'value',
+                }),
+              );
+          const edge =
+            tone === 'critical'
+              ? 'var(--critical)'
+              : tone === 'warning'
+                ? 'var(--warning)'
+                : 'var(--land-edge)';
           return (
             <polygon
               key={id}
+              className="country"
               points={shape.points}
               fill={
                 isPlayer
@@ -75,28 +100,35 @@ export function WorldMap({ game, paused }: Props) {
                     ? 'var(--land-alt)'
                     : 'var(--land)'
               }
-              stroke={isPlayer ? 'var(--accent)' : 'var(--land-edge)'}
-              strokeWidth={isPlayer ? 2 : 1}
+              stroke={isPlayer ? 'var(--accent)' : edge}
+              strokeWidth={isPlayer ? 2 : tone === 'calm' ? 1 : 1.5}
             />
           );
         })}
 
-        {routes.map(({ link, open, d }) =>
-          d ? (
+        {routes.map(({ link, open, d }) => {
+          if (!d) return null;
+          const capacity = effectiveStat(game, { kind: 'link', id: link.id, stat: 'capacity' });
+          const planned = capacity <= 0;
+          return (
             <path
               key={link.id}
               className="route"
               d={d}
               fill="none"
-              stroke={open ? 'var(--route)' : 'var(--critical)'}
+              stroke={!open ? 'var(--critical)' : planned ? 'var(--land-edge)' : 'var(--route)'}
               strokeWidth={open ? 1.5 : 1.75}
-              strokeDasharray={open ? undefined : '6 6'}
+              strokeDasharray={!open ? '6 6' : planned ? '2 5' : undefined}
               opacity={open ? 0.75 : 1}
             >
-              <title>{routeTitle(game, link, open)}</title>
+              <title>
+                {planned
+                  ? 'Planned overland pipeline: not built yet'
+                  : routeTitle(game, link, open)}
+              </title>
             </path>
-          ) : null,
-        )}
+          );
+        })}
 
         {sortedIds(game.world.chokepoints).map((id) => {
           const point = CHOKEPOINT_POSITIONS[id];

@@ -14,6 +14,9 @@ export const SCENARIO_SECTIONS = [
   'resources',
   'links',
   'chokepoints',
+  'relations',
+  'events',
+  'decisions',
 ] as const;
 
 function parseYaml(text: string, file: string): unknown {
