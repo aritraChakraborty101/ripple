@@ -1,4 +1,6 @@
+import type { EngineEvent } from './events';
 import type { GameState } from './state';
+import { SYSTEMS } from './systems';
 
 /**
  * An order issued by a player or an AI. Real order types (dispatch envoy,
@@ -10,27 +12,25 @@ export interface Order {
   readonly issuedBy: string;
 }
 
-/** Something notable that happened during a tick, for the log and the why-trace. */
-export interface EngineEvent {
-  readonly tick: number;
-  readonly kind: string;
-}
-
 export interface StepResult {
   readonly state: GameState;
   readonly events: readonly EngineEvent[];
 }
 
 /**
- * Advance the world by exactly one tick. Pure: same input, same output.
- * Systems (economy, trade, stability, ...) will run here in a fixed order.
+ * Simulate the current day, then advance the clock by one tick.
+ * Pure: the same state and orders always give the same result.
  */
 export function step(state: GameState, orders: readonly Order[]): StepResult {
   void orders;
-  return {
-    state: { ...state, tick: state.tick + 1 },
-    events: [],
-  };
+  let current = state;
+  const events: EngineEvent[] = [];
+  for (const system of SYSTEMS) {
+    const result = system.run(current);
+    current = result.state;
+    events.push(...result.events);
+  }
+  return { state: { ...current, tick: current.tick + 1 }, events };
 }
 
 /** Run several ticks with no orders. Convenient for tests and tools. */

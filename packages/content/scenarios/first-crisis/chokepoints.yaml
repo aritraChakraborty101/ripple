@@ -1,0 +1,4 @@
+- id: south_strait
+  name: South Strait
+  controlledBy: corvan
+  open: true

@@ -1,0 +1,32 @@
+# Stats are integers. treasury is in billions; the rest are 0 to 100 scores.
+# demand is units imported per day.
+
+- id: aldoria
+  name: Aldoria
+  archetype: industrial_importer
+  stats: { stability: 61, treasury: 412, influence: 38, military: 40 }
+  demand: { oil: 40, grain: 20, steel: 25 }
+
+- id: veskar
+  name: Veskar
+  archetype: resource_exporter
+  stats: { stability: 60, treasury: 520, influence: 30, military: 50 }
+  demand: { grain: 10, steel: 5 }
+
+- id: corvan
+  name: Corvan
+  archetype: transit_state
+  stats: { stability: 55, treasury: 90, influence: 20, military: 25 }
+  demand: { oil: 5, grain: 5 }
+
+- id: thessa
+  name: Thessa
+  archetype: rising_power
+  stats: { stability: 64, treasury: 610, influence: 45, military: 70 }
+  demand: { oil: 30 }
+
+- id: orrin
+  name: Orrin
+  archetype: resource_exporter
+  stats: { stability: 70, treasury: 140, influence: 15, military: 15 }
+  demand: { oil: 5 }

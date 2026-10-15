@@ -1,0 +1,13 @@
+# basePrice is in cents, so 7300 is 73.00 per unit.
+
+- id: oil
+  name: Crude oil
+  basePrice: 7300
+
+- id: grain
+  name: Grain
+  basePrice: 2200
+
+- id: steel
+  name: Steel
+  basePrice: 6500

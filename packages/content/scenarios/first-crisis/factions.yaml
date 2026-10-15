@@ -1,0 +1,17 @@
+# Domestic factions. Only Aldoria has them for now; other countries get them
+# when computer countries start reacting to domestic pressure.
+
+- id: aldoria_industry
+  name: Industry
+  country: aldoria
+  stats: { satisfaction: 55, power: 40 }
+
+- id: aldoria_workers
+  name: Workers
+  country: aldoria
+  stats: { satisfaction: 60, power: 35 }
+
+- id: aldoria_military
+  name: Military
+  country: aldoria
+  stats: { satisfaction: 58, power: 25 }
