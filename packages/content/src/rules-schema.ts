@@ -92,6 +92,10 @@ export const effectSchema = z.union([
   z.strictObject({ schedule: z.strictObject({ event: id, inDays: days }) }),
   z.strictObject({ setFlag: id }),
   z.strictObject({ clearFlag: id }),
+  // Remove the lingering modifiers of an earlier decision or event.
+  z.strictObject({
+    endEffectsOf: z.union([z.strictObject({ decision: id }), z.strictObject({ event: id })]),
+  }),
 ]);
 
 export type RawEffect = z.infer<typeof effectSchema>;
@@ -123,6 +127,8 @@ export const decisionSchema = z.strictObject({
   failureEffects: z.array(effectSchema).default([]),
   successHeadline: z.string().min(1),
   failureHeadline: z.string().min(1).optional(),
+  /** For policies: the flag set while the policy is in force. */
+  policyFlag: id.optional(),
 });
 
 export const relationSchema = z.strictObject({

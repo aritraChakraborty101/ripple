@@ -1,24 +1,43 @@
-import type { GameState } from '@ripple/engine';
+import { policiesInForce, type GameState } from '@ripple/engine';
 import { formatDate } from '../game/format';
 
 interface Props {
   readonly game: GameState;
+  /** Opens the orders dialog, where policies can be reversed. */
+  readonly onOpenOrders: () => void;
 }
 
-/** Orders signed but not yet resolved, with how far along each one is. */
-export function Unfolding({ game }: Props) {
+/** Policies you have in force, and orders signed but not yet resolved. */
+export function Unfolding({ game, onOpenOrders }: Props) {
+  const policies = policiesInForce(game);
+  const nothing = policies.length === 0 && game.pending.length === 0;
+
   return (
     <section aria-labelledby="unfolding-title">
       <div className="section-head">
         <h2 id="unfolding-title">Unfolding</h2>
-        <span className="muted small">Your orders under way</span>
+        <span className="muted small">Your policies and orders under way</span>
       </div>
-      {game.pending.length === 0 ? (
+      {nothing ? (
         <p className="empty">
-          No orders under way. Orders that take time will show their progress here.
+          No orders under way. Policies you set and orders that take time will show here.
         </p>
       ) : (
         <div className="unfolding">
+          {policies.map((def) => {
+            const since = game.lastIssued[def.id];
+            return (
+              <article key={def.id} className="order policy">
+                <span className="muted small">
+                  In force{since !== undefined ? ` since ${formatDate(since)}` : ''}
+                </span>
+                <span className="order-name">{def.name}</span>
+                <button type="button" className="text-button inline" onClick={onOpenOrders}>
+                  Change in your orders
+                </button>
+              </article>
+            );
+          })}
           {game.pending.map((p) => {
             const def = game.defs.decisions[p.decision];
             const total = Math.max(1, p.dueTick - p.issuedTick);

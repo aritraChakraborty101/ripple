@@ -867,3 +867,15 @@ kbd {
       opacity 600ms ease;
   }
 }
+
+/* Policies in force */
+.order.policy {
+  border-style: dashed;
+  border-color: var(--land-edge);
+}
+
+.text-button.inline {
+  margin-top: 0;
+  min-height: 44px;
+  align-self: flex-start;
+}

@@ -89,6 +89,33 @@ describe('effects', () => {
     ).toThrow(/nope/);
   });
 
+  it('ends the lingering effects of one source and leaves everything else', () => {
+    const tariff = { kind: 'decision' as const, id: 'tariff', tick: 0 };
+    const other = { kind: 'event' as const, id: 'other', tick: 0 };
+    let state = applyEffect(
+      game(),
+      { type: 'modify', target: relationRef, op: 'add', amount: -20, days: null },
+      tariff,
+    );
+    state = applyEffect(state, { type: 'adjust', target: treasuryRef, by: 35 }, tariff);
+    state = applyEffect(
+      state,
+      { type: 'modify', target: relationRef, op: 'add', amount: -5, days: null },
+      other,
+    );
+    expect(effectiveStat(state, relationRef)).toBe(-35);
+
+    const ended = applyEffect(
+      state,
+      { type: 'end_effects', source: { kind: 'decision', id: 'tariff' } },
+      { kind: 'decision', id: 'lift', tick: 5 },
+    );
+    expect(effectiveStat(ended, relationRef)).toBe(-15);
+    // Base changes are history: the revenue already raised stays.
+    expect(effectiveStat(ended, treasuryRef)).toBe(435);
+    expect(ended.modifiers.map((m) => m.source.id)).toEqual(['other']);
+  });
+
   it('keeps flags sorted and unique', () => {
     let state = game();
     for (const flag of ['b', 'a', 'b']) {

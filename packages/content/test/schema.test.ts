@@ -171,6 +171,25 @@ describe('events and decisions', () => {
     ]);
   });
 
+  it('ends the effects of decisions and events that exist', () => {
+    const lift = {
+      ...envoy,
+      id: 'lift',
+      effects: [{ endEffectsOf: { decision: 'envoy' } }, { endEffectsOf: { decision: 'nope' } }],
+    };
+    expect(problemsOf({ ...valid, decisions: [envoy, lift] })).toEqual([
+      'decisions[1].effects[1].endEffectsOf.decision: Unknown decision "nope"',
+    ]);
+    const scenario = parseScenario({
+      ...valid,
+      decisions: [envoy, { ...lift, effects: [lift.effects[0]] }],
+    });
+    expect(scenario.decisions[1]!.effects[0]).toEqual({
+      type: 'end_effects',
+      source: { kind: 'decision', id: 'envoy' },
+    });
+  });
+
   it('needs exactly one of add or pct in a modify effect', () => {
     const broken = {
       ...reopens,

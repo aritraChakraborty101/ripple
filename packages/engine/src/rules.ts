@@ -104,7 +104,16 @@ export type Effect =
   /** Fire another event after a delay: the engine of delayed consequences. */
   | { readonly type: 'schedule'; readonly event: string; readonly inDays: number }
   | { readonly type: 'set_flag'; readonly flag: string }
-  | { readonly type: 'clear_flag'; readonly flag: string };
+  | { readonly type: 'clear_flag'; readonly flag: string }
+  /**
+   * Remove every modifier an earlier decision or event created, such as the
+   * lingering boosts of a policy that is being reversed. Permanent base
+   * changes (`adjust`) are history and stay.
+   */
+  | {
+      readonly type: 'end_effects';
+      readonly source: { readonly kind: 'decision' | 'event'; readonly id: string };
+    };
 
 export interface ScheduledEvent {
   readonly dueTick: number;
@@ -160,6 +169,11 @@ export function applyEffect(state: GameState, effect: Effect, source: ModifierSo
       return state.flags.includes(effect.flag)
         ? { ...state, flags: state.flags.filter((f) => f !== effect.flag) }
         : state;
+    case 'end_effects': {
+      const { kind, id } = effect.source;
+      const kept = state.modifiers.filter((m) => !(m.source.kind === kind && m.source.id === id));
+      return kept.length === state.modifiers.length ? state : { ...state, modifiers: kept };
+    }
   }
 }
 
@@ -217,4 +231,18 @@ export interface DecisionDef {
   readonly failureEffects: readonly Effect[];
   readonly successHeadline: string;
   readonly failureHeadline?: string;
+  /**
+   * For policies: the flag that is set while this decision's policy is in
+   * force (the decision's effects set it, a reversing decision clears it).
+   * Lets the UI list what the player currently has in force.
+   */
+  readonly policyFlag?: string;
+}
+
+/** Decisions whose policy is currently in force, in ID order. */
+export function policiesInForce(state: GameState): DecisionDef[] {
+  return Object.keys(state.defs.decisions)
+    .sort()
+    .map((id) => state.defs.decisions[id]!)
+    .filter((d) => d.policyFlag !== undefined && state.flags.includes(d.policyFlag));
 }

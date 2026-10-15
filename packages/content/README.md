@@ -40,7 +40,9 @@ Each condition or effect is a mapping with one key that names it.
 
 **Conditions:** `all`, `any`, `not`, `stat: { target, above, below }`, `relation: { between, above, below }`, `chokepointOpen`, `chokepointClosed`, `flag`, `noFlag`, `afterDay`, `chance`. Bounds are exclusive. Put `chance` last, so randomness is only drawn when everything else holds.
 
-**Effects:** `modify: { target, add | pct, days }` (lasts `days`; permanent if omitted), `adjust: { target, by }` (permanent change to the base value), `relation: { between, by, days }`, `setChokepoint`, `schedule: { event, inDays }`, `setFlag`, `clearFlag`.
+**Effects:** `modify: { target, add | pct, days }` (lasts `days`; permanent if omitted), `adjust: { target, by }` (permanent change to the base value), `relation: { between, by, days }`, `setChokepoint`, `schedule: { event, inDays }`, `setFlag`, `clearFlag`, `endEffectsOf: { decision | event }` (removes the lingering modifiers an earlier decision or event created; base changes stay).
+
+**Policies** are decisions that stay in force until reversed. Give the decision a `policyFlag`, set that flag in its effects, and write a second decision that requires the flag, clears it and uses `endEffectsOf` to undo the policy's lingering effects. The game lists policies in force so the player can see and reverse them. See `steel_tariff` and `lift_steel_tariff`.
 
 **Stat targets** are written `kind.id.stat`, such as `country.aldoria.treasury`, `faction.aldoria_workers.satisfaction`, `resource.oil.price` or `link.oil_veskar_aldoria.capacity`.
 

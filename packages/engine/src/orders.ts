@@ -29,13 +29,14 @@ export function canIssue(state: GameState, decisionId: string, by: string): Avai
   if (state.pending.some((p) => p.decision === decisionId)) {
     return { ok: false, reason: 'Already under way.' };
   }
+  // Requirements first: "already in force" says more than a cooldown countdown.
+  if (def.requires && !evaluate(state, def.requires).value) {
+    return { ok: false, reason: def.unavailableText ?? 'Not possible right now.' };
+  }
   const last = state.lastIssued[decisionId];
   if (last !== undefined && state.tick < last + def.cooldownDays) {
     const days = last + def.cooldownDays - state.tick;
     return { ok: false, reason: `Available again in ${days} ${days === 1 ? 'day' : 'days'}.` };
-  }
-  if (def.requires && !evaluate(state, def.requires).value) {
-    return { ok: false, reason: def.unavailableText ?? 'Not possible right now.' };
   }
   return { ok: true };
 }

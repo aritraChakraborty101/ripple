@@ -81,7 +81,13 @@ export function toEffect(e: RawEffect): Effect {
     return { type: 'schedule', event: e.schedule.event, inDays: e.schedule.inDays };
   }
   if ('setFlag' in e) return { type: 'set_flag', flag: e.setFlag };
-  return { type: 'clear_flag', flag: e.clearFlag };
+  if ('clearFlag' in e) return { type: 'clear_flag', flag: e.clearFlag };
+  const ref = e.endEffectsOf;
+  return {
+    type: 'end_effects',
+    source:
+      'decision' in ref ? { kind: 'decision', id: ref.decision } : { kind: 'event', id: ref.event },
+  };
 }
 
 export function toScenarioDef(s: RawScenario): ScenarioDef {
@@ -111,6 +117,7 @@ export function toScenarioDef(s: RawScenario): ScenarioDef {
     failureEffects: d.failureEffects.map(toEffect),
     successHeadline: d.successHeadline,
     ...(d.failureHeadline !== undefined ? { failureHeadline: d.failureHeadline } : {}),
+    ...(d.policyFlag !== undefined ? { policyFlag: d.policyFlag } : {}),
   }));
 
   return {

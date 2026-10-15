@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  canIssue,
   createGame,
+  policiesInForce,
   effectiveStat,
   marketDemand,
   marketSupply,
@@ -91,6 +93,38 @@ describe('first-crisis full games', () => {
     // after checking `pnpm balance` still looks healthy.
     const { state, fired } = playIdle(1);
     expect({ outcome: state.outcome, firstEvents: fired.slice(0, 4) }).toEqual(GOLDEN_IDLE_SEED_1);
+  });
+
+  it('lets the player lift steel tariffs, at a price', () => {
+    const me = 'aldoria';
+    const thessa = { kind: 'relation' as const, id: 'aldoria__thessa', stat: 'value' };
+    const industry = { kind: 'faction' as const, id: 'aldoria_industry', stat: 'satisfaction' };
+    const decide = (decision: string) => [{ kind: 'decide' as const, decision, by: me }];
+
+    const quietGame = createGame(quiet, 1);
+    expect(canIssue(quietGame, 'lift_steel_tariff', me)).toEqual({
+      ok: false,
+      reason: 'No steel tariffs are in force.',
+    });
+
+    const raised = step(quietGame, decide('steel_tariff')).state;
+    expect(policiesInForce(raised).map((d) => d.id)).toEqual(['steel_tariff']);
+    expect(effectiveStat(raised, thessa)).toBe(-25);
+    expect(effectiveStat(raised, industry)).toBe(63);
+    expect(canIssue(raised, 'steel_tariff', me)).toEqual({
+      ok: false,
+      reason: 'Tariffs on Thessa are already in force.',
+    });
+
+    const lifted = step(raised, decide('lift_steel_tariff')).state;
+    expect(policiesInForce(lifted)).toEqual([]);
+    expect(lifted.flags).not.toContain('steel_tariff_active');
+    // Half the goodwill comes back; industry loses its boost and grumbles for a while.
+    expect(effectiveStat(lifted, thessa)).toBe(-10);
+    expect(effectiveStat(lifted, industry)).toBe(50);
+    expect(lifted.modifiers.some((m) => m.source.id === 'steel_tariff')).toBe(false);
+    // The revenue already raised is kept.
+    expect(effectiveStat(lifted, { kind: 'country', id: me, stat: 'treasury' })).toBe(447);
   });
 
   it('can turn a steel tariff into trouble with Corvan through Thessa', () => {

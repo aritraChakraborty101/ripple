@@ -33,6 +33,7 @@ export {
 export {
   applyEffect,
   applyEffects,
+  policiesInForce,
   evaluate,
   type Condition,
   type DecisionDef,

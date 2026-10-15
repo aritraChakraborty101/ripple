@@ -119,8 +119,8 @@ export const scenarioSchema = z
       link: idsOf('links', s.links),
       chokepoint: idsOf('chokepoints', s.chokepoints),
       event: idsOf('events', s.events),
+      decision: idsOf('decisions', s.decisions),
     };
-    idsOf('decisions', s.decisions);
 
     const need = (kind: keyof typeof known, path: Path, value: string) => {
       if (!known[kind].has(value)) issue(path, `Unknown ${kind} "${value}"`);
@@ -154,6 +154,12 @@ export const scenarioSchema = z
       else if ('setChokepoint' in e)
         need('chokepoint', [...path, 'setChokepoint', 'id'], e.setChokepoint.id);
       else if ('schedule' in e) need('event', [...path, 'schedule', 'event'], e.schedule.event);
+      else if ('endEffectsOf' in e) {
+        const ref = e.endEffectsOf;
+        if ('decision' in ref)
+          need('decision', [...path, 'endEffectsOf', 'decision'], ref.decision);
+        else need('event', [...path, 'endEffectsOf', 'event'], ref.event);
+      }
     };
 
     need('country', ['rules', 'playerCountry'], s.rules.playerCountry);

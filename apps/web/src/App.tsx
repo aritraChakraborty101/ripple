@@ -48,7 +48,7 @@ export function App() {
       <div className="body">
         <main className="main">
           <WorldMap game={game} paused={session.clock.paused} />
-          <Unfolding game={game} />
+          <Unfolding game={game} onOpenOrders={() => setDecisionsOpen(true)} />
           <Markets game={game} history={session.history} />
           <div className="panels">
             <HomeFront game={game} />
