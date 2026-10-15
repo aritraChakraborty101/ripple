@@ -16,7 +16,7 @@ import {
   type ScenarioDef,
 } from '@ripple/engine';
 import { advanceClock, initialClock, type ClockState, type Speed } from './clock';
-import { dispatchesFor, initialNews, type Dispatch, type NewsState } from './news';
+import { dispatchesFor, initialNews, isAlert, type Dispatch, type NewsState } from './news';
 
 /** Days of price history kept for sparklines. */
 export const HISTORY_DAYS = 120;
@@ -42,6 +42,10 @@ export interface Session {
   readonly tallies: Tallies;
   /** The player's treasury at the start, for the end-of-game summary. */
   readonly startTreasury: number;
+  /** A critical world event the player has not dismissed yet, shown over the map. */
+  readonly alert: Dispatch | null;
+  /** Pause the clock automatically when a crisis breaks. */
+  readonly autoPause: boolean;
 }
 
 function priceOf(game: GameState, resource: string): number {
@@ -81,21 +85,25 @@ function absorb(
   tick?: number,
 ): Session {
   const { news, dispatches } = dispatchesFor(session.news, events, game, tick);
+  const alert = [...dispatches].reverse().find(isAlert) ?? null;
+  // The clock stops when the game ends, and on a crisis if the player asked for that.
+  const stop = game.outcome !== null || (alert !== null && session.autoPause);
   return {
     ...session,
     game,
     news,
     dispatches: [...dispatches.reverse(), ...session.dispatches].slice(0, MAX_DISPATCHES),
     tallies: tally(session.tallies, game, events),
-    // The clock stops when the game ends.
-    clock:
-      game.outcome && !session.clock.paused ? { ...session.clock, paused: true } : session.clock,
+    alert: alert ?? session.alert,
+    clock: stop && !session.clock.paused ? { ...session.clock, paused: true } : session.clock,
   };
 }
 
-export function newSession(scenario: ScenarioDef, seed: number): Session {
+export function newSession(scenario: ScenarioDef, seed: number, autoPause = true): Session {
   const game = createGame(scenario, seed);
   return {
+    alert: null,
+    autoPause,
     game,
     clock: initialClock,
     news: initialNews,
@@ -122,7 +130,8 @@ export function advanceSession(session: Session, elapsedMs: number): Session {
   if (session.game.outcome) return session;
   const { clock, ticks } = advanceClock(session.clock, elapsedMs);
   let next: Session = clock === session.clock ? session : { ...session, clock };
-  for (let i = 0; i < ticks && !next.game.outcome; i += 1) {
+  // Stop early if a day paused the clock (game over, or a crisis with auto-pause).
+  for (let i = 0; i < ticks && !next.game.outcome && !next.clock.paused; i += 1) {
     next = tickSession(next);
   }
   return next;
@@ -147,4 +156,12 @@ export function setPaused(session: Session, paused: boolean): Session {
 export function setSpeed(session: Session, speed: Speed): Session {
   if (session.game.outcome) return session;
   return { ...session, clock: { ...session.clock, speed, paused: false } };
+}
+
+export function dismissAlert(session: Session): Session {
+  return session.alert ? { ...session, alert: null } : session;
+}
+
+export function setAutoPause(session: Session, autoPause: boolean): Session {
+  return { ...session, autoPause };
 }

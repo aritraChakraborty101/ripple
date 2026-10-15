@@ -1,7 +1,6 @@
-import { canIssue, sortedIds, type GameState } from '@ripple/engine';
+import { sortedIds, type GameState } from '@ripple/engine';
 import { useEffect, useRef } from 'react';
-import { describeCosts, durationLabel, oddsLabel } from '../game/describe';
-import { actions } from '../game/store';
+import { DecisionCard } from './DecisionCard';
 
 interface Props {
   readonly game: GameState;
@@ -18,8 +17,6 @@ export function DecisionsDialog({ game, open, onClose }: Props) {
     if (open && !dialog.open) dialog.showModal();
     if (!open && dialog.open) dialog.close();
   }, [open]);
-
-  const me = game.rules.playerCountry;
 
   return (
     <dialog ref={ref} className="sheet" aria-labelledby="decisions-title" onClose={onClose}>
@@ -40,52 +37,13 @@ export function DecisionsDialog({ game, open, onClose }: Props) {
         </button>
       </div>
       <p className="sheet-note">
-        Costs are paid when you sign. Time keeps running while you decide unless you pause.
+        Costs are paid when you sign. Time keeps running while you decide unless you pause. Click a
+        country on the map to see only the orders that concern it.
       </p>
-
       <ul className="decision-list">
-        {sortedIds(game.defs.decisions).map((id) => {
-          const def = game.defs.decisions[id]!;
-          const availability = canIssue(game, id, me);
-          const costs = describeCosts(game, def);
-          const odds = oddsLabel(def.chanceBp);
-          return (
-            <li key={id} className={`decision ${availability.ok ? '' : 'unavailable'}`}>
-              <div className="decision-text">
-                <h3>{def.name}</h3>
-                <p>{def.description}</p>
-                <dl className="decision-meta">
-                  <div>
-                    <dt>Cost</dt>
-                    <dd>{costs.length > 0 ? costs.join(', ') : 'None'}</dd>
-                  </div>
-                  <div>
-                    <dt>Takes</dt>
-                    <dd>{durationLabel(def.durationDays)}</dd>
-                  </div>
-                  {odds && (
-                    <div>
-                      <dt>Odds</dt>
-                      <dd>{odds}</dd>
-                    </div>
-                  )}
-                </dl>
-                {!availability.ok && <p className="decision-reason">{availability.reason}</p>}
-              </div>
-              <button
-                type="button"
-                className="button primary"
-                disabled={!availability.ok}
-                onClick={() => {
-                  actions.issue(id);
-                  onClose();
-                }}
-              >
-                Sign
-              </button>
-            </li>
-          );
-        })}
+        {sortedIds(game.defs.decisions).map((id) => (
+          <DecisionCard key={id} game={game} def={game.defs.decisions[id]!} onSigned={onClose} />
+        ))}
       </ul>
     </dialog>
   );

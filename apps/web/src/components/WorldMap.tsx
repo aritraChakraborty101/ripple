@@ -6,7 +6,9 @@ import {
   type GameState,
   type Link,
 } from '@ripple/engine';
-import { relationTone } from '../game/describe';
+import type { KeyboardEvent } from 'react';
+import { relationLabel, relationTone, type Tone } from '../game/describe';
+import type { Selection } from '../game/selection';
 import {
   CHOKEPOINT_POSITIONS,
   COUNTRY_SHAPES,
@@ -20,7 +22,17 @@ import {
 interface Props {
   readonly game: GameState;
   readonly paused: boolean;
+  readonly selection: Selection;
+  readonly onSelect: (selection: Selection) => void;
+  /** A country in crisis right now, ringed on the map. */
+  readonly alertCountry: string | null;
 }
+
+const TONE_COLOR: Record<Tone, string> = {
+  calm: 'var(--land-edge)',
+  warning: 'var(--warning)',
+  critical: 'var(--critical)',
+};
 
 function routePath(link: Link, bend: number): string | null {
   const from = COUNTRY_SHAPES[link.from]?.anchor;
@@ -33,11 +45,11 @@ function routePath(link: Link, bend: number): string | null {
   return throughPath([from, ...waypoints, to]);
 }
 
-function routeTitle(game: GameState, link: Link, open: boolean): string {
+function routeTitle(game: GameState, link: Link, open: boolean, capacity: number): string {
   const resource = game.world.resources[link.resource]?.name ?? link.resource;
   const from = game.world.countries[link.from]?.name ?? link.from;
   const to = game.world.countries[link.to]?.name ?? link.to;
-  const capacity = effectiveStat(game, { kind: 'link', id: link.id, stat: 'capacity' });
+  if (capacity <= 0) return `${resource}: ${from} to ${to}, planned, not built yet`;
   const blocked = link.via
     .map((id) => game.world.chokepoints[id])
     .filter((c) => c && !c.open)
@@ -47,8 +59,20 @@ function routeTitle(game: GameState, link: Link, open: boolean): string {
   }`;
 }
 
-export function WorldMap({ game, paused }: Props) {
+/** Enter or Space activates an SVG element that acts as a button. */
+function activateOnKey(action: () => void) {
+  return (event: KeyboardEvent) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      action();
+    }
+  };
+}
+
+export function WorldMap({ game, paused, selection, onSelect, alertCountry }: Props) {
   const player = game.rules.playerCountry;
+  const relationOf = (id: string) =>
+    effectiveStat(game, { kind: 'relation', id: relationId(player, id), stat: 'value' });
 
   // Routes between the same two countries get different bends so they don't overlap.
   const pairCounts = new Map<string, number>();
@@ -58,57 +82,66 @@ export function WorldMap({ game, paused }: Props) {
     const index = pairCounts.get(pair) ?? 0;
     pairCounts.set(pair, index + 1);
     const open = isLinkOpen(game.world, link);
-    return { link, open, d: routePath(link, 22 + index * 18) };
+    const capacity = effectiveStat(game, { kind: 'link', id, stat: 'capacity' });
+    return { link, open, capacity, d: routePath(link, 22 + index * 18) };
   });
+
+  const isSelected = (kind: 'country' | 'chokepoint', id: string) =>
+    selection?.kind === kind && selection.id === id;
 
   return (
     <div className="map">
       <svg
         viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`}
-        role="img"
-        aria-label="Map of the five countries, their trade routes and the South Strait"
+        preserveAspectRatio="xMidYMid meet"
+        role="group"
+        aria-label="Map. Select a country or the strait for details."
       >
+        {/* Clickable land */}
         {sortedIds(game.world.countries).map((id) => {
           const shape = COUNTRY_SHAPES[id];
           if (!shape) return null;
           const isPlayer = id === player;
-          // Other countries' borders warm up as relations with the player sour.
-          const tone = isPlayer
-            ? 'calm'
-            : relationTone(
-                effectiveStat(game, {
-                  kind: 'relation',
-                  id: relationId(player, id),
-                  stat: 'value',
-                }),
-              );
-          const edge =
-            tone === 'critical'
-              ? 'var(--critical)'
-              : tone === 'warning'
-                ? 'var(--warning)'
-                : 'var(--land-edge)';
+          const name = game.world.countries[id]!.name;
+          const value = isPlayer ? 0 : relationOf(id);
+          const tone: Tone = isPlayer ? 'calm' : relationTone(value);
+          const selected = isSelected('country', id);
+          const select = () => onSelect(selected ? null : { kind: 'country', id });
           return (
-            <polygon
+            <g
               key={id}
-              className="country"
-              points={shape.points}
-              fill={
+              className={`country-hit ${selected ? 'selected' : ''}`}
+              role="button"
+              tabIndex={0}
+              aria-pressed={selected}
+              aria-label={
                 isPlayer
-                  ? 'var(--accent-tint)'
-                  : id === 'corvan'
-                    ? 'var(--land-alt)'
-                    : 'var(--land)'
+                  ? `${name}, your country. Show details.`
+                  : `${name}, relations ${value}, ${relationLabel(value)}. Show details.`
               }
-              stroke={isPlayer ? 'var(--accent)' : edge}
-              strokeWidth={isPlayer ? 2 : tone === 'calm' ? 1 : 1.5}
-            />
+              onClick={select}
+              onKeyDown={activateOnKey(select)}
+            >
+              <polygon
+                className="country"
+                points={shape.points}
+                fill={
+                  isPlayer
+                    ? 'var(--accent-tint)'
+                    : id === 'corvan'
+                      ? 'var(--land-alt)'
+                      : 'var(--land)'
+                }
+                stroke={isPlayer ? 'var(--accent)' : TONE_COLOR[tone]}
+                strokeWidth={isPlayer ? 2 : tone === 'calm' ? 1 : 1.5}
+              />
+            </g>
           );
         })}
 
-        {routes.map(({ link, open, d }) => {
+        {/* Trade routes */}
+        {routes.map(({ link, open, capacity, d }) => {
           if (!d) return null;
-          const capacity = effectiveStat(game, { kind: 'link', id: link.id, stat: 'capacity' });
           const planned = capacity <= 0;
           return (
             <path
@@ -121,28 +154,48 @@ export function WorldMap({ game, paused }: Props) {
               strokeDasharray={!open ? '6 6' : planned ? '2 5' : undefined}
               opacity={open ? 0.75 : 1}
             >
-              <title>
-                {planned
-                  ? 'Planned overland pipeline: not built yet'
-                  : routeTitle(game, link, open)}
-              </title>
+              <title>{routeTitle(game, link, open, capacity)}</title>
             </path>
           );
         })}
 
+        {/* Chokepoints */}
         {sortedIds(game.world.chokepoints).map((id) => {
           const point = CHOKEPOINT_POSITIONS[id];
           const chokepoint = game.world.chokepoints[id]!;
           if (!point) return null;
+          const selected = isSelected('chokepoint', id);
+          const select = () => onSelect(selected ? null : { kind: 'chokepoint', id });
           return (
-            <g key={id}>
+            <g
+              key={id}
+              className={`chokepoint-hit ${selected ? 'selected' : ''}`}
+              role="button"
+              tabIndex={0}
+              aria-pressed={selected}
+              aria-label={`${chokepoint.name}, ${chokepoint.open ? 'open' : 'closed'}. Show details.`}
+              onClick={select}
+              onKeyDown={activateOnKey(select)}
+            >
+              {!chokepoint.open && (
+                <circle
+                  className="pulse"
+                  cx={point.x}
+                  cy={point.y}
+                  r={13}
+                  fill="none"
+                  stroke="var(--critical)"
+                />
+              )}
               <circle
                 cx={point.x}
                 cy={point.y}
                 r={13}
                 fill={chokepoint.open ? 'var(--map-sea)' : 'var(--critical-tint)'}
-                stroke={chokepoint.open ? 'var(--route)' : 'var(--critical)'}
-                strokeWidth={1.5}
+                stroke={
+                  selected ? 'var(--ink)' : chokepoint.open ? 'var(--route)' : 'var(--critical)'
+                }
+                strokeWidth={selected ? 2 : 1.5}
               />
               {chokepoint.open ? (
                 <circle cx={point.x} cy={point.y} r={3.5} fill="var(--route)" />
@@ -168,23 +221,85 @@ export function WorldMap({ game, paused }: Props) {
           );
         })}
 
-        {sortedIds(game.world.countries).map((id) => {
-          const shape = COUNTRY_SHAPES[id];
-          if (!shape) return null;
-          return (
-            <text
-              key={id}
-              x={shape.label.x}
-              y={shape.label.y}
-              textAnchor="middle"
-              fontFamily="var(--serif)"
-              fontSize={shape.labelSize}
-              fill={id === player ? 'var(--accent-strong)' : 'var(--ink-soft)'}
-            >
-              {game.world.countries[id]!.name}
-            </text>
-          );
-        })}
+        {/* Labels and relation badges sit on top but let clicks through to the land. */}
+        <g pointerEvents="none">
+          {sortedIds(game.world.countries).map((id) => {
+            const shape = COUNTRY_SHAPES[id];
+            if (!shape) return null;
+            const isPlayer = id === player;
+            const value = isPlayer ? 0 : relationOf(id);
+            const tone: Tone = isPlayer ? 'calm' : relationTone(value);
+            const badge = isPlayer
+              ? 'You'
+              : value > 0
+                ? `+${value}`
+                : value < 0
+                  ? `−${-value}`
+                  : '0';
+            const badgeWidth = 12 + badge.length * 7.5;
+            const by = shape.label.y + 10;
+            return (
+              <g key={id}>
+                {alertCountry === id && (
+                  <circle
+                    className="pulse"
+                    cx={shape.label.x}
+                    cy={shape.label.y - 6}
+                    r={26}
+                    fill="none"
+                    stroke="var(--critical)"
+                  />
+                )}
+                <text
+                  x={shape.label.x}
+                  y={shape.label.y}
+                  textAnchor="middle"
+                  fontFamily="var(--serif)"
+                  fontSize={shape.labelSize}
+                  fill={isPlayer ? 'var(--accent-strong)' : 'var(--ink-soft)'}
+                >
+                  {game.world.countries[id]!.name}
+                </text>
+                <rect
+                  x={shape.label.x - badgeWidth / 2}
+                  y={by}
+                  width={badgeWidth}
+                  height={18}
+                  rx={9}
+                  fill={
+                    isPlayer
+                      ? 'var(--accent-tint)'
+                      : tone === 'critical'
+                        ? 'var(--critical-tint)'
+                        : tone === 'warning'
+                          ? 'var(--warning-tint)'
+                          : 'var(--panel)'
+                  }
+                  stroke={isPlayer ? 'var(--accent)' : TONE_COLOR[tone]}
+                  strokeWidth={1}
+                />
+                <text
+                  x={shape.label.x}
+                  y={by + 13}
+                  textAnchor="middle"
+                  fontFamily="var(--mono)"
+                  fontSize={11}
+                  fill={
+                    isPlayer
+                      ? 'var(--accent-strong)'
+                      : tone === 'critical'
+                        ? 'var(--critical)'
+                        : tone === 'warning'
+                          ? 'var(--warning-ink)'
+                          : 'var(--ink-muted)'
+                  }
+                >
+                  {badge}
+                </text>
+              </g>
+            );
+          })}
+        </g>
       </svg>
 
       <div className="legend" aria-hidden="true">
@@ -207,6 +322,10 @@ export function WorldMap({ game, paused }: Props) {
             />
           </svg>
           Route cut
+        </span>
+        <span>
+          <span className="legend-badge">+10</span>
+          Relations with you
         </span>
       </div>
 

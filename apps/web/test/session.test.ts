@@ -1,10 +1,11 @@
 import { loadBuiltInScenario } from '@ripple/content/node';
 import { effectiveStat, setChokepointOpen, type ScenarioDef } from '@ripple/engine';
 import { describe, expect, it } from 'vitest';
-import { describeCosts, durationLabel, oddsLabel } from '../src/game/describe';
+import { decisionsConcerning, describeCosts, durationLabel, oddsLabel } from '../src/game/describe';
 import { priceBand } from '../src/game/news';
 import {
   advanceSession,
+  dismissAlert,
   issueDecision,
   newSession,
   setPaused,
@@ -82,12 +83,14 @@ describe('session', () => {
     expect(session.dispatches[0]).toMatchObject({
       tag: 'Your orders',
       headline: 'Order signed: Send an envoy to Corvan',
-      mine: true,
+      source: 'order',
     });
 
     const later = days(session, 15);
     expect(later.game.pending).toHaveLength(0);
-    const result = later.dispatches.find((d) => d.mine && !d.headline.startsWith('Order signed'))!;
+    const result = later.dispatches.find(
+      (d) => d.source === 'order' && !d.headline.startsWith('Order signed'),
+    )!;
     expect(['Talks in Corvan ease tensions', 'Talks in Corvan break down']).toContain(
       result.headline,
     );
@@ -139,5 +142,72 @@ describe('describing decisions', () => {
     expect(oddsLabel(10_000)).toBeNull();
     expect(oddsLabel(6_000)).toBe('Good odds');
     expect(oddsLabel(5_500)).toBe('About even');
+  });
+});
+
+describe('crisis alerts', () => {
+  /** Run seed 1 until its first critical world event (the strait closes). */
+  function untilAlert(session: Session): Session {
+    let current = setPaused(session, false);
+    while (!current.alert && !current.game.outcome) current = tickSession(current);
+    return current;
+  }
+
+  it('raises an alert for a critical world event and pauses the clock', () => {
+    const session = untilAlert(newSession(scenario, 1));
+    expect(session.alert).toMatchObject({
+      source: 'world',
+      severity: 'critical',
+      country: 'corvan',
+      headline: 'Corvan closes the South Strait to shipping',
+    });
+    expect(session.clock.paused).toBe(true);
+  });
+
+  it('keeps running when auto-pause is off', () => {
+    const session = untilAlert(newSession(scenario, 1, false));
+    expect(session.alert).not.toBeNull();
+    expect(session.clock.paused).toBe(false);
+  });
+
+  it('stops simulating the rest of a fast frame once a crisis pauses the clock', () => {
+    let session = setPaused(newSession(scenario, 1), false);
+    // Advance in big real-time steps until the crisis lands mid-frame.
+    while (!session.alert) session = advanceSession(session, 1_000);
+    const day = session.game.tick;
+    expect(advanceSession(session, 1_000).game.tick).toBe(day);
+  });
+
+  it('clears the alert when dismissed', () => {
+    const session = untilAlert(newSession(scenario, 1));
+    expect(dismissAlert(session).alert).toBeNull();
+  });
+
+  it('does not raise alerts for market news or orders', () => {
+    const later = days(
+      {
+        ...newSession(quiet, 1),
+        game: setChokepointOpen(newSession(quiet, 1).game, 'south_strait', false),
+      },
+      30,
+    );
+    expect(later.dispatches.some((d) => d.severity === 'critical')).toBe(true);
+    expect(later.alert).toBeNull();
+  });
+});
+
+describe('orders concerning a country', () => {
+  const game = newSession(scenario, 1).game;
+  const ids = (country: string) => decisionsConcerning(game, country).map((d) => d.id);
+
+  it('finds the orders that touch relations or routes with each country', () => {
+    expect(ids('corvan')).toEqual(['envoy_corvan', 'transit_fees']);
+    expect(ids('thessa')).toEqual(['lift_steel_tariff', 'steel_tariff']);
+    expect(ids('veskar')).toEqual(['envoy_veskar', 'overland_pipeline']);
+    expect(ids('orrin')).toEqual([]);
+  });
+
+  it('lists nothing for the player country, since almost everything touches it', () => {
+    expect(ids('aldoria')).toEqual([]);
   });
 });

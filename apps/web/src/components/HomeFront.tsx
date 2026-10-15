@@ -16,7 +16,7 @@ export function HomeFront({ game }: Props) {
     .filter((f) => f.country === me);
 
   return (
-    <section aria-labelledby="home-title" className="panel">
+    <section aria-labelledby="home-title" className="tab-section">
       <div className="section-head">
         <h2 id="home-title">Home front</h2>
         <span className="muted small">
