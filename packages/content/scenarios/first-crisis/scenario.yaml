@@ -1,0 +1,12 @@
+# The first playable scenario. You lead Aldoria, an industrial importer that
+# depends on crude shipped through the South Strait.
+id: first_crisis
+name: The First Crisis
+rules:
+  playerCountry: aldoria
+  lengthYears: 5
+  # The leader is ousted if stability stays below 20 for 30 days.
+  ousting:
+    stat: stability
+    below: 20
+    forTicks: 30

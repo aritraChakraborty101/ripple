@@ -1,0 +1,118 @@
+/**
+ * The world model: entities with open-ended stats.
+ *
+ * Stats are plain integer maps rather than fixed fields, so content can add
+ * new stats (food_security, media_freedom, ...) without engine changes.
+ * Everything is keyed by stable string IDs and iterated in sorted order.
+ */
+
+export type Stats = Readonly<Record<string, number>>;
+
+export type Archetype =
+  'industrial_importer' | 'resource_exporter' | 'transit_state' | 'rising_power';
+
+export interface Country {
+  readonly id: string;
+  readonly name: string;
+  readonly archetype: Archetype;
+  readonly stats: Stats;
+  /** Units of each resource this country imports per day. */
+  readonly demand: Readonly<Record<string, number>>;
+}
+
+/** A group inside a country with its own demands, such as industry or workers. */
+export interface Faction {
+  readonly id: string;
+  readonly name: string;
+  readonly country: string;
+  readonly stats: Stats;
+}
+
+/** A tradable commodity. `stats.price` is the market price in cents. */
+export interface Resource {
+  readonly id: string;
+  readonly name: string;
+  /** Price in cents when supply equals demand. */
+  readonly basePrice: number;
+  readonly stats: Stats;
+}
+
+/** A trade route carrying one resource. `stats.capacity` is units per day. */
+export interface Link {
+  readonly id: string;
+  readonly resource: string;
+  readonly from: string;
+  readonly to: string;
+  /** Chokepoints this route passes through; if any is closed, the route carries nothing. */
+  readonly via: readonly string[];
+  readonly stats: Stats;
+}
+
+/** A strait, canal or pass that a country can close. */
+export interface Chokepoint {
+  readonly id: string;
+  readonly name: string;
+  readonly controlledBy: string;
+  readonly open: boolean;
+}
+
+export interface World {
+  readonly countries: Readonly<Record<string, Country>>;
+  readonly factions: Readonly<Record<string, Faction>>;
+  readonly resources: Readonly<Record<string, Resource>>;
+  readonly links: Readonly<Record<string, Link>>;
+  readonly chokepoints: Readonly<Record<string, Chokepoint>>;
+}
+
+/** Entity kinds that carry stats, and so can be targeted by modifiers. */
+export type StatEntityKind = 'country' | 'faction' | 'resource' | 'link';
+
+const COLLECTION: Record<StatEntityKind, keyof World> = {
+  country: 'countries',
+  faction: 'factions',
+  resource: 'resources',
+  link: 'links',
+};
+
+/** Keys of a record in a stable order. Never iterate entities any other way. */
+export function sortedIds(record: Readonly<Record<string, unknown>>): string[] {
+  return Object.keys(record).sort();
+}
+
+export function getStatEntity(
+  world: World,
+  kind: StatEntityKind,
+  id: string,
+): { readonly stats: Stats } {
+  const collection = world[COLLECTION[kind]] as Readonly<Record<string, { readonly stats: Stats }>>;
+  const entity = collection[id];
+  if (!entity) {
+    throw new Error(`Unknown ${kind} "${id}"`);
+  }
+  return entity;
+}
+
+/** Return a new world with one stat's base value replaced. */
+export function setBaseStat(
+  world: World,
+  kind: StatEntityKind,
+  id: string,
+  stat: string,
+  value: number,
+): World {
+  if (!Number.isInteger(value)) {
+    throw new Error(`Stat values must be integers, got ${value} for ${kind}.${id}.${stat}`);
+  }
+  const key = COLLECTION[kind];
+  const collection = world[key] as Readonly<Record<string, { readonly stats: Stats }>>;
+  const entity = getStatEntity(world, kind, id);
+  return {
+    ...world,
+    [key]: { ...collection, [id]: { ...entity, stats: { ...entity.stats, [stat]: value } } },
+  };
+}
+
+/** True if a link can carry goods: every chokepoint it passes through is open. */
+export function isLinkOpen(world: World, link: Link): boolean {
+  return link.via.every((id) => world.chokepoints[id]?.open === true);
+}
