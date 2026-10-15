@@ -2,7 +2,7 @@
 
 A pausable real-time geopolitics game. You lead one country in a living, fictional world, and small decisions ripple outward in ways you didn't intend.
 
-Status: early development (phase 1, engine core).
+Status: early development. The world simulates and runs in the browser; crises and decisions are next.
 
 ## Repository layout
 
@@ -23,6 +23,7 @@ Requires Node 22 and pnpm 10.
 
 ```sh
 pnpm install
+pnpm dev     # play in the browser at the address it prints
 pnpm check   # typecheck, lint, format check and tests
 ```
 

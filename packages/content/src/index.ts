@@ -9,3 +9,4 @@ export {
   chokepointSchema,
   rulesSchema,
 } from './schema';
+export { SCENARIO_SECTIONS, scenarioFromYaml } from './assemble';
