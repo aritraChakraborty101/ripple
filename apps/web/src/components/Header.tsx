@@ -1,5 +1,6 @@
 import { effectiveStat, type GameState } from '@ripple/engine';
 import { SPEEDS, type ClockState } from '../game/clock';
+import { stabilityTone } from '../game/describe';
 import { ARCHETYPE_LABELS, formatChange, formatDate, formatPrice } from '../game/format';
 import { actions } from '../game/store';
 
@@ -30,7 +31,9 @@ export function Header({ game, clock }: Props) {
         </div>
         <div className="stat">
           <dt>Stability</dt>
-          <dd>{stat('stability')}</dd>
+          <dd className={`tone-${stabilityTone(stat('stability'), game.rules.ousting.below)}`}>
+            {stat('stability')}
+          </dd>
         </div>
         {oil && (
           <div className="stat">

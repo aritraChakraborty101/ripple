@@ -78,3 +78,121 @@ describe('scenario schema', () => {
     expect(problemsOf(broken).some((p) => p.includes('lower_snake_case'))).toBe(true);
   });
 });
+
+describe('events and decisions', () => {
+  const closes = {
+    id: 'closes',
+    tag: 'b',
+    severity: 'critical',
+    headline: 'B closes the strait',
+    trigger: {
+      all: [
+        { chokepointOpen: 'strait' },
+        { relation: { between: ['a', 'b'], below: -40 } },
+        { chance: 300 },
+      ],
+    },
+    effects: [
+      { setChokepoint: { id: 'strait', open: false } },
+      { schedule: { event: 'reopens', inDays: 60 } },
+      { modify: { target: 'resource.oil.price', pct: 1000, days: 30 } },
+    ],
+  };
+  const reopens = {
+    id: 'reopens',
+    tag: 'b',
+    headline: 'B reopens the strait',
+    effects: [{ setChokepoint: { id: 'strait', open: true } }],
+  };
+  const envoy = {
+    id: 'envoy',
+    name: 'Send an envoy',
+    description: 'Talks.',
+    requires: { stat: { target: 'country.a.influence', above: 7 } },
+    costs: [{ adjust: { target: 'country.a.influence', by: -8 } }],
+    durationDays: 14,
+    chance: 6000,
+    effects: [{ relation: { between: ['a', 'b'], by: 20, days: 120 } }],
+    successHeadline: 'Talks succeed',
+  };
+
+  it('converts the YAML vocabulary into engine conditions and effects', () => {
+    const scenario = parseScenario({ ...valid, events: [closes, reopens], decisions: [envoy] });
+    expect(scenario.events[0]!.trigger).toEqual({
+      type: 'all',
+      of: [
+        { type: 'chokepoint', id: 'strait', open: true },
+        { type: 'stat', target: { kind: 'relation', id: 'a__b', stat: 'value' }, below: -40 },
+        { type: 'chance', bp: 300 },
+      ],
+    });
+    expect(scenario.events[0]!.effects[2]).toEqual({
+      type: 'modify',
+      target: { kind: 'resource', id: 'oil', stat: 'price' },
+      op: 'pct',
+      amount: 1000,
+      days: 30,
+    });
+    expect(scenario.events[1]!.trigger).toBeNull();
+    const decision = scenario.decisions[0]!;
+    expect(decision.chanceBp).toBe(6000);
+    expect(decision.effects[0]).toEqual({
+      type: 'modify',
+      target: { kind: 'relation', id: 'a__b', stat: 'value' },
+      op: 'add',
+      amount: 20,
+      days: 120,
+    });
+  });
+
+  it('treats a relation change without days as permanent', () => {
+    const permanent = { ...envoy, effects: [{ relation: { between: ['a', 'b'], by: -30 } }] };
+    const scenario = parseScenario({ ...valid, decisions: [permanent] });
+    expect(scenario.decisions[0]!.effects[0]).toEqual({
+      type: 'adjust',
+      target: { kind: 'relation', id: 'a__b', stat: 'value' },
+      by: -30,
+    });
+  });
+
+  it('reports references to things that do not exist', () => {
+    const broken = {
+      ...closes,
+      tag: 'nowhere',
+      effects: [
+        { schedule: { event: 'missing', inDays: 5 } },
+        { adjust: { target: 'country.atlantis.treasury', by: 1 } },
+      ],
+    };
+    expect(problemsOf({ ...valid, events: [broken] })).toEqual([
+      'events[0].tag: Unknown country "nowhere"',
+      'events[0].effects[0].schedule.event: Unknown event "missing"',
+      'events[0].effects[1].adjust.target: Unknown country "atlantis"',
+    ]);
+  });
+
+  it('needs exactly one of add or pct in a modify effect', () => {
+    const broken = {
+      ...reopens,
+      effects: [{ modify: { target: 'country.a.stability', add: 1, pct: 100 } }],
+    };
+    expect(problemsOf({ ...valid, events: [broken] }).join('\n')).toMatch(
+      /exactly one of add or pct/,
+    );
+  });
+
+  it('rejects faction sensitivities that add up to more than 100%', () => {
+    const faction = {
+      id: 'workers',
+      name: 'Workers',
+      country: 'a',
+      stats: { satisfaction: 50 },
+      sensitivity: { oil: 8000, gas: 4000 },
+    };
+    const problems = problemsOf({ ...valid, factions: [faction] });
+    expect(problems).toContain('factions[0].sensitivity.gas: Unknown resource "gas"');
+    expect(problems).toContain(
+      'factions[0].sensitivity: Sensitivities must add up to at most 10000',
+    );
+  });
+});

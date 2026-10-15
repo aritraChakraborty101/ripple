@@ -1,7 +1,23 @@
 import type { Modifier } from './modifiers';
 import { seedRng, type RngState } from './rng';
-import { buildWorld, type ScenarioDef, type ScenarioRules } from './scenario';
+import type { DecisionDef, EventDef, ScheduledEvent } from './rules';
+import { buildWorld, byId, type ScenarioDef, type ScenarioRules } from './scenario';
 import type { World } from './world';
+
+/** A decision the player has signed whose outcome is not yet known. */
+export interface PendingDecision {
+  readonly id: string;
+  readonly decision: string;
+  readonly by: string;
+  readonly issuedTick: number;
+  readonly dueTick: number;
+}
+
+export interface GameOutcome {
+  /** "ousted": stability collapsed. "survived": the leader saw out the full term. */
+  readonly result: 'ousted' | 'survived';
+  readonly tick: number;
+}
 
 /**
  * The whole simulation state. It must stay plain, serializable data
@@ -9,9 +25,14 @@ import type { World } from './world';
  * and compared in tests.
  */
 export interface GameState {
-  readonly version: 1;
+  readonly version: 2;
   readonly scenarioId: string;
   readonly rules: ScenarioRules;
+  /** Event and decision definitions from the scenario, by ID. */
+  readonly defs: {
+    readonly events: Readonly<Record<string, EventDef>>;
+    readonly decisions: Readonly<Record<string, DecisionDef>>;
+  };
   readonly seed: number;
   /** Number of ticks simulated so far. One tick is one in-game day. */
   readonly tick: number;
@@ -19,6 +40,20 @@ export interface GameState {
   readonly world: World;
   readonly modifiers: readonly Modifier[];
   readonly nextModifierId: number;
+  /** Named facts set by effects, such as "reserves_used". Kept sorted. */
+  readonly flags: readonly string[];
+  /** Tick each event last fired. */
+  readonly lastFired: Readonly<Record<string, number>>;
+  /** Events waiting to fire, in the order they were scheduled. */
+  readonly scheduled: readonly ScheduledEvent[];
+  /** Tick each decision was last issued. */
+  readonly lastIssued: Readonly<Record<string, number>>;
+  readonly pending: readonly PendingDecision[];
+  readonly nextPendingId: number;
+  /** Consecutive days the player's stability has been under the ousting threshold. */
+  readonly lowStabilityTicks: number;
+  /** Null while the game is running. */
+  readonly outcome: GameOutcome | null;
 }
 
 export function createGame(scenario: ScenarioDef, seed: number): GameState {
@@ -27,19 +62,31 @@ export function createGame(scenario: ScenarioDef, seed: number): GameState {
     throw new Error(`Player country "${scenario.rules.playerCountry}" is not in the scenario`);
   }
   return {
-    version: 1,
+    version: 2,
     scenarioId: scenario.id,
     rules: scenario.rules,
+    defs: {
+      events: byId('event', scenario.events),
+      decisions: byId('decision', scenario.decisions),
+    },
     seed,
     tick: 0,
     rng: seedRng(seed),
     world,
     modifiers: [],
     nextModifierId: 1,
+    flags: [],
+    lastFired: {},
+    scheduled: [],
+    lastIssued: {},
+    pending: [],
+    nextPendingId: 1,
+    lowStabilityTicks: 0,
+    outcome: null,
   };
 }
 
-/** Open or close a chokepoint. Event and decision effects will call this. */
+/** Open or close a chokepoint directly. Mainly for tests and tools. */
 export function setChokepointOpen(state: GameState, id: string, open: boolean): GameState {
   const chokepoint = state.world.chokepoints[id];
   if (!chokepoint) {
@@ -52,4 +99,9 @@ export function setChokepointOpen(state: GameState, id: string, open: boolean): 
       chokepoints: { ...state.world.chokepoints, [id]: { ...chokepoint, open } },
     },
   };
+}
+
+/** The day the game ends if the leader is not ousted first. */
+export function lastDay(state: GameState): number {
+  return state.rules.lengthYears * 360;
 }

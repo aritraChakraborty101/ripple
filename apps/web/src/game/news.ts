@@ -1,28 +1,40 @@
 /**
  * Turns the world's changes into dispatches for the news feed.
  *
- * Prices are checked every day and reported only when they cross into a new
- * 10% band relative to their normal level, so a crisis produces a handful of
- * dispatches rather than one per day. (The engine's price_moved events only
- * fire on large daily moves, so slow climbs would go unreported otherwise.)
+ * - Crises and other world events report their own headline.
+ * - Your orders report when they are signed (if they take a while) and when
+ *   they succeed or fail.
+ * - Prices are checked every day and reported only when they cross into a new
+ *   10% band relative to normal, so a crisis produces a handful of market
+ *   dispatches rather than one per day.
  */
 
-import { effectiveStat, sortedIds, type EngineEvent, type GameState } from '@ripple/engine';
-import { formatPrice } from './format';
+import {
+  effectiveStat,
+  sortedIds,
+  type EngineEvent,
+  type GameState,
+  type Severity,
+} from '@ripple/engine';
+import { formatDate, formatPrice } from './format';
 
-export type Severity = 'critical' | 'warning' | 'info';
+export type { Severity };
 
 export interface Dispatch {
   readonly id: string;
   readonly tick: number;
-  /** Who or what the dispatch is about: a country name, "Markets", "Home". */
+  /** Who or what the dispatch is about: a country name, "Markets", "Home", "Your orders". */
   readonly tag: string;
   readonly severity: Severity;
   readonly headline: string;
   readonly detail?: string;
+  /** True for news about the player's own orders. */
+  readonly mine?: boolean;
 }
 
 export const BAND_PERCENT = 10;
+/** Orders shorter than this resolve almost at once, so only their result is reported. */
+export const REPORT_SIGNING_FROM_DAYS = 3;
 
 /** Which 10% band a price sits in relative to its base: 0 = normal, 2 = 20-29% up, -1 = 1-10% down. */
 export function priceBand(price: number, basePrice: number): number {
@@ -37,52 +49,118 @@ export interface NewsState {
 
 export const initialNews: NewsState = { bands: {}, nextId: 1 };
 
-function priceDispatch(
+/** The label shown for an event's tag: a country's name, or Home, Markets or World. */
+export function tagLabel(state: GameState, tag: string): string {
+  const country = state.world.countries[tag];
+  if (country) return country.name;
+  return tag.charAt(0).toUpperCase() + tag.slice(1);
+}
+
+type DispatchDraft = Omit<Dispatch, 'id'>;
+
+function priceDraft(
   state: GameState,
   resourceId: string,
   price: number,
   band: number,
   tick: number,
-  id: string,
-): Dispatch {
+) {
   const resource = state.world.resources[resourceId]!;
   const pct = Math.round(((price - resource.basePrice) * 100) / resource.basePrice);
   if (band === 0) {
     return {
-      id,
       tick,
       tag: 'Markets',
-      severity: 'info',
+      severity: 'info' as const,
       headline: `${resource.name} back near its normal price`,
       detail: `Now ${formatPrice(price)}.`,
     };
   }
-  const direction = pct > 0 ? 'above' : 'below';
   return {
-    id,
     tick,
     tag: 'Markets',
-    severity: pct >= 30 ? 'critical' : pct > 0 ? 'warning' : 'info',
-    headline: `${resource.name} now ${Math.abs(pct)}% ${direction} normal`,
+    severity:
+      pct >= 30 ? ('critical' as const) : pct > 0 ? ('warning' as const) : ('info' as const),
+    headline: `${resource.name} now ${Math.abs(pct)}% ${pct > 0 ? 'above' : 'below'} normal`,
     detail: `Trading at ${formatPrice(price)} against a normal ${formatPrice(resource.basePrice)}.`,
   };
 }
 
+function eventDraft(state: GameState, event: EngineEvent): DispatchDraft | null {
+  switch (event.kind) {
+    case 'event_fired': {
+      const def = state.defs.events[event.event];
+      if (!def) return null;
+      return {
+        tick: event.tick,
+        tag: tagLabel(state, def.tag),
+        severity: def.severity,
+        headline: def.headline,
+        ...(def.detail ? { detail: def.detail } : {}),
+      };
+    }
+    case 'decision_issued': {
+      const def = state.defs.decisions[event.decision];
+      if (!def || def.durationDays < REPORT_SIGNING_FROM_DAYS) return null;
+      return {
+        tick: event.tick,
+        tag: 'Your orders',
+        severity: 'info',
+        headline: `Order signed: ${def.name}`,
+        detail: `Outcome expected around ${formatDate(event.dueTick)}.`,
+        mine: true,
+      };
+    }
+    case 'decision_resolved': {
+      const def = state.defs.decisions[event.decision];
+      if (!def) return null;
+      return {
+        tick: event.tick,
+        tag: 'Your orders',
+        severity: event.success ? 'info' : 'warning',
+        headline: event.success
+          ? def.successHeadline
+          : (def.failureHeadline ?? `${def.name}: it did not work`),
+        mine: true,
+      };
+    }
+    case 'game_over':
+      return {
+        tick: event.tick,
+        tag: 'Home',
+        severity: event.result === 'ousted' ? 'critical' : 'info',
+        headline:
+          event.result === 'ousted'
+            ? 'The government falls after weeks of unrest'
+            : 'Your term ends with the government still standing',
+      };
+    default:
+      return null;
+  }
+}
+
 /**
- * Dispatches for one simulated day. `state` is the state after the day and
- * `tick` the day that was simulated. Engine events are accepted for the event
- * kinds still to come (crises, decisions), which will become dispatches too.
+ * Dispatches for one simulated day (or one batch of orders), oldest first.
+ * `state` is the state afterward; `tick` is the day the price check is dated.
  */
 export function dispatchesFor(
   news: NewsState,
   events: readonly EngineEvent[],
   state: GameState,
-  tick: number = state.tick - 1,
+  tick: number = Math.max(0, state.tick - 1),
 ): { news: NewsState; dispatches: Dispatch[] } {
-  void events;
   let bands = news.bands;
   let nextId = news.nextId;
   const dispatches: Dispatch[] = [];
+  const push = (draft: DispatchDraft) => {
+    dispatches.push({ ...draft, id: `d${nextId}` });
+    nextId += 1;
+  };
+
+  for (const event of events) {
+    const draft = eventDraft(state, event);
+    if (draft) push(draft);
+  }
 
   for (const id of sortedIds(state.world.resources)) {
     const resource = state.world.resources[id]!;
@@ -90,20 +168,8 @@ export function dispatchesFor(
     const band = priceBand(price, resource.basePrice);
     if (band === (bands[id] ?? 0)) continue;
     bands = { ...bands, [id]: band };
-    dispatches.push(priceDispatch(state, id, price, band, tick, `d${nextId}`));
-    nextId += 1;
+    push(priceDraft(state, id, price, band, tick));
   }
 
   return { news: { bands, nextId }, dispatches };
-}
-
-/** A dispatch for something that happened outside the engine's events, such as a dev action. */
-export function customDispatch(
-  news: NewsState,
-  dispatch: Omit<Dispatch, 'id'>,
-): { news: NewsState; dispatch: Dispatch } {
-  return {
-    news: { ...news, nextId: news.nextId + 1 },
-    dispatch: { ...dispatch, id: `d${news.nextId}` },
-  };
 }
