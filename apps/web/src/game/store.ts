@@ -1,8 +1,9 @@
 import { useSyncExternalStore } from 'react';
 import type { Speed } from './clock';
-import { firstCrisis } from './scenario';
+import { firstCrisis, firstCrisisGuide } from './scenario';
 import {
   advanceSession,
+  dismissAdvice,
   dismissAlert,
   issueDecision,
   newSession,
@@ -20,7 +21,10 @@ function freshSeed(): number {
   return Math.floor(Math.random() * 2 ** 31);
 }
 
-let session: Session = newSession(firstCrisis, freshSeed());
+const start = (autoPause = true) =>
+  newSession(firstCrisis, freshSeed(), autoPause, firstCrisisGuide.tips);
+
+let session: Session = start();
 const listeners = new Set<() => void>();
 
 function update(next: Session): void {
@@ -39,8 +43,9 @@ export const actions = {
   setSpeed: (speed: Speed) => update(dismissAlert(setSpeed(session, speed))),
   issue: (decision: string) => update(issueDecision(session, decision)),
   dismissAlert: () => update(dismissAlert(session)),
+  dismissAdvice: () => update(dismissAdvice(session)),
   setAutoPause: (on: boolean) => update(setAutoPause(session, on)),
-  newGame: () => update(newSession(firstCrisis, freshSeed(), session.autoPause)),
+  newGame: () => update(start(session.autoPause)),
 };
 
 let frame = 0;

@@ -26,6 +26,9 @@ interface Props {
   readonly onSelect: (selection: Selection) => void;
   /** A country in crisis right now, ringed on the map. */
   readonly alertCountry: string | null;
+  readonly showLegend: boolean;
+  /** A country to draw the eye to, such as the next first step. */
+  readonly highlightCountry: string | null;
 }
 
 const TONE_COLOR: Record<Tone, string> = {
@@ -69,7 +72,15 @@ function activateOnKey(action: () => void) {
   };
 }
 
-export function WorldMap({ game, paused, selection, onSelect, alertCountry }: Props) {
+export function WorldMap({
+  game,
+  paused,
+  selection,
+  onSelect,
+  alertCountry,
+  showLegend,
+  highlightCountry,
+}: Props) {
   const player = game.rules.playerCountry;
   const relationOf = (id: string) =>
     effectiveStat(game, { kind: 'relation', id: relationId(player, id), stat: 'value' });
@@ -250,6 +261,16 @@ export function WorldMap({ game, paused, selection, onSelect, alertCountry }: Pr
                     stroke="var(--critical)"
                   />
                 )}
+                {highlightCountry === id && alertCountry !== id && (
+                  <circle
+                    className="pulse"
+                    cx={shape.label.x}
+                    cy={shape.label.y - 6}
+                    r={26}
+                    fill="none"
+                    stroke="var(--accent)"
+                  />
+                )}
                 <text
                   x={shape.label.x}
                   y={shape.label.y}
@@ -302,33 +323,34 @@ export function WorldMap({ game, paused, selection, onSelect, alertCountry }: Pr
         </g>
       </svg>
 
-      <div className="legend" aria-hidden="true">
-        <span>
-          <svg width="22" height="6">
-            <line x1="0" y1="3" x2="22" y2="3" stroke="var(--route)" strokeWidth="1.5" />
-          </svg>
-          Trade route
-        </span>
-        <span>
-          <svg width="22" height="6">
-            <line
-              x1="0"
-              y1="3"
-              x2="22"
-              y2="3"
-              stroke="var(--critical)"
-              strokeWidth="1.75"
-              strokeDasharray="4 4"
-            />
-          </svg>
-          Route cut
-        </span>
-        <span>
-          <span className="legend-badge">+10</span>
-          Relations with you
-        </span>
-      </div>
-
+      {showLegend && (
+        <div className="legend" aria-hidden="true">
+          <span>
+            <svg width="22" height="6">
+              <line x1="0" y1="3" x2="22" y2="3" stroke="var(--route)" strokeWidth="1.5" />
+            </svg>
+            Trade route
+          </span>
+          <span>
+            <svg width="22" height="6">
+              <line
+                x1="0"
+                y1="3"
+                x2="22"
+                y2="3"
+                stroke="var(--critical)"
+                strokeWidth="1.75"
+                strokeDasharray="4 4"
+              />
+            </svg>
+            Route cut
+          </span>
+          <span>
+            <span className="legend-badge">+10</span>
+            Relations with you
+          </span>
+        </div>
+      )}
       {paused && <div className="paused-badge">Paused</div>}
     </div>
   );

@@ -60,13 +60,13 @@ describe('session', () => {
   });
 
   it('reports world events with their own headline and country', () => {
-    // Seed 1 sees a fishing dispute with Corvan early on.
+    // Every game opens with Corvan tightening customs checks in the first weeks.
     let session = newSession(scenario, 1);
     while (!session.dispatches.some((d) => d.tag === 'Corvan') && session.game.tick < 400) {
       session = tickSession(session);
     }
     const corvan = session.dispatches.find((d) => d.tag === 'Corvan')!;
-    expect(corvan.headline).toBe('Corvan protests Aldorian fishing boats near the strait');
+    expect(corvan.headline).toBe('Corvan tightens customs checks on Aldorian ships');
     expect(corvan.severity).toBe('warning');
   });
 
@@ -116,10 +116,10 @@ describe('session', () => {
   });
 
   it('pauses the clock and reports when the game ends', () => {
-    // Seed 1, left alone, is ousted on day 278.
-    let session = setPaused(newSession(scenario, 1), false);
+    // Seed 4, left alone, is ousted on day 273.
+    let session = setPaused(newSession(scenario, 4), false);
     while (!session.game.outcome) session = tickSession(session);
-    expect(session.game.outcome).toEqual({ result: 'ousted', tick: 278 });
+    expect(session.game.outcome).toEqual({ result: 'ousted', tick: 273 });
     expect(session.clock.paused).toBe(true);
     expect(session.dispatches[0]!.headline).toBe('The government falls after weeks of unrest');
     expect(session.tallies.crises).toBeGreaterThan(0);
@@ -146,7 +146,7 @@ describe('describing decisions', () => {
 });
 
 describe('crisis alerts', () => {
-  /** Run seed 1 until its first critical world event (the strait closes). */
+  /** Run seed 4 until its first critical world event (the strait closes). */
   function untilAlert(session: Session): Session {
     let current = setPaused(session, false);
     while (!current.alert && !current.game.outcome) current = tickSession(current);
@@ -154,7 +154,7 @@ describe('crisis alerts', () => {
   }
 
   it('raises an alert for a critical world event and pauses the clock', () => {
-    const session = untilAlert(newSession(scenario, 1));
+    const session = untilAlert(newSession(scenario, 4));
     expect(session.alert).toMatchObject({
       source: 'world',
       severity: 'critical',
@@ -165,13 +165,13 @@ describe('crisis alerts', () => {
   });
 
   it('keeps running when auto-pause is off', () => {
-    const session = untilAlert(newSession(scenario, 1, false));
+    const session = untilAlert(newSession(scenario, 4, false));
     expect(session.alert).not.toBeNull();
     expect(session.clock.paused).toBe(false);
   });
 
   it('stops simulating the rest of a fast frame once a crisis pauses the clock', () => {
-    let session = setPaused(newSession(scenario, 1), false);
+    let session = setPaused(newSession(scenario, 4), false);
     // Advance in big real-time steps until the crisis lands mid-frame.
     while (!session.alert) session = advanceSession(session, 1_000);
     const day = session.game.tick;
@@ -179,7 +179,7 @@ describe('crisis alerts', () => {
   });
 
   it('clears the alert when dismissed', () => {
-    const session = untilAlert(newSession(scenario, 1));
+    const session = untilAlert(newSession(scenario, 4));
     expect(dismissAlert(session).alert).toBeNull();
   });
 

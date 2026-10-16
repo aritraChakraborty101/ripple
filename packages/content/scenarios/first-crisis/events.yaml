@@ -7,6 +7,21 @@
 
 # --- Corvan and the strait ---------------------------------------------------
 
+# A mild early warning, so new players meet the Corvan problem while there is
+# still time to learn the screen and act calmly.
+- id: corvan_customs_checks
+  tag: corvan
+  severity: warning
+  headline: Corvan tightens customs checks on Aldorian ships
+  detail: A small slight, but relations with Corvan cool for a few months.
+  once: true
+  trigger:
+    all:
+      - afterDay: 12
+      - chance: 2500
+  effects:
+    - relation: { between: [aldoria, corvan], by: -5, days: 90 }
+
 - id: fishing_dispute
   tag: corvan
   severity: warning
@@ -15,7 +30,7 @@
   cooldownDays: 200
   trigger:
     all:
-      - afterDay: 20
+      - afterDay: 45
       - chance: 40
   effects:
     - relation: { between: [aldoria, corvan], by: -20, days: 120 }

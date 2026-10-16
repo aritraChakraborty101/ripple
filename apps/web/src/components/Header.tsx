@@ -3,6 +3,7 @@ import { SPEEDS, type ClockState } from '../game/clock';
 import { stabilityTone } from '../game/describe';
 import { ARCHETYPE_LABELS, formatChange, formatDate, formatPrice } from '../game/format';
 import { actions } from '../game/store';
+import { Hint } from './Hint';
 import { Sparkline } from './Sparkline';
 
 interface Props {
@@ -10,10 +11,13 @@ interface Props {
   readonly clock: ClockState;
   readonly history: Readonly<Record<string, readonly number[]>>;
   readonly onOpenHome: () => void;
+  readonly onOpenHelp: () => void;
+  /** Draw the eye to the play button before the first game starts. */
+  readonly nudgePlay: boolean;
 }
 
 /** Everything you need at a glance: your country, your numbers, the markets and the clock. */
-export function Header({ game, clock, history, onOpenHome }: Props) {
+export function Header({ game, clock, history, onOpenHome, onOpenHelp, nudgePlay }: Props) {
   const id = game.rules.playerCountry;
   const country = game.world.countries[id]!;
   const { ousting } = game.rules;
@@ -29,32 +33,41 @@ export function Header({ game, clock, history, onOpenHome }: Props) {
       </div>
 
       <div className="stats">
-        <div className="stat">
-          <span className="stat-label">Treasury</span>
-          <span className="stat-value">{stat('treasury')} bn</span>
-        </div>
-        <div className="stat">
-          <span className="stat-label">Influence</span>
-          <span className="stat-value">{stat('influence')}</span>
-        </div>
-        <button
-          type="button"
-          className={`stat stat-button gauge-mini ${tone}`}
-          onClick={onOpenHome}
-          title="Stability: open the Home tab"
-        >
-          <span className="stat-label">Stability</span>
-          <span className="stat-value">{stability}</span>
-          <span className="meter" aria-hidden="true">
-            <span style={{ width: `${Math.max(0, Math.min(100, stability))}%` }} />
-            <span className="meter-mark" style={{ left: `${ousting.below}%` }} />
+        <Hint text="Money for orders, in billions. It has no steady income yet, so spend it on what fixes causes.">
+          <span className="stat">
+            <span className="stat-label">Treasury</span>
+            <span className="stat-value">{stat('treasury')} bn</span>
           </span>
-          {game.lowStabilityTicks > 0 && (
-            <span className="countdown" role="status">
-              Ousted in {ousting.forTicks - game.lowStabilityTicks}d
+        </Hint>
+        <Hint text="Diplomatic capital. Envoys and speeches spend it, and it does not come back on its own.">
+          <span className="stat">
+            <span className="stat-label">Influence</span>
+            <span className="stat-value">{stat('influence')}</span>
+          </span>
+        </Hint>
+        <Hint
+          focusable={false}
+          text={`How firmly you hold power. It follows your factions' mood. Below ${ousting.below} for ${ousting.forTicks} days and you are ousted. Click for details.`}
+        >
+          <button
+            type="button"
+            className={`stat stat-button gauge-mini ${tone}`}
+            onClick={onOpenHome}
+            aria-label={`Stability ${stability}. Open the Home tab.`}
+          >
+            <span className="stat-label">Stability</span>
+            <span className="stat-value">{stability}</span>
+            <span className="meter" aria-hidden="true">
+              <span style={{ width: `${Math.max(0, Math.min(100, stability))}%` }} />
+              <span className="meter-mark" style={{ left: `${ousting.below}%` }} />
             </span>
-          )}
-        </button>
+            {game.lowStabilityTicks > 0 && (
+              <span className="countdown" role="status">
+                Ousted in {ousting.forTicks - game.lowStabilityTicks}d
+              </span>
+            )}
+          </button>
+        </Hint>
       </div>
 
       <ul className="tickers" aria-label="Markets">
@@ -70,19 +83,25 @@ export function Header({ game, clock, history, onOpenHome }: Props) {
                 ? 'var(--warning)'
                 : 'var(--accent)';
           return (
-            <li key={rid} className={`ticker ${level}`}>
-              <span className="ticker-name">{resource.name}</span>
-              <span className="ticker-price">{formatPrice(price)}</span>
-              <span className={`ticker-change tone-${level}`}>
-                {formatChange(price, resource.basePrice)}
-              </span>
-              <Sparkline
-                values={history[rid] ?? [price]}
-                base={resource.basePrice}
-                tone={color}
-                width={64}
-                height={20}
-              />
+            <li key={rid}>
+              <Hint
+                text={`${resource.name}: price per unit, normally ${formatPrice(resource.basePrice)}. It rises when open routes supply less than countries demand, and dearer goods upset factions at home.`}
+              >
+                <span className={`ticker ${level}`}>
+                  <span className="ticker-name">{resource.name}</span>
+                  <span className="ticker-price">{formatPrice(price)}</span>
+                  <span className={`ticker-change tone-${level}`}>
+                    {formatChange(price, resource.basePrice)}
+                  </span>
+                  <Sparkline
+                    values={history[rid] ?? [price]}
+                    base={resource.basePrice}
+                    tone={color}
+                    width={64}
+                    height={20}
+                  />
+                </span>
+              </Hint>
             </li>
           );
         })}
@@ -95,7 +114,7 @@ export function Header({ game, clock, history, onOpenHome }: Props) {
         <div className="speed-group" role="group" aria-label="Game speed">
           <button
             type="button"
-            className="pause"
+            className={`pause ${nudgePlay ? 'nudge' : ''}`}
             aria-label={clock.paused ? 'Resume' : 'Pause'}
             aria-pressed={clock.paused}
             onClick={actions.togglePause}
@@ -124,6 +143,25 @@ export function Header({ game, clock, history, onOpenHome }: Props) {
             </button>
           ))}
         </div>
+        <button
+          type="button"
+          className="icon-button help-button"
+          aria-label="How to play"
+          title="How to play (?)"
+          onClick={onOpenHelp}
+        >
+          <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+            <circle cx="9" cy="9" r="7.25" fill="none" stroke="currentColor" strokeWidth="1.4" />
+            <path
+              d="M6.9 7a2.2 2.2 0 1 1 3.2 1.95c-.65.35-1.1.8-1.1 1.55v.3"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              strokeLinecap="round"
+            />
+            <circle cx="9" cy="13.1" r="0.9" fill="currentColor" />
+          </svg>
+        </button>
       </div>
     </header>
   );

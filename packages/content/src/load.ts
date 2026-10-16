@@ -11,6 +11,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ScenarioDef } from '@ripple/engine';
 import { SCENARIO_SECTIONS, scenarioFromYaml } from './assemble';
+import { guideFromYaml, type Guide } from './guide';
 
 export function loadScenario(folder: string): ScenarioDef {
   const files: Record<string, string> = {};
@@ -28,4 +29,15 @@ export const SCENARIOS_DIR = new URL('../scenarios/', import.meta.url).pathname;
 
 export function loadBuiltInScenario(name: string): ScenarioDef {
   return loadScenario(join(SCENARIOS_DIR, name));
+}
+
+/** The briefing and advisor for a built-in scenario. */
+export function loadBuiltInGuide(name: string, scenario: ScenarioDef): Guide {
+  const folder = join(SCENARIOS_DIR, name);
+  const files: Record<string, string> = {};
+  for (const file of ['briefing.yaml', 'advisor.yaml']) {
+    const path = join(folder, file);
+    if (existsSync(path)) files[file] = readFileSync(path, 'utf8');
+  }
+  return guideFromYaml(files, scenario, folder);
 }

@@ -17,6 +17,8 @@ Each folder in `scenarios/` is one scenario:
 | `relations.yaml`   | starting relations between countries (pairs not listed start at 0) |
 | `events.yaml`      | things that happen in the world: triggers and effects              |
 | `decisions.yaml`   | orders the player can sign: costs, duration, odds and effects      |
+| `briefing.yaml`    | the opening briefing and the country the first steps point at      |
+| `advisor.yaml`     | advisor tips: when each appears and which orders it recommends     |
 
 ## Writing events and decisions
 
@@ -45,6 +47,21 @@ Each condition or effect is a mapping with one key that names it.
 **Policies** are decisions that stay in force until reversed. Give the decision a `policyFlag`, set that flag in its effects, and write a second decision that requires the flag, clears it and uses `endEffectsOf` to undo the policy's lingering effects. The game lists policies in force so the player can see and reverse them. See `steel_tariff` and `lift_steel_tariff`.
 
 **Stat targets** are written `kind.id.stat`, such as `country.aldoria.treasury`, `faction.aldoria_workers.satisfaction`, `resource.oil.price` or `link.oil_veskar_aldoria.capacity`.
+
+## The guide: briefing and advisor
+
+`briefing.yaml` and `advisor.yaml` are what a new player is told. They never affect the simulation.
+
+```yaml
+- id: corvan_slipping
+  when:
+    relation: { between: [aldoria, corvan], below: -12 }
+  country: corvan # optional: lets the player open it on the map
+  text: Relations with Corvan are slipping. An envoy now costs far less than a closed strait later.
+  suggest: [envoy_corvan, transit_fees]
+```
+
+Each tip appears once per game, one at a time, the first time its `when` holds and at least one suggested order can be signed. Conditions use the event vocabulary except `chance`. Every suggested order, country and stat is checked when the guide loads.
 
 ## Rules that keep content safe
 
