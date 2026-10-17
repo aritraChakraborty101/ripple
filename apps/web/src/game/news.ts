@@ -33,6 +33,8 @@ export interface Dispatch {
   readonly source: DispatchSource;
   /** The country the news concerns, when there is one, for linking to it on the map. */
   readonly country?: string;
+  /** The world event behind this news, for asking why it happened. */
+  readonly event?: string;
 }
 
 export const BAND_PERCENT = 10;
@@ -102,6 +104,7 @@ function eventDraft(state: GameState, event: EngineEvent): DispatchDraft | null 
         headline: def.headline,
         ...(def.detail ? { detail: def.detail } : {}),
         source: 'world',
+        event: def.id,
         ...(state.world.countries[def.tag] ? { country: def.tag } : {}),
       };
     }

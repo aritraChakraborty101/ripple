@@ -41,6 +41,7 @@ export const actions = {
     update(resuming ? dismissAlert(next) : next);
   },
   setSpeed: (speed: Speed) => update(dismissAlert(setSpeed(session, speed))),
+  pause: () => update(setPaused(session, true)),
   issue: (decision: string) => update(issueDecision(session, decision)),
   dismissAlert: () => update(dismissAlert(session)),
   dismissAdvice: () => update(dismissAdvice(session)),
