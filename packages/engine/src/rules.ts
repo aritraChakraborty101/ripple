@@ -135,7 +135,17 @@ export function applyEffect(state: GameState, effect: Effect, source: ModifierSo
     case 'adjust': {
       const { kind, id, stat } = effect.target;
       const base = getStatEntity(state.world, kind, id).stats[stat] ?? 0;
-      return { ...state, world: setBaseStat(state.world, kind, id, stat, base + effect.by) };
+      return {
+        ...state,
+        world: setBaseStat(state.world, kind, id, stat, base + effect.by),
+        trace: {
+          ...state.trace,
+          adjustments: [
+            ...state.trace.adjustments,
+            { target: effect.target, by: effect.by, source },
+          ],
+        },
+      };
     }
     case 'set_chokepoint': {
       const chokepoint = state.world.chokepoints[effect.id];
@@ -143,6 +153,10 @@ export function applyEffect(state: GameState, effect: Effect, source: ModifierSo
       if (chokepoint.open === effect.open) return state;
       return {
         ...state,
+        trace: {
+          ...state.trace,
+          chokepointBy: { ...state.trace.chokepointBy, [effect.id]: source },
+        },
         world: {
           ...state.world,
           chokepoints: {
@@ -164,11 +178,21 @@ export function applyEffect(state: GameState, effect: Effect, source: ModifierSo
     case 'set_flag':
       return state.flags.includes(effect.flag)
         ? state
-        : { ...state, flags: [...state.flags, effect.flag].sort() };
-    case 'clear_flag':
-      return state.flags.includes(effect.flag)
-        ? { ...state, flags: state.flags.filter((f) => f !== effect.flag) }
-        : state;
+        : {
+            ...state,
+            flags: [...state.flags, effect.flag].sort(),
+            trace: { ...state.trace, flagBy: { ...state.trace.flagBy, [effect.flag]: source } },
+          };
+    case 'clear_flag': {
+      if (!state.flags.includes(effect.flag)) return state;
+      const flagBy = { ...state.trace.flagBy };
+      delete flagBy[effect.flag];
+      return {
+        ...state,
+        flags: state.flags.filter((f) => f !== effect.flag),
+        trace: { ...state.trace, flagBy },
+      };
+    }
     case 'end_effects': {
       const { kind, id } = effect.source;
       const kept = state.modifiers.filter((m) => !(m.source.kind === kind && m.source.id === id));

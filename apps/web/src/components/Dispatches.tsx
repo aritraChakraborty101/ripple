@@ -1,5 +1,6 @@
 import { formatShortDate } from '../game/format';
 import type { Dispatch } from '../game/news';
+import { useWhy } from './WhyContext';
 
 interface Props {
   readonly dispatches: readonly Dispatch[];
@@ -7,6 +8,7 @@ interface Props {
 }
 
 export function Dispatches({ dispatches, onSelectCountry }: Props) {
+  const why = useWhy();
   if (dispatches.length === 0) {
     return (
       <p className="empty">
@@ -32,14 +34,27 @@ export function Dispatches({ dispatches, onSelectCountry }: Props) {
             </div>
             <h3>{d.headline}</h3>
             {d.detail && <p>{d.detail}</p>}
-            {d.country && (
-              <button
-                type="button"
-                className="text-button inline"
-                onClick={() => onSelectCountry(d.country!)}
-              >
-                Show {d.tag} on the map
-              </button>
+            {(d.event || d.country) && (
+              <div className="dispatch-links">
+                {d.event && (
+                  <button
+                    type="button"
+                    className="text-button inline"
+                    onClick={() => why({ kind: 'event', event: d.event!, tick: d.tick })}
+                  >
+                    Why did this happen?
+                  </button>
+                )}
+                {d.country && (
+                  <button
+                    type="button"
+                    className="text-button inline"
+                    onClick={() => onSelectCountry(d.country!)}
+                  >
+                    Show {d.tag} on the map
+                  </button>
+                )}
+              </div>
             )}
           </li>
         );

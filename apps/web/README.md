@@ -27,6 +27,8 @@ pnpm --filter @ripple/web build   # static site in apps/web/dist
 | `src/game/advisor.ts`         | Picks which advisor tip to show; never changes the game                          |
 | `src/game/prefs.ts`           | Remembers per-browser things (briefing seen, first steps) when storage allows    |
 | `src/components/Briefing…`    | Opening briefing, first-steps checklist, advisor card, How to play, hints        |
+| `src/game/why.ts`             | Turns the engine's explanations into labels, the main chain and the questions    |
+| `src/components/WhyDialog`    | The why-trace: the chain in short, then everything that contributed, as a tree   |
 
 The whole game fits on one screen: nothing scrolls except inside panels (below 960 px wide the panels stack).
 

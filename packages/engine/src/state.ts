@@ -2,6 +2,7 @@ import type { Modifier } from './modifiers';
 import { seedRng, type RngState } from './rng';
 import type { DecisionDef, EventDef, ScheduledEvent } from './rules';
 import { buildWorld, byId, type ScenarioDef, type ScenarioRules } from './scenario';
+import { emptyTrace, type Trace } from './why';
 import type { World } from './world';
 
 /** A decision the player has signed whose outcome is not yet known. */
@@ -25,7 +26,7 @@ export interface GameOutcome {
  * and compared in tests.
  */
 export interface GameState {
-  readonly version: 2;
+  readonly version: 3;
   readonly scenarioId: string;
   readonly rules: ScenarioRules;
   /** Event and decision definitions from the scenario, by ID. */
@@ -54,6 +55,8 @@ export interface GameState {
   readonly lowStabilityTicks: number;
   /** Null while the game is running. */
   readonly outcome: GameOutcome | null;
+  /** Causal records for the why-trace: what fired and why, and what changed what. */
+  readonly trace: Trace;
 }
 
 export function createGame(scenario: ScenarioDef, seed: number): GameState {
@@ -62,7 +65,7 @@ export function createGame(scenario: ScenarioDef, seed: number): GameState {
     throw new Error(`Player country "${scenario.rules.playerCountry}" is not in the scenario`);
   }
   return {
-    version: 2,
+    version: 3,
     scenarioId: scenario.id,
     rules: scenario.rules,
     defs: {
@@ -83,6 +86,7 @@ export function createGame(scenario: ScenarioDef, seed: number): GameState {
     nextPendingId: 1,
     lowStabilityTicks: 0,
     outcome: null,
+    trace: emptyTrace,
   };
 }
 

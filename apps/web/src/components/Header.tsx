@@ -5,25 +5,26 @@ import { ARCHETYPE_LABELS, formatChange, formatDate, formatPrice } from '../game
 import { actions } from '../game/store';
 import { Hint } from './Hint';
 import { Sparkline } from './Sparkline';
+import { useWhy } from './WhyContext';
 
 interface Props {
   readonly game: GameState;
   readonly clock: ClockState;
   readonly history: Readonly<Record<string, readonly number[]>>;
-  readonly onOpenHome: () => void;
   readonly onOpenHelp: () => void;
   /** Draw the eye to the play button before the first game starts. */
   readonly nudgePlay: boolean;
 }
 
 /** Everything you need at a glance: your country, your numbers, the markets and the clock. */
-export function Header({ game, clock, history, onOpenHome, onOpenHelp, nudgePlay }: Props) {
+export function Header({ game, clock, history, onOpenHelp, nudgePlay }: Props) {
   const id = game.rules.playerCountry;
   const country = game.world.countries[id]!;
   const { ousting } = game.rules;
   const stat = (name: string) => effectiveStat(game, { kind: 'country', id, stat: name });
   const stability = stat(ousting.stat);
   const tone = stabilityTone(stability, ousting.below);
+  const why = useWhy();
 
   return (
     <header className="topbar">
@@ -47,13 +48,13 @@ export function Header({ game, clock, history, onOpenHome, onOpenHelp, nudgePlay
         </Hint>
         <Hint
           focusable={false}
-          text={`How firmly you hold power. It follows your factions' mood. Below ${ousting.below} for ${ousting.forTicks} days and you are ousted. Click for details.`}
+          text={`How firmly you hold power. It follows your factions' mood. Below ${ousting.below} for ${ousting.forTicks} days and you are ousted. Click to see why it is where it is.`}
         >
           <button
             type="button"
             className={`stat stat-button gauge-mini ${tone}`}
-            onClick={onOpenHome}
-            aria-label={`Stability ${stability}. Open the Home tab.`}
+            onClick={() => why({ kind: 'stat', ref: { kind: 'country', id, stat: ousting.stat } })}
+            aria-label={`Stability ${stability}. Why is it at this level?`}
           >
             <span className="stat-label">Stability</span>
             <span className="stat-value">{stability}</span>
@@ -85,9 +86,17 @@ export function Header({ game, clock, history, onOpenHome, onOpenHelp, nudgePlay
           return (
             <li key={rid}>
               <Hint
-                text={`${resource.name}: price per unit, normally ${formatPrice(resource.basePrice)}. It rises when open routes supply less than countries demand, and dearer goods upset factions at home.`}
+                focusable={false}
+                text={`${resource.name}: price per unit, normally ${formatPrice(resource.basePrice)}. It rises when open routes supply less than countries demand, and dearer goods upset factions at home. Click to see why.`}
               >
-                <span className={`ticker ${level}`}>
+                <button
+                  type="button"
+                  className={`ticker ${level}`}
+                  aria-label={`${resource.name} ${formatPrice(price)}, ${formatChange(price, resource.basePrice)} from normal. Why?`}
+                  onClick={() =>
+                    why({ kind: 'stat', ref: { kind: 'resource', id: rid, stat: 'price' } })
+                  }
+                >
                   <span className="ticker-name">{resource.name}</span>
                   <span className="ticker-price">{formatPrice(price)}</span>
                   <span className={`ticker-change tone-${level}`}>
@@ -100,7 +109,7 @@ export function Header({ game, clock, history, onOpenHome, onOpenHelp, nudgePlay
                     width={64}
                     height={20}
                   />
-                </span>
+                </button>
               </Hint>
             </li>
           );

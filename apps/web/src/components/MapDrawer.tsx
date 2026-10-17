@@ -12,6 +12,7 @@ import type { Dispatch } from '../game/news';
 import type { Selection } from '../game/selection';
 import { DecisionCard } from './DecisionCard';
 import { HomeFront } from './HomeFront';
+import { useWhy } from './WhyContext';
 
 interface Props {
   readonly game: GameState;
@@ -107,6 +108,7 @@ function CountryDetails({
 }) {
   const me = game.rules.playerCountry;
   const country = game.world.countries[id]!;
+  const why = useWhy();
   if (id === me) {
     return (
       <>
@@ -126,6 +128,15 @@ function CountryDetails({
     <>
       <p className="muted small">{ARCHETYPE_LABELS[country.archetype]}</p>
       <RelationMeter value={value} />
+      <button
+        type="button"
+        className="text-button inline"
+        onClick={() =>
+          why({ kind: 'stat', ref: { kind: 'relation', id: relationId(me, id), stat: 'value' } })
+        }
+      >
+        Why are relations here?
+      </button>
       <section className="drawer-section">
         <h3>Trade with you</h3>
         <RouteList game={game} links={shared} />
@@ -162,6 +173,7 @@ function ChokepointDetails({
   onSelect: Props['onSelect'];
 }) {
   const me = game.rules.playerCountry;
+  const why = useWhy();
   const chokepoint = game.world.chokepoints[id]!;
   const controller = game.world.countries[chokepoint.controlledBy]!;
   const routes = sortedIds(game.world.links)
@@ -177,6 +189,15 @@ function ChokepointDetails({
       <p className={`small ${chokepoint.open ? 'muted' : 'tone-critical'}`}>
         {chokepoint.open ? 'Open to shipping' : 'Closed: routes through it carry nothing'}
       </p>
+      {(!chokepoint.open || game.trace.chokepointBy[id]) && (
+        <button
+          type="button"
+          className="text-button inline"
+          onClick={() => why({ kind: 'chokepoint', id })}
+        >
+          {chokepoint.open ? 'Why is it open again?' : 'Why is it closed?'}
+        </button>
+      )}
       <section className="drawer-section">
         <h3>Controlled by</h3>
         <button

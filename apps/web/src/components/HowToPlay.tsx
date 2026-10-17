@@ -53,6 +53,11 @@ export function HowToPlay({ open, onClose, onShowBriefing, onRestartSteps }: Pro
             factions who buy those goods grow unhappy, and stability falls. Most crises can be seen
             coming: watch relations and prices, and act before they tip over.
           </p>
+          <p>
+            To trace any ripple back to its cause, click stability or a price in the top bar, a
+            faction on the Home tab, or "Why did this happen?" on a piece of news. The game pauses
+            while you read.
+          </p>
         </section>
 
         <section>
@@ -60,7 +65,10 @@ export function HowToPlay({ open, onClose, onShowBriefing, onRestartSteps }: Pro
           <dl className="help-list">
             <div>
               <dt>Top bar</dt>
-              <dd>Treasury, influence, stability and prices. Hover any of them for details.</dd>
+              <dd>
+                Treasury, influence, stability and prices. Hover any of them for details; click
+                stability or a price to see why it is where it is.
+              </dd>
             </div>
             <div>
               <dt>Map</dt>

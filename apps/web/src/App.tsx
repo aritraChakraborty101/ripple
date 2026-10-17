@@ -10,12 +10,15 @@ import { HowToPlay } from './components/HowToPlay';
 import { MapDrawer } from './components/MapDrawer';
 import { SidePanel, type Tab } from './components/SidePanel';
 import { Unfolding } from './components/Unfolding';
+import { WhyContext } from './components/WhyContext';
+import { WhyDialog } from './components/WhyDialog';
 import { WorldMap } from './components/WorldMap';
 import { SPEEDS } from './game/clock';
 import { readPref, writePref } from './game/prefs';
 import { firstCrisisGuide } from './game/scenario';
 import type { Selection } from './game/selection';
 import { actions, startLoop, useSession } from './game/store';
+import type { WhyTarget } from './game/why';
 
 interface Shortcuts {
   readonly openOrders: () => void;
@@ -102,12 +105,18 @@ export function App() {
   );
   const [tab, setTab] = useState<Tab>('news');
   const [selection, setSelection] = useState<Selection>(null);
+  const [whyTarget, setWhyTarget] = useState<WhyTarget | null>(null);
   const steps = useFirstSteps();
   useEffect(() => startLoop(), []);
 
   const openOrders = useCallback(() => setOrdersOpen(true), []);
   const openHelp = useCallback(() => setHelpOpen(true), []);
   const clearSelection = useCallback(() => setSelection(null), []);
+  // Asking why pauses the world, so the answer does not change while you read it.
+  const openWhy = useCallback((target: WhyTarget) => {
+    actions.pause();
+    setWhyTarget(target);
+  }, []);
   useKeyboardShortcuts({ openOrders, openHelp, clearSelection });
 
   const { game, alert } = session;
@@ -117,6 +126,7 @@ export function App() {
   // A new game starts with nothing selected.
   useEffect(() => {
     setSelection(null);
+    setWhyTarget(null);
   }, [game.seed]);
 
   // Tick off first steps as the player does each one.
@@ -153,80 +163,87 @@ export function App() {
   }
 
   return (
-    <div className="app">
-      <Header
-        game={game}
-        clock={session.clock}
-        history={session.history}
-        onOpenHome={() => setTab('home')}
-        onOpenHelp={openHelp}
-        nudgePlay={session.clock.paused && game.tick === 0 && !steps.done.has('play')}
-      />
-      <div className="body">
-        <main className="stage">
-          <div className="map-area">
-            <WorldMap
-              game={game}
-              paused={session.clock.paused}
-              selection={selection}
-              onSelect={setSelection}
-              alertCountry={alert?.country ?? null}
-              showLegend={!tip}
-              highlightCountry={
-                briefing && steps.visible && !steps.done.has('country') && steps.done.has('play')
-                  ? briefing.focusCountry
-                  : null
-              }
-            />
-            {alert && (
-              <CrisisBanner
-                alert={alert}
-                paused={session.clock.paused}
-                onRespond={respondToAlert}
-              />
-            )}
-            {tip && !game.outcome && (
-              <AdvisorCard game={game} tip={tip} onShowCountry={selectCountry} />
-            )}
-            {selection && (
-              <MapDrawer
-                game={game}
-                selection={selection}
-                dispatches={session.dispatches}
-                onSelect={setSelection}
-              />
-            )}
-          </div>
-          <Unfolding game={game} onOpenOrders={openOrders} />
-        </main>
-        <SidePanel
+    <WhyContext.Provider value={openWhy}>
+      <div className="app">
+        <Header
           game={game}
-          dispatches={session.dispatches}
-          tab={tab}
-          onTab={setTab}
-          autoPause={session.autoPause}
-          onOpenOrders={openOrders}
-          onSelectCountry={selectCountry}
-          top={firstSteps}
+          clock={session.clock}
+          history={session.history}
+          onOpenHelp={openHelp}
+          nudgePlay={session.clock.paused && game.tick === 0 && !steps.done.has('play')}
         />
+        <div className="body">
+          <main className="stage">
+            <div className="map-area">
+              <WorldMap
+                game={game}
+                paused={session.clock.paused}
+                selection={selection}
+                onSelect={setSelection}
+                alertCountry={alert?.country ?? null}
+                showLegend={!tip}
+                highlightCountry={
+                  briefing && steps.visible && !steps.done.has('country') && steps.done.has('play')
+                    ? briefing.focusCountry
+                    : null
+                }
+              />
+              {alert && (
+                <CrisisBanner
+                  alert={alert}
+                  paused={session.clock.paused}
+                  onRespond={respondToAlert}
+                />
+              )}
+              {tip && !game.outcome && (
+                <AdvisorCard game={game} tip={tip} onShowCountry={selectCountry} />
+              )}
+              {selection && (
+                <MapDrawer
+                  game={game}
+                  selection={selection}
+                  dispatches={session.dispatches}
+                  onSelect={setSelection}
+                />
+              )}
+            </div>
+            <Unfolding game={game} onOpenOrders={openOrders} />
+          </main>
+          <SidePanel
+            game={game}
+            dispatches={session.dispatches}
+            tab={tab}
+            onTab={setTab}
+            autoPause={session.autoPause}
+            onOpenOrders={openOrders}
+            onSelectCountry={selectCountry}
+            top={firstSteps}
+          />
+        </div>
+        <DecisionsDialog game={game} open={ordersOpen} onClose={() => setOrdersOpen(false)} />
+        <HowToPlay
+          open={helpOpen}
+          onClose={() => setHelpOpen(false)}
+          onShowBriefing={() => {
+            setHelpOpen(false);
+            setBriefingOpen(true);
+          }}
+          onRestartSteps={() => {
+            steps.restart();
+            setHelpOpen(false);
+          }}
+        />
+        {briefing && (
+          <BriefingDialog briefing={briefing} open={briefingOpen} onClose={closeBriefing} />
+        )}
+        <WhyDialog
+          game={game}
+          target={whyTarget}
+          onClose={() => setWhyTarget(null)}
+          onAsk={setWhyTarget}
+        />
+        <GameOver game={game} tallies={session.tallies} startTreasury={session.startTreasury} />
       </div>
-      <DecisionsDialog game={game} open={ordersOpen} onClose={() => setOrdersOpen(false)} />
-      <HowToPlay
-        open={helpOpen}
-        onClose={() => setHelpOpen(false)}
-        onShowBriefing={() => {
-          setHelpOpen(false);
-          setBriefingOpen(true);
-        }}
-        onRestartSteps={() => {
-          steps.restart();
-          setHelpOpen(false);
-        }}
-      />
-      {briefing && (
-        <BriefingDialog briefing={briefing} open={briefingOpen} onClose={closeBriefing} />
-      )}
-      <GameOver game={game} tallies={session.tallies} startTreasury={session.startTreasury} />
-    </div>
+    </WhyContext.Provider>
   );
 }
