@@ -19,7 +19,7 @@ export const SCENARIO_SECTIONS = [
   'decisions',
 ] as const;
 
-function parseYaml(text: string, file: string): unknown {
+export function parseYaml(text: string, file: string): unknown {
   try {
     return parse(text);
   } catch (error) {

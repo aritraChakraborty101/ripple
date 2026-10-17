@@ -24,6 +24,9 @@ pnpm --filter @ripple/web build   # static site in apps/web/dist
 | `src/components/SidePanel`    | Tabs for News, Home and Relations; auto-pause setting                            |
 | `src/components/Unfolding`    | Strip under the map: policies in force and orders under way                      |
 | `src/components/CrisisBanner` | Interrupts with critical news and a "See what you can do" shortcut               |
+| `src/game/advisor.ts`         | Picks which advisor tip to show; never changes the game                          |
+| `src/game/prefs.ts`           | Remembers per-browser things (briefing seen, first steps) when storage allows    |
+| `src/components/Briefing…`    | Opening briefing, first-steps checklist, advisor card, How to play, hints        |
 
 The whole game fits on one screen: nothing scrolls except inside panels (below 960 px wide the panels stack).
 

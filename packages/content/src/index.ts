@@ -16,3 +16,12 @@ export {
 } from './schema';
 export { SCENARIO_SECTIONS, scenarioFromYaml } from './assemble';
 export { toCondition, toEffect } from './convert';
+export {
+  advisorTipSchema,
+  briefingSchema,
+  guideFromYaml,
+  parseGuide,
+  type AdvisorTip,
+  type Briefing,
+  type Guide,
+} from './guide';

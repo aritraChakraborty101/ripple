@@ -1,5 +1,5 @@
 import type { GameState } from '@ripple/engine';
-import { useRef, type KeyboardEvent } from 'react';
+import { useRef, type KeyboardEvent, type ReactNode } from 'react';
 import type { Dispatch } from '../game/news';
 import { actions } from '../game/store';
 import { Dispatches } from './Dispatches';
@@ -22,6 +22,8 @@ interface Props {
   readonly autoPause: boolean;
   readonly onOpenOrders: () => void;
   readonly onSelectCountry: (id: string) => void;
+  /** Shown above the tabs, such as the first-steps checklist. */
+  readonly top?: ReactNode;
 }
 
 /** One tab at a time, so the side panel never pushes the map off screen. */
@@ -51,6 +53,8 @@ export function SidePanel(props: Props) {
         </svg>
         Sign an order
       </button>
+
+      {props.top}
 
       <div className="tabs" role="tablist" aria-label="Briefing sections" onKeyDown={onKeyDown}>
         {TABS.map((t) => (

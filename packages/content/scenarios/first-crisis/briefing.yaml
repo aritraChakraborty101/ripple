@@ -1,0 +1,29 @@
+# Shown before the first game starts, and again from "How to play".
+
+title: You lead Aldoria
+focusCountry: corvan
+sections:
+  - heading: Your country
+    text: >-
+      Aldoria is an industrial nation. Its factories run on imported oil, its
+      people eat imported grain, and its builders depend on steel from Thessa.
+      When those prices rise, people feel it, and so does your government.
+
+  - heading: How you win or lose
+    text: >-
+      Stay in power for five years. If stability stays below 20 for 30 days,
+      you are ousted. Stability falls when the factions at home are unhappy,
+      and they are unhappy when what they buy gets dearer.
+
+  - heading: Your weak spot
+    text: >-
+      Most of your oil sails through the South Strait, and Corvan controls it.
+      Relations with Corvan are already cool. If they sour far enough, Corvan
+      can close the strait, and everything that follows starts there.
+
+  - heading: How to act
+    text: >-
+      Time runs on its own; pause whenever you like. Click a country on the
+      map to see what you can do about it, or open "Sign an order" for every
+      option. Orders cost money or influence, some take weeks, and some can
+      fail. Your advisor will speak up when something needs your attention.

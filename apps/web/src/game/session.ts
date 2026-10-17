@@ -15,6 +15,8 @@ import {
   type GameState,
   type ScenarioDef,
 } from '@ripple/engine';
+import type { AdvisorTip } from '@ripple/content';
+import { afterSigning, dismissTip, newAdvisor, updateAdvisor, type AdvisorState } from './advisor';
 import { advanceClock, initialClock, type ClockState, type Speed } from './clock';
 import { dispatchesFor, initialNews, isAlert, type Dispatch, type NewsState } from './news';
 
@@ -46,6 +48,7 @@ export interface Session {
   readonly alert: Dispatch | null;
   /** Pause the clock automatically when a crisis breaks. */
   readonly autoPause: boolean;
+  readonly advisor: AdvisorState;
 }
 
 function priceOf(game: GameState, resource: string): number {
@@ -99,11 +102,17 @@ function absorb(
   };
 }
 
-export function newSession(scenario: ScenarioDef, seed: number, autoPause = true): Session {
+export function newSession(
+  scenario: ScenarioDef,
+  seed: number,
+  autoPause = true,
+  tips: readonly AdvisorTip[] = [],
+): Session {
   const game = createGame(scenario, seed);
   return {
     alert: null,
     autoPause,
+    advisor: newAdvisor(tips),
     game,
     clock: initialClock,
     news: initialNews,
@@ -122,7 +131,11 @@ export function newSession(scenario: ScenarioDef, seed: number, autoPause = true
 export function tickSession(session: Session): Session {
   const result = step(session.game, []);
   const next = absorb(session, result.state, result.events);
-  return { ...next, history: recordHistory(session.history, result.state) };
+  return {
+    ...next,
+    history: recordHistory(session.history, result.state),
+    advisor: updateAdvisor(next.advisor, result.state),
+  };
 }
 
 /** Advance by real elapsed time, simulating however many days are due. */
@@ -145,7 +158,8 @@ export function issueDecision(session: Session, decision: string): Session {
   const by = session.game.rules.playerCountry;
   const result = applyOrders(session.game, [{ kind: 'decide', decision, by }]);
   if (result.events.every((e) => e.kind === 'order_rejected')) return session;
-  return absorb(session, result.state, result.events, session.game.tick);
+  const next = absorb(session, result.state, result.events, session.game.tick);
+  return { ...next, advisor: afterSigning(next.advisor, decision) };
 }
 
 export function setPaused(session: Session, paused: boolean): Session {
@@ -164,4 +178,9 @@ export function dismissAlert(session: Session): Session {
 
 export function setAutoPause(session: Session, autoPause: boolean): Session {
   return { ...session, autoPause };
+}
+
+export function dismissAdvice(session: Session): Session {
+  const advisor = dismissTip(session.advisor);
+  return advisor === session.advisor ? session : { ...session, advisor };
 }

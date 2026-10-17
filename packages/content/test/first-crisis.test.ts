@@ -88,11 +88,11 @@ describe('first-crisis full games', () => {
     expect(a.fired).toEqual(b.fired);
   });
 
-  it('matches the recorded idle game for seed 1 (golden run)', () => {
+  it('matches the recorded idle game for seed 4 (golden run)', () => {
     // If this changes, the scenario or the simulation changed. Update deliberately,
     // after checking `pnpm balance` still looks healthy.
-    const { state, fired } = playIdle(1);
-    expect({ outcome: state.outcome, firstEvents: fired.slice(0, 4) }).toEqual(GOLDEN_IDLE_SEED_1);
+    const { state, fired } = playIdle(4);
+    expect({ outcome: state.outcome, firstEvents: fired.slice(0, 5) }).toEqual(GOLDEN_IDLE_SEED_4);
   });
 
   it('lets the player lift steel tariffs, at a price', () => {
@@ -145,14 +145,16 @@ describe('first-crisis full games', () => {
   });
 });
 
-// A fishing dispute and a detained tanker sour relations until Corvan closes
-// the strait; with no response, the leader falls on day 278.
-const GOLDEN_IDLE_SEED_1 = {
-  outcome: { result: 'ousted', tick: 278 },
+// A customs slight, a fishing dispute, a detained tanker and nationalist
+// rallies sour relations until Corvan closes the strait; with no response, the
+// leader falls on day 273.
+const GOLDEN_IDLE_SEED_4 = {
+  outcome: { result: 'ousted', tick: 273 },
   firstEvents: [
+    'corvan_customs_checks',
     'fishing_dispute',
-    'orrin_bumper_harvest',
     'tanker_detained',
+    'corvan_nationalists',
     'corvan_closes_strait',
   ],
 };

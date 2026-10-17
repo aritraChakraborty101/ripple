@@ -1,0 +1,77 @@
+# Advisor tips. Each appears once per game, the first time its condition holds,
+# and only if at least one suggested order can be signed right now (tips with
+# no suggestions always qualify). Earlier tips in this file win ties.
+# Conditions use the same vocabulary as events, except chance.
+
+- id: corvan_slipping
+  when:
+    relation: { between: [aldoria, corvan], below: -12 }
+  country: corvan
+  text: >-
+    Relations with Corvan are slipping. Your oil sails through their strait.
+    An envoy now costs far less than a closed strait later.
+  suggest: [envoy_corvan, transit_fees]
+
+- id: corvan_on_the_edge
+  when:
+    all:
+      - chokepointOpen: south_strait
+      - relation: { between: [aldoria, corvan], below: -32 }
+  country: corvan
+  text: >-
+    Corvan is close to closing the South Strait. Below -40 it could happen any
+    day. Buy goodwill quickly: transit fees work at once.
+  suggest: [transit_fees, envoy_corvan]
+
+- id: strait_closed
+  when:
+    chokepointClosed: south_strait
+  text: >-
+    The strait is closed, and oil will climb for weeks. Release the reserves
+    to soften the blow. For the long run, a pipeline from Veskar would avoid
+    the strait altogether.
+  suggest: [release_reserves, overland_pipeline]
+
+- id: oil_hurting
+  when:
+    stat: { target: resource.oil.price, above: 8760 }
+  text: >-
+    Crude is 20% above normal, and workers and industry feel it at once.
+    A fuel subsidy shields them for three months; Veskar might also agree to
+    a discount.
+  suggest: [fuel_subsidy, envoy_veskar]
+
+- id: stability_sliding
+  when:
+    stat: { target: country.aldoria.stability, below: 40 }
+  text: >-
+    Stability is sliding. Open the Home tab to see which faction is unhappy
+    and why, then deal with the cause. Addressing the nation buys a little
+    time.
+  suggest: [address_nation, fuel_subsidy]
+
+- id: ousting_close
+  when:
+    stat: { target: country.aldoria.stability, below: 24 }
+  text: >-
+    You are close to the edge. Below 20 for 30 days and you are out. Spend
+    what you must now; money left in the treasury will not save you.
+  suggest: [address_nation, fuel_subsidy, release_reserves]
+
+- id: thessa_angry
+  when:
+    relation: { between: [aldoria, thessa], below: -24 }
+  country: thessa
+  text: >-
+    Thessa is angry, and Thessa is courting Corvan. Lifting the steel tariffs
+    would win back some goodwill, at a cost to your own industry.
+  suggest: [lift_steel_tariff]
+
+- id: treasury_low
+  when:
+    stat: { target: country.aldoria.treasury, below: 80 }
+  text: >-
+    The treasury is running low, and it has no steady income. Spend on what
+    fixes causes rather than symptoms. Tariffs on Thessa raise money, at a
+    diplomatic price.
+  suggest: [steel_tariff]

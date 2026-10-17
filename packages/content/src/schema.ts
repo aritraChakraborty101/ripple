@@ -226,7 +226,7 @@ export class ContentError extends Error {
   }
 }
 
-function formatPath(path: readonly PropertyKey[]): string {
+export function formatPath(path: readonly PropertyKey[]): string {
   return path
     .map((part, i) =>
       typeof part === 'number' ? `[${part}]` : `${i === 0 ? '' : '.'}${String(part)}`,
