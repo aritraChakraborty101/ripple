@@ -19,6 +19,7 @@ Each folder in `scenarios/` is one scenario:
 | `decisions.yaml`   | orders the player can sign: costs, duration, odds and effects      |
 | `briefing.yaml`    | the opening briefing and the country the first steps point at      |
 | `advisor.yaml`     | advisor tips: when each appears and which orders it recommends     |
+| `map.yaml`         | how the world is drawn: country shapes and chokepoint positions    |
 
 ## Writing events and decisions
 
@@ -62,6 +63,25 @@ Each condition or effect is a mapping with one key that names it.
 ```
 
 Each tip appears once per game, one at a time, the first time its `when` holds and at least one suggested order can be signed. Conditions use the event vocabulary except `chance`. Every suggested order, country and stat is checked when the guide loads.
+
+## The map
+
+`map.yaml` says how the world is drawn. Like the guide, the engine never sees it. Coordinates are whole numbers on a `width` x `height` canvas, with x to the right and y down.
+
+```yaml
+width: 900
+height: 520
+countries:
+  aldoria:
+    outline: [[120, 150], [300, 118], [360, 192], [332, 300], [200, 334], [108, 262]]
+    anchor: [230, 236] # where trade routes start and end
+    label: [222, 214] # where the name is written
+    labelSize: 20
+chokepoints:
+  south_strait: [520, 356]
+```
+
+Every country and chokepoint in the scenario must be drawn, nothing else may be, and every point must lie on the canvas. Adding a country or a strait therefore means adding its shape or position here, with no code change.
 
 ## Rules that keep content safe
 

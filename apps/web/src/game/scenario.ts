@@ -1,4 +1,10 @@
-import { guideFromYaml, scenarioFromYaml, type Guide } from '@ripple/content';
+import {
+  guideFromYaml,
+  mapFromYaml,
+  scenarioFromYaml,
+  type Guide,
+  type ScenarioMap,
+} from '@ripple/content';
 import type { ScenarioDef } from '@ripple/engine';
 
 // Vite bundles the scenario's YAML files as text at build time.
@@ -20,3 +26,4 @@ const yaml = byFileName(files);
 
 export const firstCrisis: ScenarioDef = scenarioFromYaml(yaml, 'first-crisis');
 export const firstCrisisGuide: Guide = guideFromYaml(yaml, firstCrisis, 'first-crisis');
+export const firstCrisisMap: ScenarioMap = mapFromYaml(yaml, firstCrisis, 'first-crisis');

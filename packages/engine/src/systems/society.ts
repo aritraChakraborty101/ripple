@@ -1,6 +1,7 @@
 import { effectiveStat, setSystemModifier } from '../modifiers';
 import type { GameState } from '../state';
 import { sortedIds } from '../world';
+import type { MoodWhy, PressureWhy, WhyNode } from '../why';
 import type { System } from './types';
 
 /** Satisfaction lost per percentage point of weighted price pressure. */
@@ -74,5 +75,54 @@ export const societySystem: System = {
     }
 
     return { state: current, events: [] };
+  },
+
+  modifierIds: ['cost_of_living', 'faction_mood'],
+
+  explain(state, request, context): WhyNode {
+    const { ref } = request;
+    if (request.kind === 'modifier' && request.id === 'cost_of_living' && ref.kind === 'faction') {
+      // Which prices weigh on this faction, and how much.
+      const faction = state.world.factions[ref.id]!;
+      const prices: PressureWhy['prices'][number][] = [];
+      for (const resource of sortedIds(faction.sensitivity)) {
+        const def = state.world.resources[resource];
+        if (!def) continue;
+        const priceRef = { kind: 'resource' as const, id: resource, stat: 'price' };
+        const price = effectiveStat(state, priceRef);
+        const percent = Math.trunc(((price - def.basePrice) * 100) / def.basePrice);
+        if (percent === 0) continue;
+        prices.push({
+          resource,
+          weightBp: faction.sensitivity[resource] ?? 0,
+          percent,
+          cause: context.explainStat(priceRef),
+        });
+      }
+      prices.sort((a, b) => Math.abs(b.percent * b.weightBp) - Math.abs(a.percent * a.weightBp));
+      return { type: 'pressure', faction: ref.id, prices };
+    }
+
+    if (request.kind === 'modifier' && request.id === 'faction_mood' && ref.kind === 'country') {
+      // How each faction's change in mood moves the country's stability.
+      const factions: MoodWhy['factions'][number][] = [];
+      for (const fid of sortedIds(state.world.factions)) {
+        const faction = state.world.factions[fid]!;
+        if (faction.country !== ref.id) continue;
+        const satisfactionRef = { kind: 'faction' as const, id: fid, stat: 'satisfaction' };
+        const change = effectiveStat(state, satisfactionRef) - (faction.stats.satisfaction ?? 50);
+        if (change === 0) continue;
+        factions.push({
+          faction: fid,
+          change,
+          effect: Math.trunc((change * (faction.stats.power ?? 0)) / MOOD_DIVISOR),
+          cause: context.explainStat(satisfactionRef),
+        });
+      }
+      factions.sort((a, b) => Math.abs(b.effect) - Math.abs(a.effect));
+      return { type: 'mood', country: ref.id, factions };
+    }
+
+    return { type: 'system', id: request.kind === 'modifier' ? request.id : 'society' };
   },
 };

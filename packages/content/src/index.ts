@@ -25,3 +25,11 @@ export {
   type Briefing,
   type Guide,
 } from './guide';
+export {
+  mapFromYaml,
+  mapSchema,
+  parseMap,
+  type CountryShape,
+  type MapPoint,
+  type ScenarioMap,
+} from './map';

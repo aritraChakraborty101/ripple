@@ -6,6 +6,7 @@ import {
   explainStat,
   run,
   step,
+  SYSTEMS,
   type GameState,
   type StatWhy,
   type WhyNode,
@@ -156,5 +157,33 @@ describe('why: events, as recorded when they fired', () => {
   it('keeps the trace serializable', () => {
     const state = afterInsult(30);
     expect(JSON.parse(JSON.stringify(state.trace))).toEqual(state.trace);
+  });
+});
+
+describe('why: every system explains itself', () => {
+  it('has an owner for every system modifier a game creates', () => {
+    const state = afterInsult(30);
+    const ids = new Set(
+      state.modifiers.filter((m) => m.source.kind === 'system').map((m) => m.source.id),
+    );
+    expect(ids.size).toBeGreaterThan(0);
+    for (const id of ids) {
+      const owner = SYSTEMS.find((s) => s.modifierIds?.includes(id));
+      expect(owner, `no system claims the "${id}" modifier`).toBeDefined();
+      expect(owner!.explain, `${owner!.name} keeps "${id}" but cannot explain it`).toBeDefined();
+    }
+  });
+
+  it('gives every system that sets a normal value an explanation', () => {
+    for (const system of SYSTEMS) {
+      if (system.normalOf)
+        expect(system.explain, `${system.name} has normalOf but no explain`).toBeDefined();
+    }
+  });
+
+  it('explains a price drift through the market system', () => {
+    const why = explainStat(afterInsult(), { kind: 'resource', id: 'oil', stat: 'price' });
+    expect(why.normal).toBe(tinyScenario.resources.find((r) => r.id === 'oil')!.basePrice);
+    expect(why.contributions.some((c) => c.cause.type === 'market')).toBe(true);
   });
 });
