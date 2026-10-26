@@ -48,7 +48,9 @@ export type Measure =
   /** Percent above (or below) the resource's normal price. */
   | { readonly kind: 'price'; readonly resource: string }
   /** 1 if the flag is set, 0 if not. */
-  | { readonly kind: 'flag'; readonly flag: string };
+  | { readonly kind: 'flag'; readonly flag: string }
+  /** Today's day number, for actions that should build up over the opening months. */
+  | { readonly kind: 'day' };
 
 /**
  * Turns a measure into appeal from 0 to 10000 basis points.
@@ -82,6 +84,16 @@ export interface Tuning {
   readonly ambitionBoost: number;
   /** Make up for multiplying many considerations, so actions with more checks are not punished. */
   readonly compensation: boolean;
+  /** Daily chance of acting per point of urgency, in basis points (20 = 0.2% per point). */
+  readonly attention: number;
+  /** The most a country's daily chance of acting can be, in basis points. */
+  readonly maxDailyChance: number;
+  /** Multiplier on attention while a country is noticing something that touched it, in basis points. */
+  readonly noticeBoost: number;
+  /** How long noticing lasts, in days. */
+  readonly noticeDays: number;
+  /** Days a country rests after acting before it may act again. */
+  readonly restDays: number;
   /** Per-country overrides of goal weights, by goal ID. */
   readonly countries: Readonly<
     Record<string, { readonly weights?: Readonly<Record<string, number>> }>

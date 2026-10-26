@@ -99,7 +99,7 @@ describe('why: live values', () => {
         effect: -20,
         permanent: true,
         untilTick: null,
-        cause: { type: 'decision', decision: 'envoy', tick: 0 },
+        cause: { type: 'decision', decision: 'envoy', tick: 0, by: 'importer' },
       },
     ]);
   });

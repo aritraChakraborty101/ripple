@@ -16,6 +16,11 @@ export const DEFAULT_TUNING: Tuning = {
   cooperation: 10_000,
   ambitionBoost: 15_000,
   compensation: true,
+  attention: 20,
+  maxDailyChance: 5_000,
+  noticeBoost: 30_000,
+  noticeDays: 7,
+  restDays: 5,
   countries: {},
   actions: {},
 };

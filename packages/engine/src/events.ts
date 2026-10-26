@@ -31,6 +31,9 @@ export type EngineEvent =
       readonly kind: 'decision_issued';
       readonly tick: number;
       readonly decision: string;
+      /** The country that signed it. */
+      readonly by: string;
+      readonly target?: string;
       readonly pendingId: string;
       readonly dueTick: number;
     }
@@ -38,6 +41,10 @@ export type EngineEvent =
       readonly kind: 'decision_resolved';
       readonly tick: number;
       readonly decision: string;
+      readonly by: string;
+      readonly target?: string;
+      /** The day it was signed, which is when a computer country chose it. */
+      readonly issuedTick: number;
       readonly success: boolean;
     }
   | {

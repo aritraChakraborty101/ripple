@@ -9,7 +9,15 @@ export {
   type PendingDecision,
 } from './state';
 export { step, run, type StepResult } from './step';
-export { applyOrders, availabilityOf, canIssue, type Availability, type Order } from './orders';
+export {
+  applyOrders,
+  availabilityOf,
+  boundDecision,
+  canIssue,
+  issuedKey,
+  type Availability,
+  type Order,
+} from './orders';
 export type { EngineEvent } from './events';
 export {
   DAYS_PER_MONTH,
@@ -83,6 +91,7 @@ export {
   SNAPSHOT_DEPTH,
   emptyTrace,
   explainChokepoint,
+  explainChoice,
   explainEvent,
   explainStat,
   explainTrigger,
@@ -90,6 +99,7 @@ export {
   type Adjustment,
   type ChokepointWhy,
   type Contribution,
+  type ChoiceRecord,
   type FiringRecord,
   type FlagWhy,
   type MarketWhy,

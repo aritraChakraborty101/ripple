@@ -5,10 +5,11 @@
  * countries have reasons to act before anything goes wrong.
  */
 
+import type { StatRef } from '../modifiers';
 import type { GameState } from '../state';
 import { sortedIds } from '../world';
 import { FULL } from './curves';
-import { readMeasure } from './measures';
+import { measureRef, readMeasure } from './measures';
 import type { AmbitionDef, GoalDef, GoalKind, Personality } from './types';
 
 /** Relations this bad make grievance (and insecurity) a full need. */
@@ -106,4 +107,23 @@ export function currentAmbition(
   personality: Personality,
 ): AmbitionDef | undefined {
   return personality.ambitions.find((a) => goalMeasure(state, country, a.goal) < a.target);
+}
+
+/** The stat a goal reads, so the why-trace can explain it; null for security, which reads several. */
+export function goalRef(country: string, goalId: string): StatRef | null {
+  const goal = parseGoalId(goalId);
+  if (!goal) throw new Error(`Malformed goal "${goalId}"`);
+  switch (goal.kind) {
+    case 'wealth':
+      return { kind: 'country', id: country, stat: 'treasury' };
+    case 'standing':
+      return { kind: 'country', id: country, stat: 'influence' };
+    case 'prices':
+      return measureRef({ kind: 'price', resource: goal.arg! });
+    case 'ties':
+    case 'grievance':
+      return measureRef({ kind: 'relation', between: [country, goal.arg!] });
+    case 'security':
+      return null;
+  }
 }

@@ -16,21 +16,32 @@ import {
 import { loadBuiltInScenario } from '../src/load';
 
 const scenario = loadBuiltInScenario('first-crisis');
-/** The same world with no events, to test market mechanics in isolation. */
-const quiet: ScenarioDef = { ...scenario, events: [] };
+/** No world events and no computer countries acting, for tests that need a predictable world. */
+const { ai, ...withoutAi } = scenario;
+void ai;
+const quiet: ScenarioDef = { ...withoutAi, events: [] };
 
 const price = (state: GameState, resource: string) =>
   effectiveStat(state, { kind: 'resource', id: resource, stat: 'price' });
 
-function playIdle(seed: number): { state: GameState; fired: string[] } {
+/**
+ * Play a game with the player doing nothing. The story is every world event
+ * and every computer country's successful order, in order, as "day:what".
+ */
+function playIdle(seed: number): { state: GameState; story: string[] } {
   let state = createGame(scenario, seed);
-  const fired: string[] = [];
+  const story: string[] = [];
   while (!state.outcome) {
     const result = step(state, []);
     state = result.state;
-    for (const e of result.events) if (e.kind === 'event_fired') fired.push(e.event);
+    for (const e of result.events) {
+      if (e.kind === 'event_fired') story.push(`${e.tick}:${e.event}`);
+      if (e.kind === 'decision_resolved' && e.success) {
+        story.push(`${e.tick}:${e.by}.${e.decision}${e.target ? `>${e.target}` : ''}`);
+      }
+    }
   }
-  return { state, fired };
+  return { state, story };
 }
 
 describe('first-crisis scenario', () => {
@@ -85,14 +96,14 @@ describe('first-crisis full games', () => {
     const a = playIdle(7);
     const b = playIdle(7);
     expect(a.state).toEqual(b.state);
-    expect(a.fired).toEqual(b.fired);
+    expect(a.story).toEqual(b.story);
   });
 
-  it('matches the recorded idle game for seed 4 (golden run)', () => {
+  it('matches the recorded idle game for seed 3 (golden run)', () => {
     // If this changes, the scenario or the simulation changed. Update deliberately,
     // after checking `pnpm balance` still looks healthy.
-    const { state, fired } = playIdle(4);
-    expect({ outcome: state.outcome, firstEvents: fired.slice(0, 5) }).toEqual(GOLDEN_IDLE_SEED_4);
+    const { state, story } = playIdle(3);
+    expect({ outcome: state.outcome, story: story.slice(0, 10) }).toEqual(GOLDEN_IDLE_SEED_3);
   });
 
   it('lets the player lift steel tariffs, at a price', () => {
@@ -127,34 +138,35 @@ describe('first-crisis full games', () => {
     expect(effectiveStat(lifted, { kind: 'country', id: me, stat: 'treasury' })).toBe(447);
   });
 
-  it('can turn a steel tariff into trouble with Corvan through Thessa', () => {
-    let seedsWithChain = 0;
+  it('gives Thessa a reason to answer a steel tariff in kind', () => {
+    let seedsWithAnswer = 0;
     for (let seed = 1; seed <= 20; seed += 1) {
       let state = step(createGame(scenario, seed), [
         { kind: 'decide', decision: 'steel_tariff', by: 'aldoria' },
       ]).state;
-      const fired = new Set<string>();
-      for (let day = 0; day < 360 && !state.outcome; day += 1) {
-        const result = step(state, []);
-        state = result.state;
-        for (const e of result.events) if (e.kind === 'event_fired') fired.add(e.event);
-      }
-      if (fired.has('thessa_courts_corvan')) seedsWithChain += 1;
+      for (let day = 0; day < 360 && !state.outcome; day += 1) state = step(state, []).state;
+      if (state.trace.choices.some((c) => c.decision === 'thessa_curb_steel')) seedsWithAnswer += 1;
     }
-    expect(seedsWithChain).toBeGreaterThan(0);
+    expect(seedsWithAnswer).toBeGreaterThan(0);
   });
 });
 
-// A customs slight, a fishing dispute, a detained tanker and nationalist
-// rallies sour relations until Corvan closes the strait; with no response, the
-// leader falls on day 273.
-const GOLDEN_IDLE_SEED_4 = {
-  outcome: { result: 'ousted', tick: 273 },
-  firstEvents: [
-    'corvan_customs_checks',
-    'fishing_dispute',
-    'tanker_detained',
-    'corvan_nationalists',
-    'corvan_closes_strait',
+// Left alone, Aldoria is squeezed by every neighbour: Corvan raises transit
+// fees, a fishing dispute sours relations, Corvan detains a tanker and
+// denounces Aldoria, Veskar cuts output, Thessa offers Corvan a pact, and Corvan
+// closes the strait on day 176. The leader falls on day 246.
+const GOLDEN_IDLE_SEED_3 = {
+  outcome: { result: 'ousted', tick: 246 },
+  story: [
+    '16:corvan_customs_checks',
+    '30:orrin.court>aldoria',
+    '39:thessa.court>corvan',
+    '45:corvan.corvan_raise_fees',
+    '87:fishing_dispute',
+    '111:corvan.corvan_detain_tanker',
+    '116:corvan.denounce_aldoria>aldoria',
+    '120:veskar.veskar_cut_output',
+    '140:thessa.thessa_corvan_pact',
+    '176:corvan.corvan_close_strait',
   ],
 };

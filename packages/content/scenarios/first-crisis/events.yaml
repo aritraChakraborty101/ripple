@@ -1,9 +1,9 @@
-# Things that happen in the world. Each is checked every day; `chance` is in
-# basis points per day (100 = 1%). Events without a trigger fire only when
-# another event or decision schedules them.
+# Things that happen in the world: accidents, incidents and moods. Each is
+# checked every day; `chance` is in basis points per day (100 = 1%). Events
+# without a trigger fire only when another event or order schedules them.
 #
-# The main chain: tension with Corvan builds; past -40, Corvan may close the
-# South Strait. Thessa can push Corvan further if Aldoria angers Thessa.
+# Deliberate choices by other countries (closing the strait, massing troops,
+# raising prices) are not events: the countries choose them, in actions.yaml.
 
 # --- Corvan and the strait ---------------------------------------------------
 
@@ -35,20 +35,6 @@
   effects:
     - relation: { between: [aldoria, corvan], by: -20, days: 120 }
 
-- id: tanker_detained
-  tag: corvan
-  severity: warning
-  headline: Corvan detains an Aldorian tanker in the strait
-  detail: Customs officials cite paperwork. Few believe them.
-  cooldownDays: 150
-  trigger:
-    all:
-      - afterDay: 60
-      - relation: { between: [aldoria, corvan], below: 0 }
-      - chance: 30
-  effects:
-    - relation: { between: [aldoria, corvan], by: -15, days: 90 }
-
 - id: corvan_nationalists
   tag: corvan
   severity: warning
@@ -62,102 +48,18 @@
   effects:
     - relation: { between: [aldoria, corvan], by: -15, days: 90 }
 
-- id: corvan_closes_strait
-  tag: corvan
-  severity: critical
-  headline: Corvan closes the South Strait to shipping
-  detail: Routes through the strait carry nothing until it reopens.
-  cooldownDays: 120
-  trigger:
-    all:
-      - chokepointOpen: south_strait
-      - relation: { between: [aldoria, corvan], below: -40 }
-      - chance: 400
-  effects:
-    - setChokepoint: { id: south_strait, open: false }
-    - schedule: { event: corvan_reopens_strait, inDays: 75 }
-
 - id: corvan_reopens_strait
   tag: corvan
   severity: info
-  headline: Corvan reopens the South Strait
-  detail: Shipping resumes, and Corvan signals it wants calmer relations.
+  headline: Under international pressure, Corvan reopens the South Strait
+  detail: Shipping resumes. Corvan's closure (see actions.yaml) schedules this as a backstop.
+  # Only if Corvan has not already reopened it by choice.
+  requires: { chokepointClosed: south_strait }
   effects:
     - setChokepoint: { id: south_strait, open: true }
     - relation: { between: [aldoria, corvan], by: 15, days: 120 }
 
-# --- Thessa ------------------------------------------------------------------
-
-- id: thessa_courts_corvan
-  tag: thessa
-  severity: warning
-  headline: Thessa courts Corvan with a security pact
-  detail: Corvan drifts toward Thessa and away from Aldoria.
-  cooldownDays: 150
-  trigger:
-    all:
-      - relation: { between: [aldoria, thessa], below: -25 }
-      - chance: 150
-  effects:
-    - relation: { between: [aldoria, corvan], by: -15, days: 150 }
-    - relation: { between: [corvan, thessa], by: 10, days: 150 }
-
-- id: thessa_corvan_summit
-  tag: thessa
-  severity: info
-  headline: Thessa and Corvan hold a friendship summit
-  detail: Closer ties between them leave Aldoria a little more isolated.
-  cooldownDays: 240
-  trigger:
-    all:
-      - afterDay: 90
-      - chance: 20
-  effects:
-    - relation: { between: [aldoria, corvan], by: -10, days: 120 }
-    - relation: { between: [corvan, thessa], by: 10, days: 240 }
-
-- id: thessa_border_troops
-  tag: thessa
-  severity: critical
-  headline: Thessan troops gather near the Corvan border
-  detail: The show of force unsettles Aldoria and emboldens Corvan.
-  cooldownDays: 180
-  trigger:
-    all:
-      - relation: { between: [aldoria, thessa], below: -40 }
-      - chance: 100
-  effects:
-    - relation: { between: [aldoria, corvan], by: -10, days: 90 }
-    - modify: { target: country.aldoria.stability, add: -3, days: 60 }
-
-- id: thessa_steel_retaliation
-  tag: thessa
-  severity: warning
-  headline: Thessa curbs steel exports in retaliation
-  detail: Steel gets dearer for three months.
-  cooldownDays: 360
-  trigger:
-    all:
-      - flag: steel_tariff_active
-      - chance: 300
-  effects:
-    - relation: { between: [aldoria, thessa], by: -10, days: 180 }
-    - modify: { target: resource.steel.price, pct: 1500, days: 90 }
-
 # --- Markets -----------------------------------------------------------------
-
-- id: veskar_price_hike
-  tag: veskar
-  severity: warning
-  headline: Veskar raises its crude export price
-  detail: With buyers desperate, Veskar adds 10% for six weeks.
-  cooldownDays: 120
-  trigger:
-    all:
-      - stat: { target: resource.oil.price, above: 10950 }
-      - chance: 300
-  effects:
-    - modify: { target: resource.oil.price, pct: 1000, days: 45 }
 
 - id: veskar_terminal_explosion
   tag: veskar

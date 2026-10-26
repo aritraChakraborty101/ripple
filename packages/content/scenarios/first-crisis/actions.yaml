@@ -1,0 +1,247 @@
+# Orders the computer countries sign on their own. They work like the player's
+# decisions (costs now, effects later, cooldowns), plus:
+#
+#   for:      which countries may sign it, or "any" computer country
+#   targets:  makes it a template, aimed at each of these countries in turn ("others" = all)
+#   drives:   which goals it serves, from -5 to 5 (goals are listed in ai.yaml)
+#   consider: how the situation changes its appeal: one measure and one curve each
+#               rises: [from, to]  no appeal at `from`, full at `to`
+#               falls: [from, to]  full appeal at `from`, none at `to`
+#             measures: stat, relation, price, flag, or `day: true` (the day number)
+#   severity, detail: how the news reports it
+#
+# Keep drives honest: an order that serves standing raises influence, one that
+# serves wealth raises the treasury. Then needs are met over time and countries
+# calm down instead of repeating themselves.
+#
+# In templates, `self` is the country acting and `target` the country it is
+# aimed at; names and headlines use {self} and {target}.
+
+# --- Any country -------------------------------------------------------------
+
+- id: court
+  for: any
+  targets: others
+  name: '{self} courts {target}'
+  description: Trade offers and friendly visits.
+  requires:
+    stat: { target: country.self.influence, above: 4 }
+  drives: { ties(target): 2 }
+  consider:
+    - relation: [self, target]
+      falls: [30, 80]
+  costs:
+    - adjust: { target: country.self.influence, by: -4 }
+  cooldownDays: 150
+  effects:
+    # A lasting step closer, so a country that has courted enough stops courting.
+    - relation: { between: [self, target], by: 6 }
+  severity: info
+  successHeadline: '{self} courts {target} with trade offers'
+
+- id: denounce_aldoria
+  for: any
+  targets: [aldoria]
+  name: '{self} denounces {target}'
+  description: A public attack on Aldoria's government.
+  drives: { grievance(target): 2, standing: 1, ties(target): -2 }
+  consider:
+    - relation: [self, target]
+      rises: [-20, -50]
+    - day: true
+      rises: [60, 150]
+  cooldownDays: 150
+  effects:
+    - relation: { between: [self, target], by: -6, days: 90 }
+    - adjust: { target: country.self.influence, by: 2 }
+  severity: warning
+  successHeadline: '{self} publicly denounces {target}'
+  detail: Relations sour for the next three months.
+
+# --- Corvan: poor, proud, and holding the strait -----------------------------
+
+- id: corvan_raise_fees
+  for: [corvan]
+  name: Raise transit fees
+  description: Charge more for passage through the South Strait.
+  requires: { chokepointOpen: south_strait }
+  drives: { wealth: 3 }
+  consider:
+    # Corvan starts squeezing once the year is under way.
+    - day: true
+      rises: [20, 90]
+  cooldownDays: 120
+  effects:
+    - adjust: { target: country.corvan.treasury, by: 25 }
+    - relation: { between: [aldoria, corvan], by: -4, days: 90 }
+    - modify: { target: resource.oil.price, pct: 500, days: 60 }
+  severity: warning
+  successHeadline: Corvan raises transit fees in the South Strait
+  detail: Shipping through the strait costs more, and Aldoria resents paying.
+
+- id: corvan_detain_tanker
+  for: [corvan]
+  name: Detain a tanker
+  description: Hold an Aldorian tanker on a paperwork pretext.
+  drives: { grievance(aldoria): 2, standing: 1 }
+  consider:
+    - relation: [aldoria, corvan]
+      rises: [-10, -40]
+    - day: true
+      rises: [45, 120]
+  cooldownDays: 120
+  effects:
+    - relation: { between: [aldoria, corvan], by: -8, days: 90 }
+    - adjust: { target: country.corvan.influence, by: 2 }
+  severity: warning
+  successHeadline: Corvan detains an Aldorian tanker in the strait
+  detail: Customs officials cite paperwork. Few believe them.
+
+- id: corvan_close_strait
+  for: [corvan]
+  name: Close the South Strait
+  description: Shut the strait to shipping.
+  requires: { chokepointOpen: south_strait }
+  drives: { grievance(aldoria): 4, standing: 1, wealth: -2 }
+  consider:
+    - relation: [aldoria, corvan]
+      rises: [-40, -70]
+    - day: true
+      rises: [60, 150]
+  cooldownDays: 150
+  effects:
+    - setChokepoint: { id: south_strait, open: false }
+    - adjust: { target: country.corvan.influence, by: 4 }
+    # International pressure forces it open again if Corvan does not reopen it sooner.
+    - schedule: { event: corvan_reopens_strait, inDays: 120 }
+  severity: critical
+  successHeadline: Corvan closes the South Strait to shipping
+  detail: Routes through the strait carry nothing until it reopens.
+
+- id: corvan_reopen_strait
+  for: [corvan]
+  name: Reopen the South Strait
+  description: Let shipping through again, and collect fees once more.
+  requires: { chokepointClosed: south_strait }
+  drives: { wealth: 3, grievance(aldoria): -1, standing: 1 }
+  consider:
+    - relation: [aldoria, corvan]
+      rises: [-50, -10]
+  cooldownDays: 30
+  effects:
+    - setChokepoint: { id: south_strait, open: true }
+    - adjust: { target: country.corvan.treasury, by: 10 }
+    - adjust: { target: country.corvan.influence, by: 2 }
+    - relation: { between: [aldoria, corvan], by: 10, days: 120 }
+  severity: info
+  successHeadline: Corvan reopens the South Strait
+  detail: Shipping resumes, and Corvan signals it wants calmer relations.
+
+# --- Thessa: a rising power that wants a sphere of influence -----------------
+
+- id: thessa_corvan_pact
+  for: [thessa]
+  name: Offer Corvan a security pact
+  description: Pull Corvan into Thessa's orbit.
+  drives: { ties(corvan): 3, standing: 1, grievance(aldoria): 1 }
+  consider:
+    - relation: [corvan, thessa]
+      falls: [40, 90]
+    # Not in the opening weeks: new players get time to learn the screen first.
+    - day: true
+      rises: [45, 150]
+  costs:
+    - adjust: { target: country.thessa.influence, by: -6 }
+  cooldownDays: 240
+  effects:
+    - relation: { between: [corvan, thessa], by: 10 }
+    - relation: { between: [aldoria, corvan], by: -10, days: 150 }
+    - adjust: { target: country.thessa.influence, by: 8 }
+  severity: warning
+  successHeadline: Thessa offers Corvan a security pact
+  detail: Corvan drifts toward Thessa and away from Aldoria.
+
+- id: thessa_border_troops
+  for: [thessa]
+  name: Mass troops near Corvan
+  description: A show of force that unsettles Aldoria.
+  drives: { grievance(aldoria): 3, standing: 1, wealth: -1 }
+  consider:
+    - relation: [aldoria, thessa]
+      rises: [-30, -60]
+  cooldownDays: 180
+  effects:
+    - relation: { between: [aldoria, corvan], by: -10, days: 90 }
+    - modify: { target: country.aldoria.stability, add: -3, days: 60 }
+    - adjust: { target: country.thessa.influence, by: 3 }
+  severity: critical
+  successHeadline: Thessan troops gather near the Corvan border
+  detail: The show of force unsettles Aldoria and emboldens Corvan.
+
+- id: thessa_curb_steel
+  for: [thessa]
+  name: Curb steel exports
+  description: Answer Aldoria's tariffs in kind.
+  requires: { flag: steel_tariff_active }
+  drives: { grievance(aldoria): 2, wealth: -1, standing: 1 }
+  cooldownDays: 360
+  effects:
+    - relation: { between: [aldoria, thessa], by: -10, days: 180 }
+    - modify: { target: resource.steel.price, pct: 1500, days: 90 }
+    - adjust: { target: country.thessa.influence, by: 2 }
+  severity: warning
+  successHeadline: Thessa curbs steel exports in retaliation
+  detail: Steel gets dearer for three months.
+
+# --- Veskar: wants dearer oil, without losing its best customer --------------
+
+- id: veskar_cut_output
+  for: [veskar]
+  name: Cut crude output
+  description: Pump less, and let scarcity lift the price.
+  drives: { prices(oil): 3, ties(aldoria): -1 }
+  consider:
+    - price: oil
+      falls: [5, 40]
+    - day: true
+      rises: [90, 240]
+  cooldownDays: 300
+  effects:
+    - modify: { target: link.oil_veskar_aldoria.capacity, pct: -1000, days: 45 }
+    - modify: { target: link.oil_veskar_thessa.capacity, pct: -1000, days: 45 }
+  severity: warning
+  successHeadline: Veskar cuts crude output
+  detail: Less crude reaches the market for six weeks.
+
+- id: veskar_raise_price
+  for: [veskar]
+  name: Raise the crude export price
+  description: With buyers desperate, charge more.
+  drives: { prices(oil): 2, wealth: 1, ties(aldoria): -1 }
+  consider:
+    - price: oil
+      rises: [30, 80]
+  cooldownDays: 120
+  effects:
+    - modify: { target: resource.oil.price, pct: 1000, days: 45 }
+  severity: warning
+  successHeadline: Veskar raises its crude export price
+  detail: With buyers desperate, Veskar adds 10% for six weeks.
+
+# --- Orrin: small, careful, and Aldoria's friend -----------------------------
+
+- id: orrin_grain_discount
+  for: [orrin]
+  name: Offer Aldoria discounted grain
+  description: Sell grain to Aldoria below the market price.
+  drives: { ties(aldoria): 4, wealth: -1 }
+  consider:
+    - stat: faction.aldoria_workers.satisfaction
+      rises: [55, 40]
+  cooldownDays: 240
+  effects:
+    - modify: { target: resource.grain.price, pct: -1000, days: 60 }
+    - relation: { between: [aldoria, orrin], by: 6, days: 120 }
+  severity: info
+  successHeadline: Orrin offers Aldoria discounted grain
+  detail: Grain is 10% cheaper for two months.

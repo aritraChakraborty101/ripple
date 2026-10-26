@@ -229,6 +229,11 @@ export interface EventDef {
   readonly detail?: string;
   /** Checked every day. Null means the event only fires when scheduled. */
   readonly trigger: Condition | null;
+  /**
+   * Must hold for the event to fire at all, whether triggered or scheduled.
+   * Lets a scheduled consequence check that it still makes sense when it is due.
+   */
+  readonly requires?: Condition;
   /** Fire at most once per game. */
   readonly once: boolean;
   /** Minimum days between two firings. */
@@ -256,6 +261,10 @@ export interface DecisionDef {
   readonly failureEffects: readonly Effect[];
   readonly successHeadline: string;
   readonly failureHeadline?: string;
+  /** For computer orders, how the news reports it. Player orders are reported as your orders. */
+  readonly severity?: Severity;
+  /** For computer orders, a line of detail for the news. */
+  readonly detail?: string;
   /**
    * For policies: the flag that is set while this decision's policy is in
    * force (the decision's effects set it, a reversing decision clears it).

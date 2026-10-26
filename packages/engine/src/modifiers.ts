@@ -22,6 +22,8 @@ export interface ModifierSource {
   readonly id: string;
   /** Tick at which the source created this modifier. */
   readonly tick: number;
+  /** For decisions: the country that signed it. */
+  readonly by?: string;
 }
 
 export interface Modifier {

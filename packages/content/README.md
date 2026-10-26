@@ -17,6 +17,7 @@ Each folder in `scenarios/` is one scenario:
 | `relations.yaml`   | starting relations between countries (pairs not listed start at 0) |
 | `events.yaml`      | things that happen in the world: triggers and effects              |
 | `decisions.yaml`   | orders the player can sign: costs, duration, odds and effects      |
+| `actions.yaml`     | orders computer countries sign on their own (see below)            |
 | `briefing.yaml`    | the opening briefing and the country the first steps point at      |
 | `advisor.yaml`     | advisor tips: when each appears and which orders it recommends     |
 | `map.yaml`         | how the world is drawn: country shapes and chokepoint positions    |
@@ -46,6 +47,8 @@ Each condition or effect is a mapping with one key that names it.
 **Conditions:** `all`, `any`, `not`, `stat: { target, above, below }`, `relation: { between, above, below }`, `chokepointOpen`, `chokepointClosed`, `flag`, `noFlag`, `afterDay`, `chance`. Bounds are exclusive. Put `chance` last, so randomness is only drawn when everything else holds.
 
 **Effects:** `modify: { target, add | pct, days }` (lasts `days`; permanent if omitted), `adjust: { target, by }` (permanent change to the base value), `relation: { between, by, days }`, `setChokepoint`, `schedule: { event, inDays }`, `setFlag`, `clearFlag`, `endEffectsOf: { decision | event }` (removes the lingering modifiers an earlier decision or event created; base changes stay).
+
+An event can also have `requires`: a condition that must hold for it to fire at all. That matters for scheduled events, which otherwise fire whatever has changed since. For example, the strait's forced reopening only happens if it is still closed.
 
 **Policies** are decisions that stay in force until reversed. Give the decision a `policyFlag`, set that flag in its effects, and write a second decision that requires the flag, clears it and uses `endEffectsOf` to undo the policy's lingering effects. The game lists policies in force so the player can see and reverse them. See `steel_tariff` and `lift_steel_tariff`.
 
@@ -84,7 +87,7 @@ personalities:
 
 Goals: `wealth`, `standing`, `security`, `prices(resource)`, `ties(country)`, `grievance(country)`. An unmet ambition's goal counts 1.5 times as much.
 
-Computer orders are written like the player's, plus `for` (which countries may sign them, or `any`), `drives` (which goals they move, from -5 to 5) and `consider` (how the situation changes their appeal). With `targets`, an order is a **template** aimed at each target in turn, written with `self` and `target`:
+Computer orders live in `actions.yaml` and are written like the player's, plus `for` (which countries may sign them, or `any`), `drives` (which goals they move, from -5 to 5) and `consider` (how the situation changes their appeal). With `targets`, an order is a **template** aimed at each target in turn, written with `self` and `target`:
 
 ```yaml
 - id: court
@@ -99,7 +102,11 @@ Computer orders are written like the player's, plus `for` (which countries may s
     - adjust: { target: country.self.influence, by: -5 }
 ```
 
-A consideration has one measure (`stat`, `relation`, `price` or `flag`) and one curve (`rises: [from, to]`, `falls: [from, to]`, `peaks: [from, peak, to]` or `step: at`).
+Keep drives honest: an order that drives `standing` should raise influence, and one that drives `wealth` should raise the treasury. Then needs are met over time and countries calm down instead of repeating themselves.
+
+Computer orders can also set `severity` and `detail` for the news. Use them for deliberate choices (closing a strait, massing troops); keep accidents and moods (an explosion, a drought, a strike) as events.
+
+A consideration has one measure (`stat`, `relation`, `price`, `flag`, or `day: true` for the day number) and one curve (`rises: [from, to]`, `falls: [from, to]`, `peaks: [from, peak, to]` or `step: at`).
 
 `ai-tuning.yaml` holds profiles of knobs, such as `aggressive: { inertia: 15, hostility: 1.5 }`. Its comments list every knob and its default.
 

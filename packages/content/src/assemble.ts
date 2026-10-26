@@ -53,6 +53,15 @@ export function scenarioFromYaml(
       raw[section] = parseYaml(text, `${source}/${section}.yaml`) ?? [];
     }
   }
+  // Computer countries' orders live in their own file, beside the player's decisions.
+  const actions = files['actions.yaml'];
+  if (actions !== undefined) {
+    const list = parseYaml(actions, `${source}/actions.yaml`) ?? [];
+    if (!Array.isArray(list))
+      throw new ContentError(`${source}/actions.yaml`, ['Expected a list of actions']);
+    const decisions = Array.isArray(raw.decisions) ? raw.decisions : [];
+    raw.decisions = [...decisions, ...list];
+  }
   // Computer countries: ai.yaml (personalities) and ai-tuning.yaml (profiles) are mappings.
   const ai = files['ai.yaml'];
   if (ai !== undefined) raw.ai = parseYaml(ai, `${source}/ai.yaml`);

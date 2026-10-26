@@ -21,7 +21,14 @@ describe('orders', () => {
       { id: 'p1', decision: 'envoy', by: 'importer', issuedTick: 0, dueTick: 3 },
     ]);
     expect(events).toEqual([
-      { kind: 'decision_issued', tick: 0, decision: 'envoy', pendingId: 'p1', dueTick: 3 },
+      {
+        kind: 'decision_issued',
+        tick: 0,
+        decision: 'envoy',
+        by: 'importer',
+        pendingId: 'p1',
+        dueTick: 3,
+      },
     ]);
   });
 

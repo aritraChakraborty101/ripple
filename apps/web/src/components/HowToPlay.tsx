@@ -54,9 +54,14 @@ export function HowToPlay({ open, onClose, onShowBriefing, onRestartSteps }: Pro
             coming: watch relations and prices, and act before they tip over.
           </p>
           <p>
+            Your neighbours have goals of their own and act on them without waiting for you. Poor
+            Corvan wants money from the strait, Thessa wants Corvan as an ally, Veskar wants dearer
+            oil, and Orrin wants to be your friend. The worse relations get, the bolder they become.
+          </p>
+          <p>
             To trace any ripple back to its cause, click stability or a price in the top bar, a
-            faction on the Home tab, or "Why did this happen?" on a piece of news. The game pauses
-            while you read.
+            faction on the Home tab, or "Why did this happen?" on a piece of news. For a neighbour's
+            move, the panel shows what drove it. The game pauses while you read.
           </p>
         </section>
 

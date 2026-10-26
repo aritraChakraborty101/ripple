@@ -23,12 +23,12 @@ personalities:
 
   thessa:
     goals:
-      standing: { weight: 40, aspire: 80 }
-      ties(corvan): { weight: 25, aspire: 70 }
+      standing: { weight: 40, aspire: 60 }
+      ties(corvan): { weight: 25, aspire: 50 }
       grievance(aldoria): { weight: 20 }
       wealth: { weight: 15, aspire: 800 }
     ambitions:
-      - { id: corvan_orbit, name: Bring Corvan into our orbit, goal: ties(corvan), target: 70 }
+      - { id: corvan_orbit, name: Bring Corvan into our orbit, goal: ties(corvan), target: 50 }
 
   veskar:
     goals:
@@ -42,7 +42,7 @@ personalities:
   orrin:
     goals:
       security: { weight: 40 }
-      ties(aldoria): { weight: 30, aspire: 60 }
+      ties(aldoria): { weight: 30, aspire: 50 }
       wealth: { weight: 30, aspire: 250 }
     ambitions:
-      - { id: breadbasket, name: "Be Aldoria's breadbasket", goal: ties(aldoria), target: 60 }
+      - { id: breadbasket, name: "Be Aldoria's breadbasket", goal: ties(aldoria), target: 50 }

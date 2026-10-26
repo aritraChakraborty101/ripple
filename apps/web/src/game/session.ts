@@ -71,8 +71,13 @@ function tally(tallies: Tallies, game: GameState, events: readonly EngineEvent[]
   let { crises, ordersSigned, ordersSucceeded, ordersFailed } = tallies;
   for (const e of events) {
     if (e.kind === 'event_fired' && game.defs.events[e.event]?.severity === 'critical') crises += 1;
-    if (e.kind === 'decision_issued') ordersSigned += 1;
-    if (e.kind === 'decision_resolved') {
+    const mine = 'by' in e && e.by === game.rules.playerCountry;
+    // A computer country's critical move, such as closing the strait, is a crisis too.
+    if (e.kind === 'decision_resolved' && !mine && e.success) {
+      if (game.defs.decisions[e.decision]?.severity === 'critical') crises += 1;
+    }
+    if (e.kind === 'decision_issued' && mine) ordersSigned += 1;
+    if (e.kind === 'decision_resolved' && mine) {
       if (e.success) ordersSucceeded += 1;
       else ordersFailed += 1;
     }

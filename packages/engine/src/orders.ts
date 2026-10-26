@@ -5,7 +5,7 @@
  * seed and the list of orders with the tick each was given.
  */
 
-import { isFor } from './ai/templates';
+import { bindDecision, isFor, targetsOf } from './ai/templates';
 import type { EngineEvent } from './events';
 import { applyEffects, evaluate, type DecisionDef } from './rules';
 import type { GameState } from './state';
@@ -15,6 +15,21 @@ export interface Order {
   readonly decision: string;
   /** The country giving the order. */
   readonly by: string;
+  /** For templates: the country the order is aimed at. */
+  readonly target?: string;
+}
+
+/** Cooldowns are kept per country, so Thessa courting someone does not stop Corvan doing the same. */
+export function issuedKey(by: string, decision: string): string {
+  return `${by}:${decision}`;
+}
+
+/**
+ * The decision as this country signs it: a computer order's `self` and
+ * `target` placeholders filled in. Player orders are returned as written.
+ */
+export function boundDecision(def: DecisionDef, by: string, target?: string): DecisionDef {
+  return def.for === undefined ? def : bindDecision(def, by, target);
 }
 
 export type Availability = { readonly ok: true } | { readonly ok: false; readonly reason: string };
@@ -48,7 +63,7 @@ export function availabilityOf(state: GameState, def: DecisionDef, by: string): 
   if (def.requires && !evaluate(state, def.requires).value) {
     return { ok: false, reason: def.unavailableText ?? 'Not possible right now.' };
   }
-  const last = state.lastIssued[def.id];
+  const last = state.lastIssued[issuedKey(by, def.id)];
   if (last !== undefined && state.tick < last + def.cooldownDays) {
     const days = last + def.cooldownDays - state.tick;
     return { ok: false, reason: `Available again in ${days} ${days === 1 ? 'day' : 'days'}.` };
@@ -69,28 +84,47 @@ export function applyOrders(
   const events: EngineEvent[] = [];
 
   for (const order of orders) {
-    const availability = canIssue(current, order.decision, order.by);
-    if (!availability.ok) {
-      events.push({
-        kind: 'order_rejected',
-        tick: current.tick,
-        decision: order.decision,
-        reason: availability.reason,
-      });
+    const reject = (reason: string) =>
+      events.push({ kind: 'order_rejected', tick: current.tick, decision: order.decision, reason });
+    const raw = current.defs.decisions[order.decision];
+    if (!raw) {
+      reject(`Unknown decision "${order.decision}".`);
       continue;
     }
-    const def = current.defs.decisions[order.decision]!;
-    const source = { kind: 'decision' as const, id: def.id, tick: current.tick };
+    if (raw.targets !== undefined) {
+      if (order.target === undefined || !targetsOf(current, raw, order.by).includes(order.target)) {
+        reject('This order needs a valid target.');
+        continue;
+      }
+    } else if (order.target !== undefined) {
+      reject('This order takes no target.');
+      continue;
+    }
+    const def = boundDecision(raw, order.by, order.target);
+    const availability = availabilityOf(current, def, order.by);
+    if (!availability.ok) {
+      reject(availability.reason);
+      continue;
+    }
+    const target = order.target !== undefined ? { target: order.target } : {};
+    const source = { kind: 'decision' as const, id: def.id, tick: current.tick, by: order.by };
     current = applyEffects(current, def.costs, source);
 
     const pendingId = `p${current.nextPendingId}`;
     const dueTick = current.tick + def.durationDays;
     current = {
       ...current,
-      lastIssued: { ...current.lastIssued, [def.id]: current.tick },
+      lastIssued: { ...current.lastIssued, [issuedKey(order.by, def.id)]: current.tick },
       pending: [
         ...current.pending,
-        { id: pendingId, decision: def.id, by: order.by, issuedTick: current.tick, dueTick },
+        {
+          id: pendingId,
+          decision: def.id,
+          by: order.by,
+          ...target,
+          issuedTick: current.tick,
+          dueTick,
+        },
       ],
       nextPendingId: current.nextPendingId + 1,
     };
@@ -98,6 +132,8 @@ export function applyOrders(
       kind: 'decision_issued',
       tick: current.tick,
       decision: def.id,
+      by: order.by,
+      ...target,
       pendingId,
       dueTick,
     });
