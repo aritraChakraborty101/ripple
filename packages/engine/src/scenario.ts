@@ -5,6 +5,8 @@
  * the engine only needs this shape.
  */
 
+import type { Personality } from './ai/types';
+import type { TuningOverrides } from './ai/tuning';
 import type { DecisionDef, EventDef } from './rules';
 import {
   relationId,
@@ -76,6 +78,16 @@ export interface ScenarioDef {
   readonly relations: readonly RelationDef[];
   readonly events: readonly EventDef[];
   readonly decisions: readonly DecisionDef[];
+  /** Computer countries' personalities and tuning profiles. Missing: no country acts on its own. */
+  readonly ai?: ScenarioAi;
+}
+
+export interface ScenarioAi {
+  readonly personalities: Readonly<Record<string, Personality>>;
+  /** Named sets of tuning knobs, such as "passive" or "aggressive". */
+  readonly profiles: Readonly<Record<string, TuningOverrides>>;
+  /** The profile a game uses unless told otherwise. */
+  readonly defaultProfile: string;
 }
 
 export function byId<T extends { readonly id: string }>(

@@ -5,6 +5,7 @@
  */
 
 import { addModifier, effectiveStat, type ModifierSource, type StatRef } from './modifiers';
+import type { Consideration } from './ai/types';
 import { chance } from './rng';
 import type { GameState } from './state';
 import { getStatEntity, setBaseStat } from './world';
@@ -261,6 +262,17 @@ export interface DecisionDef {
    * Lets the UI list what the player currently has in force.
    */
   readonly policyFlag?: string;
+
+  // --- For computer countries (see ai/). Player decisions leave these out.
+
+  /** Who may sign it: missing means the player; otherwise these countries, or "any" computer country. */
+  readonly for?: readonly string[] | 'any';
+  /** Makes it a template: one candidate per target country. "others" means every other country. */
+  readonly targets?: 'others' | readonly string[];
+  /** Which goals it moves, by goal ID, from -5 to 5. `ties(target)` names the target's goal. */
+  readonly drives?: Readonly<Record<string, number>>;
+  /** How the situation changes its appeal. */
+  readonly consider?: readonly Consideration[];
 }
 
 /** Decisions whose policy is currently in force, in ID order. */

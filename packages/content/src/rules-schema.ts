@@ -113,6 +113,42 @@ export const eventSchema = z.strictObject({
   effects: z.array(effectSchema).min(1),
 });
 
+/**
+ * A goal ID: `wealth`, `standing`, `security`, `prices(oil)`, `ties(thessa)`,
+ * `grievance(aldoria)`. In computer orders, `ties(target)` names the target's goal.
+ */
+export const goalId = z
+  .string()
+  .regex(/^[a-z]+(\([a-z][a-z0-9_]*\))?$/, 'Goals look like wealth or ties(thessa)');
+
+const MEASURE_KEYS = ['stat', 'relation', 'price', 'flag'] as const;
+const CURVE_KEYS = ['rises', 'falls', 'peaks', 'step'] as const;
+
+/**
+ * One consideration of a computer order: a measure and a curve, one key each.
+ *   - relation: [self, target]
+ *     falls: [40, 90]        # full appeal at 40, none at 90
+ */
+export const considerationSchema = z
+  .strictObject({
+    stat: statPath.optional(),
+    relation: pair.optional(),
+    price: id.optional(),
+    flag: id.optional(),
+    rises: z.tuple([int, int]).optional(),
+    falls: z.tuple([int, int]).optional(),
+    peaks: z.tuple([int, int, int]).optional(),
+    step: int.optional(),
+  })
+  .refine((c) => MEASURE_KEYS.filter((k) => c[k] !== undefined).length === 1, {
+    message: 'A consideration needs exactly one of stat, relation, price or flag',
+  })
+  .refine((c) => CURVE_KEYS.filter((k) => c[k] !== undefined).length === 1, {
+    message: 'A consideration needs exactly one of rises, falls, peaks or step',
+  });
+
+export type RawConsideration = z.infer<typeof considerationSchema>;
+
 export const decisionSchema = z.strictObject({
   id,
   name: z.string().min(1),
@@ -129,6 +165,14 @@ export const decisionSchema = z.strictObject({
   failureHeadline: z.string().min(1).optional(),
   /** For policies: the flag set while the policy is in force. */
   policyFlag: id.optional(),
+  // --- Computer orders only
+  /** Who may sign it: these countries, or any computer country. Missing: the player. */
+  for: z.union([z.literal('any'), z.array(id).min(1)]).optional(),
+  /** Makes it a template, aimed at each of these countries in turn, or every other one. */
+  targets: z.union([z.literal('others'), z.array(id).min(1)]).optional(),
+  /** Which goals it moves, from -5 to 5. */
+  drives: z.record(goalId, z.int().min(-5).max(5)).optional(),
+  consider: z.array(considerationSchema).optional(),
 });
 
 export const relationSchema = z.strictObject({

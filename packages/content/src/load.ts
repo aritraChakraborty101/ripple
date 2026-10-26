@@ -16,7 +16,7 @@ import { mapFromYaml, type ScenarioMap } from './map';
 
 export function loadScenario(folder: string): ScenarioDef {
   const files: Record<string, string> = {};
-  for (const name of ['scenario', ...SCENARIO_SECTIONS]) {
+  for (const name of ['scenario', ...SCENARIO_SECTIONS, 'ai', 'ai-tuning']) {
     const file = join(folder, `${name}.yaml`);
     if (existsSync(file)) {
       files[`${name}.yaml`] = readFileSync(file, 'utf8');

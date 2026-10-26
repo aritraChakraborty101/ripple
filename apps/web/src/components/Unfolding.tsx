@@ -34,29 +34,31 @@ export function Unfolding({ game, onOpenOrders }: Props) {
               </button>
             </li>
           ))}
-          {game.pending.map((p) => {
-            const def = game.defs.decisions[p.decision];
-            const name = def?.name ?? p.decision;
-            const total = Math.max(1, p.dueTick - p.issuedTick);
-            const done = Math.min(1, (game.tick - p.issuedTick) / total);
-            const left = Math.max(0, p.dueTick - game.tick);
-            return (
-              <li key={p.id} className="chip" title={`Signed ${formatShortDate(p.issuedTick)}`}>
-                <span className="chip-name">{name}</span>
-                <span
-                  className="progress"
-                  role="progressbar"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={Math.round(done * 100)}
-                  aria-label={`${name} progress`}
-                >
-                  <span style={{ width: `${done * 100}%` }} />
-                </span>
-                <span className="chip-due">{left === 0 ? 'now' : `${left}d`}</span>
-              </li>
-            );
-          })}
+          {game.pending
+            .filter((p) => p.by === game.rules.playerCountry)
+            .map((p) => {
+              const def = game.defs.decisions[p.decision];
+              const name = def?.name ?? p.decision;
+              const total = Math.max(1, p.dueTick - p.issuedTick);
+              const done = Math.min(1, (game.tick - p.issuedTick) / total);
+              const left = Math.max(0, p.dueTick - game.tick);
+              return (
+                <li key={p.id} className="chip" title={`Signed ${formatShortDate(p.issuedTick)}`}>
+                  <span className="chip-name">{name}</span>
+                  <span
+                    className="progress"
+                    role="progressbar"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={Math.round(done * 100)}
+                    aria-label={`${name} progress`}
+                  >
+                    <span style={{ width: `${done * 100}%` }} />
+                  </span>
+                  <span className="chip-due">{left === 0 ? 'now' : `${left}d`}</span>
+                </li>
+              );
+            })}
         </ul>
       )}
     </section>

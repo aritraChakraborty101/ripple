@@ -9,11 +9,13 @@
  * This module has no Node dependencies, so the browser can use it too.
  */
 
-import type { ScenarioDef } from '@ripple/engine';
+import { GOAL_ARGUMENT, PLACEHOLDERS, parseGoalId, type ScenarioDef } from '@ripple/engine';
 import { z } from 'zod';
+import { aiFileSchema, tuningFileSchema } from './ai-schema';
 import { toScenarioDef } from './convert';
 import {
   conditionSchema,
+  type RawConsideration,
   decisionSchema,
   eventSchema,
   id,
@@ -99,6 +101,10 @@ export const scenarioSchema = z
     relations: z.array(relationSchema).default([]),
     events: z.array(eventSchema).default([]),
     decisions: z.array(decisionSchema).default([]),
+    /** From ai.yaml: computer countries' personalities. */
+    ai: aiFileSchema.optional(),
+    /** From ai-tuning.yaml: named tuning profiles. */
+    aiTuning: tuningFileSchema.optional(),
   })
   .superRefine((s, ctx) => {
     const issue = (path: Path, message: string) => ctx.addIssue({ code: 'custom', path, message });
@@ -122,7 +128,10 @@ export const scenarioSchema = z
       decision: idsOf('decisions', s.decisions),
     };
 
+    // While checking a computer order, `self` (and `target`, for templates) stand for countries.
+    let placeholders: ReadonlySet<string> = new Set();
     const need = (kind: keyof typeof known, path: Path, value: string) => {
+      if (kind === 'country' && placeholders.has(value)) return;
       if (!known[kind].has(value)) issue(path, `Unknown ${kind} "${value}"`);
     };
     const needPair = (path: Path, [a, b]: readonly [string, string]) => {
@@ -163,6 +172,29 @@ export const scenarioSchema = z
     };
 
     need('country', ['rules', 'playerCountry'], s.rules.playerCountry);
+    s.countries.forEach((c, i) => {
+      if (PLACEHOLDERS.includes(c.id)) {
+        issue(['countries', i, 'id'], `"${c.id}" is reserved for computer orders`);
+      }
+    });
+
+    /** A goal ID whose argument names a real country or resource (or an allowed placeholder). */
+    const checkGoal = (path: Path, goal: string) => {
+      const parsed = parseGoalId(goal);
+      if (!parsed) {
+        issue(path, `Unknown goal "${goal}"`);
+        return;
+      }
+      const argKind = GOAL_ARGUMENT[parsed.kind];
+      if (argKind && parsed.arg !== undefined) need(argKind, path, parsed.arg);
+    };
+    const checkConsideration = (path: Path, c: RawConsideration) => {
+      if (c.stat !== undefined) needStat([...path, 'stat'], c.stat);
+      if (c.relation !== undefined) needPair([...path, 'relation'], c.relation);
+      if (c.price !== undefined) need('resource', [...path, 'price'], c.price);
+    };
+    const player = s.rules.playerCountry;
+    const computer = new Set(Object.keys(s.ai?.personalities ?? {}));
 
     s.countries.forEach((c, i) => {
       for (const resource of Object.keys(c.demand)) {
@@ -205,11 +237,78 @@ export const scenarioSchema = z
     });
 
     s.decisions.forEach((d, i) => {
-      if (d.requires) checkCondition(['decisions', i, 'requires'], d.requires);
-      d.costs.forEach((x, j) => checkEffect(['decisions', i, 'costs', j], x));
-      d.effects.forEach((x, j) => checkEffect(['decisions', i, 'effects', j], x));
-      d.failureEffects.forEach((x, j) => checkEffect(['decisions', i, 'failureEffects', j], x));
+      const at: Path = ['decisions', i];
+      if (d.for === undefined) {
+        for (const key of ['targets', 'drives', 'consider'] as const) {
+          if (d[key] !== undefined)
+            issue([...at, key], `Only computer orders (with "for") have ${key}`);
+        }
+      } else {
+        if (d.drives === undefined) issue([...at, 'drives'], 'A computer order needs drives');
+        if (d.for !== 'any') {
+          d.for.forEach((c, j) => {
+            need('country', [...at, 'for', j], c);
+            if (c === player) issue([...at, 'for', j], 'The player signs orders without "for"');
+            else if (known.country.has(c) && !computer.has(c)) {
+              issue([...at, 'for', j], `"${c}" has no personality in ai.yaml`);
+            }
+          });
+        }
+        if (Array.isArray(d.targets))
+          d.targets.forEach((c, j) => need('country', [...at, 'targets', j], c));
+        placeholders = new Set(d.targets === undefined ? ['self'] : ['self', 'target']);
+        for (const goal of Object.keys(d.drives ?? {})) checkGoal([...at, 'drives', goal], goal);
+        d.consider?.forEach((c, j) => checkConsideration([...at, 'consider', j], c));
+      }
+      if (d.requires) checkCondition([...at, 'requires'], d.requires);
+      d.costs.forEach((x, j) => checkEffect([...at, 'costs', j], x));
+      d.effects.forEach((x, j) => checkEffect([...at, 'effects', j], x));
+      d.failureEffects.forEach((x, j) => checkEffect([...at, 'failureEffects', j], x));
+      placeholders = new Set();
     });
+
+    for (const [country, personality] of Object.entries(s.ai?.personalities ?? {})) {
+      const at: Path = ['ai', 'personalities', country];
+      need('country', at, country);
+      if (country === player)
+        issue(at, 'The player has no personality; they decide for themselves');
+      let total = 0;
+      for (const [goal, def] of Object.entries(personality.goals)) {
+        checkGoal([...at, 'goals', goal], goal);
+        total += def.weight;
+        const kind = parseGoalId(goal)?.kind;
+        const needsAspire = kind !== undefined && kind !== 'grievance' && kind !== 'security';
+        if (needsAspire && def.aspire === undefined) {
+          issue([...at, 'goals', goal, 'aspire'], `A ${kind} goal needs an aspire value`);
+        }
+      }
+      if (total !== 100) issue([...at, 'goals'], `Goal weights must add up to 100, not ${total}`);
+      const seen = new Set<string>();
+      personality.ambitions.forEach((a, j) => {
+        if (seen.has(a.id)) issue([...at, 'ambitions', j, 'id'], `Duplicate id "${a.id}"`);
+        seen.add(a.id);
+        if (!(a.goal in personality.goals)) {
+          issue([...at, 'ambitions', j, 'goal'], `"${a.goal}" is not one of ${country}'s goals`);
+        }
+      });
+    }
+
+    if (s.aiTuning) {
+      if (!s.ai) issue(['aiTuning'], 'ai-tuning.yaml needs an ai.yaml beside it');
+      if (!(s.aiTuning.default in s.aiTuning.profiles)) {
+        issue(['aiTuning', 'default'], `Unknown profile "${s.aiTuning.default}"`);
+      }
+      for (const [name, profile] of Object.entries(s.aiTuning.profiles)) {
+        const at: Path = ['aiTuning', 'profiles', name];
+        for (const country of Object.keys(profile.countries ?? {})) {
+          if (!computer.has(country))
+            issue([...at, 'countries', country], `"${country}" has no personality`);
+        }
+        for (const action of Object.keys(profile.actions ?? {})) {
+          need('decision', [...at, 'actions', action], action);
+        }
+      }
+    }
   });
 
 export type RawScenario = z.infer<typeof scenarioSchema>;

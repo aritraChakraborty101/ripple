@@ -1,6 +1,6 @@
 /** Plain-language descriptions of decisions, relations and moods for the UI. */
 
-import type { DecisionDef, GameState } from '@ripple/engine';
+import { isFor, type DecisionDef, type GameState } from '@ripple/engine';
 
 /** The costs paid on signing, for example ["30 bn", "8 influence"]. */
 export function describeCosts(state: GameState, def: DecisionDef): string[] {
@@ -67,6 +67,15 @@ function countriesTouched(game: GameState, effect: DecisionDef['effects'][number
   return [];
 }
 
+/** The orders the player can give, in ID order. Computer countries' orders are left out. */
+export function playerDecisions(game: GameState): DecisionDef[] {
+  const me = game.rules.playerCountry;
+  return Object.keys(game.defs.decisions)
+    .sort()
+    .map((id) => game.defs.decisions[id]!)
+    .filter((def) => isFor(game, def, me));
+}
+
 /**
  * Decisions that concern a country: those whose effects change relations with
  * it or routes to and from it. The player's own country is excluded, since
@@ -74,12 +83,9 @@ function countriesTouched(game: GameState, effect: DecisionDef['effects'][number
  */
 export function decisionsConcerning(game: GameState, countryId: string): DecisionDef[] {
   if (countryId === game.rules.playerCountry) return [];
-  return Object.keys(game.defs.decisions)
-    .sort()
-    .map((id) => game.defs.decisions[id]!)
-    .filter((def) =>
-      [...def.costs, ...def.effects, ...def.failureEffects].some((e) =>
-        countriesTouched(game, e).includes(countryId),
-      ),
-    );
+  return playerDecisions(game).filter((def) =>
+    [...def.costs, ...def.effects, ...def.failureEffects].some((e) =>
+      countriesTouched(game, e).includes(countryId),
+    ),
+  );
 }

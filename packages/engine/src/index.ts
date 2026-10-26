@@ -3,12 +3,13 @@ export {
   createGame,
   lastDay,
   setChokepointOpen,
+  type GameOptions,
   type GameOutcome,
   type GameState,
   type PendingDecision,
 } from './state';
 export { step, run, type StepResult } from './step';
-export { applyOrders, canIssue, type Availability, type Order } from './orders';
+export { applyOrders, availabilityOf, canIssue, type Availability, type Order } from './orders';
 export type { EngineEvent } from './events';
 export {
   DAYS_PER_MONTH,
@@ -50,6 +51,7 @@ export {
   type LinkDef,
   type RelationDef,
   type ResourceDef,
+  type ScenarioAi,
   type ScenarioDef,
   type ScenarioRules,
 } from './scenario';
@@ -97,3 +99,4 @@ export {
   type Trace,
   type WhyNode,
 } from './why';
+export * from './ai';

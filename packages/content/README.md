@@ -20,6 +20,8 @@ Each folder in `scenarios/` is one scenario:
 | `briefing.yaml`    | the opening briefing and the country the first steps point at      |
 | `advisor.yaml`     | advisor tips: when each appears and which orders it recommends     |
 | `map.yaml`         | how the world is drawn: country shapes and chokepoint positions    |
+| `ai.yaml`          | what each computer country wants: goals, aspirations, ambitions    |
+| `ai-tuning.yaml`   | named tuning profiles that change how strongly countries behave    |
 
 ## Writing events and decisions
 
@@ -63,6 +65,43 @@ Each condition or effect is a mapping with one key that names it.
 ```
 
 Each tip appears once per game, one at a time, the first time its `when` holds and at least one suggested order can be signed. Conditions use the event vocabulary except `chance`. Every suggested order, country and stat is checked when the guide loads.
+
+## Computer countries
+
+`ai.yaml` says what each computer country wants. A goal's `weight` is how much the country cares (weights add up to 100), and `aspire` is where it wants the goal to be. The gap to `aspire` is a standing **need**, so countries have reasons to act even in a calm world.
+
+```yaml
+personalities:
+  corvan:
+    goals:
+      wealth: { weight: 35, aspire: 250 } # treasury, bn
+      grievance(aldoria): { weight: 30 } # grows as relations sour
+      ties(thessa): { weight: 20, aspire: 60 } # relations
+      standing: { weight: 15, aspire: 50 } # influence
+    ambitions:
+      - { id: strait_pays, name: Make the strait pay, goal: wealth, target: 250 }
+```
+
+Goals: `wealth`, `standing`, `security`, `prices(resource)`, `ties(country)`, `grievance(country)`. An unmet ambition's goal counts 1.5 times as much.
+
+Computer orders are written like the player's, plus `for` (which countries may sign them, or `any`), `drives` (which goals they move, from -5 to 5) and `consider` (how the situation changes their appeal). With `targets`, an order is a **template** aimed at each target in turn, written with `self` and `target`:
+
+```yaml
+- id: court
+  name: '{self} courts {target}'
+  for: any
+  targets: others
+  drives: { ties(target): 2, standing: 1 }
+  consider:
+    - relation: [self, target]
+      falls: [40, 90] # full appeal at 40, none at 90
+  costs:
+    - adjust: { target: country.self.influence, by: -5 }
+```
+
+A consideration has one measure (`stat`, `relation`, `price` or `flag`) and one curve (`rises: [from, to]`, `falls: [from, to]`, `peaks: [from, peak, to]` or `step: at`).
+
+`ai-tuning.yaml` holds profiles of knobs, such as `aggressive: { inertia: 15, hostility: 1.5 }`. Its comments list every knob and its default.
 
 ## The map
 
