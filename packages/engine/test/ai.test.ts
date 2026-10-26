@@ -22,7 +22,7 @@ const peace = (): GameState => createGame(aiScenario, 1);
 const crisis = (): GameState => ({
   ...createGame(crisisScenario, 1),
   tick: 10,
-  lastIssued: { raise_fees: 0 },
+  lastIssued: { 'strait:raise_fees': 0 },
 });
 
 const byOption = (reports: readonly ScoreReport[]) =>

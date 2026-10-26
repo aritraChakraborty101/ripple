@@ -233,13 +233,14 @@ export const scenarioSchema = z
         need('country', ['events', i, 'tag'], e.tag);
       }
       if (e.trigger) checkCondition(['events', i, 'trigger'], e.trigger);
+      if (e.requires) checkCondition(['events', i, 'requires'], e.requires);
       e.effects.forEach((x, j) => checkEffect(['events', i, 'effects', j], x));
     });
 
     s.decisions.forEach((d, i) => {
       const at: Path = ['decisions', i];
       if (d.for === undefined) {
-        for (const key of ['targets', 'drives', 'consider'] as const) {
+        for (const key of ['targets', 'drives', 'consider', 'severity', 'detail'] as const) {
           if (d[key] !== undefined)
             issue([...at, key], `Only computer orders (with "for") have ${key}`);
         }

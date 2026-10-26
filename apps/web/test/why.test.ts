@@ -11,6 +11,7 @@ import {
   questionFor,
   relationRefWith,
   rootOf,
+  whyOfDispatch,
   type WhyTarget,
 } from '../src/game/why';
 
@@ -22,9 +23,9 @@ function playTo(seed: number, tick: number): Session {
   return session;
 }
 
-// The golden game: by day 250 the fishing dispute has closed the strait and
+// The golden game: by day 230 Corvan has chosen to close the strait and
 // stability has collapsed. Played once and shared, since it takes a moment.
-const session = playTo(4, 250);
+const session = playTo(3, 230);
 const game: GameState = session.game;
 const me = game.rules.playerCountry;
 const stability: WhyTarget = {
@@ -78,6 +79,15 @@ describe('why-trace chain', () => {
     }
   });
 
+  it('passes through Corvan choosing to close the strait, and says why', () => {
+    const choice = chain.find((n) => n.type === 'decision' && n.by === 'corvan');
+    expect(choice).toBeDefined();
+    const text = describeNode(game, choice!);
+    expect(text.title).toBe('Corvan closes the South Strait to shipping');
+    expect(text.note).toMatch(/^Corvan's choice: driven by /);
+    expect(childrenOf(game, choice!).length).toBeGreaterThan(0);
+  });
+
   it('leaves out the bookkeeping steps', () => {
     for (const node of chain) {
       expect(['mood', 'pressure', 'system']).not.toContain(node.type);
@@ -92,13 +102,14 @@ describe('why-trace chain', () => {
 });
 
 describe('dispatches', () => {
-  it('carry the event behind world news, so it can be asked about', () => {
+  it('carry the event or choice behind world news, so it can be asked about', () => {
     const world = session.dispatches.filter((d) => d.source === 'world');
-    expect(world.length).toBeGreaterThan(0);
+    expect(world.some((d) => d.event)).toBe(true);
+    expect(world.some((d) => d.choice)).toBe(true);
     for (const d of world) {
-      expect(d.event).toBeDefined();
-      const root = rootOf(game, { kind: 'event', event: d.event!, tick: d.tick });
-      expect(root.type).toBe('event');
+      const target = whyOfDispatch(d);
+      expect(target, d.headline).not.toBeNull();
+      expect(['event', 'decision']).toContain(rootOf(game, target!).type);
     }
   });
 });

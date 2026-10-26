@@ -16,7 +16,7 @@ import {
   type GameState,
   type Severity,
 } from '@ripple/engine';
-import { formatDate, formatPrice } from './format';
+import { fillNames, formatDate, formatPrice } from './format';
 
 export type { Severity };
 
@@ -35,6 +35,8 @@ export interface Dispatch {
   readonly country?: string;
   /** The world event behind this news, for asking why it happened. */
   readonly event?: string;
+  /** The computer country's choice behind this news, for asking why it did it. */
+  readonly choice?: { readonly decision: string; readonly country: string; readonly tick: number };
 }
 
 export const BAND_PERCENT = 10;
@@ -109,6 +111,8 @@ function eventDraft(state: GameState, event: EngineEvent): DispatchDraft | null 
       };
     }
     case 'decision_issued': {
+      // Computer countries' orders are reported when they take effect.
+      if (event.by !== state.rules.playerCountry) return null;
       const def = state.defs.decisions[event.decision];
       if (!def || def.durationDays < REPORT_SIGNING_FROM_DAYS) return null;
       return {
@@ -123,6 +127,22 @@ function eventDraft(state: GameState, event: EngineEvent): DispatchDraft | null 
     case 'decision_resolved': {
       const def = state.defs.decisions[event.decision];
       if (!def) return null;
+      if (event.by !== state.rules.playerCountry) {
+        // A computer country acted: world news about that country, unless it failed quietly.
+        if (!event.success) return null;
+        const fill = (text: string) =>
+          fillNames(text, state.world.countries, event.by, event.target);
+        return {
+          tick: event.tick,
+          tag: tagLabel(state, event.by),
+          severity: def.severity ?? 'info',
+          headline: fill(def.successHeadline),
+          ...(def.detail ? { detail: fill(def.detail) } : {}),
+          source: 'world',
+          country: event.by,
+          choice: { decision: def.id, country: event.by, tick: event.issuedTick },
+        };
+      }
       return {
         tick: event.tick,
         tag: 'Your orders',

@@ -7,6 +7,11 @@
 #   cooperation    1    multiplier on ties goals
 #   ambitionBoost  1.5  multiplier on a country's current ambition
 #   compensation   true make up for actions with many considerations
+#   attention      0.2  daily chance of acting, in % per point of urgency
+#   maxDailyChance 50   the most a country's daily chance can be, in %
+#   noticeBoost    3    attention multiplier while something has just touched a country
+#   noticeDays     7    how long noticing lasts
+#   restDays       5    days a country rests after acting
 #
 # Per country:  countries: { corvan: { weights: { wealth: 10 } } }
 # Per action:   actions: { corvan_close_strait: { enabled: false, scoreMultiplier: 0.5 } }
@@ -14,6 +19,6 @@
 default: standard
 
 profiles:
-  standard: {}
-  passive: { inertia: 40, hostility: 0.6 }
-  aggressive: { inertia: 15, hostility: 1.5, temperature: 0.5 }
+  standard: { inertia: 22 }
+  passive: { inertia: 30, hostility: 0.8, attention: 0.15 }
+  aggressive: { inertia: 15, hostility: 1.5, temperature: 0.5, attention: 0.4 }

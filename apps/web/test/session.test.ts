@@ -14,8 +14,10 @@ import {
 } from '../src/game/session';
 
 const scenario = loadBuiltInScenario('first-crisis');
-/** No world events, for tests that need a predictable world. */
-const quiet: ScenarioDef = { ...scenario, events: [] };
+/** No world events and no computer countries acting, for tests that need a predictable world. */
+const { ai, ...withoutAi } = scenario;
+void ai;
+const quiet: ScenarioDef = { ...withoutAi, events: [] };
 
 function days(session: Session, count: number): Session {
   let current = session;
@@ -116,10 +118,10 @@ describe('session', () => {
   });
 
   it('pauses the clock and reports when the game ends', () => {
-    // Seed 4, left alone, is ousted on day 273.
-    let session = setPaused(newSession(scenario, 4), false);
+    // Seed 3, left alone, is ousted on day 246.
+    let session = setPaused(newSession(scenario, 3), false);
     while (!session.game.outcome) session = tickSession(session);
-    expect(session.game.outcome).toEqual({ result: 'ousted', tick: 273 });
+    expect(session.game.outcome).toEqual({ result: 'ousted', tick: 246 });
     expect(session.clock.paused).toBe(true);
     expect(session.dispatches[0]!.headline).toBe('The government falls after weeks of unrest');
     expect(session.tallies.crises).toBeGreaterThan(0);

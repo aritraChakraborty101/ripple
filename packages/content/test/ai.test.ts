@@ -1,4 +1,4 @@
-import { createGame, rank, urgency } from '@ripple/engine';
+import { createGame, rank } from '@ripple/engine';
 import { describe, expect, it } from 'vitest';
 import { ContentError, parseScenario } from '../src/index';
 import { loadBuiltInScenario } from '../src/load';
@@ -109,15 +109,27 @@ describe('first-crisis personalities', () => {
       inertia: 1_500,
       hostility: 15_000,
       temperature: 5_000,
+      attention: 40,
     });
-    expect(createGame(scenario, 1, { aiProfile: 'passive' }).defs.ai!.tuning.inertia).toBe(4_000);
+    expect(createGame(scenario, 1).defs.ai!.tuning.inertia).toBe(2_200);
+    expect(createGame(scenario, 1, { aiProfile: 'passive' }).defs.ai!.tuning.inertia).toBe(3_000);
   });
 
-  it('has no computer orders yet, so every country prefers doing nothing', () => {
+  it('gives every computer country orders, and a calm opening', () => {
     const state = createGame(scenario, 1);
     for (const country of ['corvan', 'thessa', 'veskar', 'orrin']) {
-      expect(rank(state, country).map((r) => r.decision)).toEqual(['nothing']);
-      expect(urgency(state, country)).toBe(0);
+      expect(rank(state, country).length, country).toBeGreaterThan(1);
+    }
+    // Hostile moves build up over the opening months: on day 0 nothing hostile beats inertia.
+    const hostile = [
+      'corvan_raise_fees',
+      'corvan_detain_tanker',
+      'corvan_close_strait',
+      'denounce_aldoria',
+    ];
+    const inertia = state.defs.ai!.tuning.inertia;
+    for (const r of rank(state, 'corvan')) {
+      if (hostile.includes(r.decision)) expect(r.score, r.decision).toBeLessThanOrEqual(inertia);
     }
   });
 });
@@ -190,7 +202,7 @@ describe('computer orders in YAML', () => {
     ]);
     expect(
       withChange((r) => (r.decisions[0].consider = [{ price: 'oil', flag: 'x', step: 1 }]))[0],
-    ).toMatch(/exactly one of stat, relation, price or flag/);
+    ).toMatch(/exactly one of stat, relation, price, flag or day/);
   });
 
   it('reserves self and target as country IDs', () => {
@@ -243,8 +255,8 @@ describe('tuning profiles in YAML', () => {
     ).toEqual(['aiTuning.profiles.edgy.actions.fly: Unknown decision "fly"']);
   });
 
-  it('rejects knobs that do not exist yet', () => {
-    expect(withChange((r) => (r.aiTuning.profiles.edgy.attention = 0.4))[0]).toMatch(
+  it('rejects knobs that do not exist', () => {
+    expect(withChange((r) => (r.aiTuning.profiles.edgy.mood = 0.4))[0]).toMatch(
       /^aiTuning\.profiles\.edgy/,
     );
   });

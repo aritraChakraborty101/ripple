@@ -49,3 +49,16 @@ export const ARCHETYPE_LABELS: Record<string, string> = {
   transit_state: 'Transit state',
   rising_power: 'Rising power',
 };
+
+/** Fill a computer order's {self} and {target} with country names. */
+export function fillNames(
+  text: string,
+  countries: Readonly<Record<string, { readonly name: string }>>,
+  self: string,
+  target?: string,
+): string {
+  const name = (id: string) => countries[id]?.name ?? id;
+  return text
+    .replaceAll('{self}', name(self))
+    .replaceAll('{target}', target === undefined ? '' : name(target));
+}

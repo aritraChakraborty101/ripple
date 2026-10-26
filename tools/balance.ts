@@ -7,8 +7,12 @@
  *
  * A healthy scenario punishes the idle player and rewards the steady one.
  *
- *   pnpm balance                    # 200 games of first-crisis
- *   pnpm balance first-crisis 500   # scenario and number of games
+ * It also reports what the computer countries chose, and how often.
+ *
+ *   pnpm balance                               # 200 games of first-crisis
+ *   pnpm balance first-crisis 500              # scenario and number of games
+ *   pnpm balance --ai aggressive               # use a tuning profile
+ *   pnpm balance --compare passive,standard,aggressive
  */
 
 import { loadBuiltInScenario } from '@ripple/content/node';
@@ -51,36 +55,45 @@ interface GameSummary {
   readonly finalStability: number;
   readonly finalTreasury: number;
   readonly straitClosures: number;
+  /** The day a strait first closed, if one did. */
+  readonly firstClosure: number | null;
+  /** The player's orders. */
   readonly decisions: number;
+  /** Computer countries' choices, as "country:decision". */
+  readonly choices: readonly string[];
 }
 
-function play(scenarioName: string, seed: number, player: Player): GameSummary {
+function play(scenarioName: string, seed: number, player: Player, aiProfile?: string): GameSummary {
   const scenario = loadBuiltInScenario(scenarioName);
-  let state = createGame(scenario, seed);
+  let state = createGame(scenario, seed, aiProfile ? { aiProfile } : {});
+  const me = state.rules.playerCountry;
   let straitClosures = 0;
+  let firstClosure: number | null = null;
   let decisions = 0;
   while (!state.outcome) {
-    const orders: Order[] = player(state).map((decision) => ({
-      kind: 'decide',
-      decision,
-      by: state.rules.playerCountry,
-    }));
+    const orders: Order[] = player(state).map((decision) => ({ kind: 'decide', decision, by: me }));
+    const before = state;
     const result = step(state, orders);
     state = result.state;
-    for (const event of result.events) {
-      if (event.kind === 'event_fired' && event.event.endsWith('closes_strait'))
+    for (const id of Object.keys(state.world.chokepoints)) {
+      if (before.world.chokepoints[id]!.open && !state.world.chokepoints[id]!.open) {
         straitClosures += 1;
-      if (event.kind === 'decision_issued') decisions += 1;
+        firstClosure ??= before.tick;
+      }
+    }
+    for (const event of result.events) {
+      if (event.kind === 'decision_issued' && event.by === me) decisions += 1;
     }
   }
-  const me = state.rules.playerCountry;
   return {
     result: state.outcome.result,
     day: state.outcome.tick,
     finalStability: effectiveStat(state, { kind: 'country', id: me, stat: 'stability' }),
     finalTreasury: effectiveStat(state, { kind: 'country', id: me, stat: 'treasury' }),
     straitClosures,
+    firstClosure,
     decisions,
+    choices: state.trace.choices.map((c) => `${c.country}:${c.decision}`),
   };
 }
 
@@ -118,19 +131,53 @@ function report(label: string, games: GameSummary[]): void {
       50,
     )} bn`,
   );
-  console.log(`  decisions per game:    ${avg(games.map((g) => g.decisions))}`);
+  const closures = games.map((g) => g.firstClosure).filter((d): d is number => d !== null);
+  if (closures.length > 0) {
+    console.log(
+      `  first closure:         median day ${percentile(closures, 50)}, earliest ${percentile(closures, 0)}`,
+    );
+  }
+  console.log(`  your orders per game:  ${avg(games.map((g) => g.decisions))}`);
+
+  // What the computer countries chose, per game on average.
+  const counts = new Map<string, number>();
+  for (const g of games) for (const c of g.choices) counts.set(c, (counts.get(c) ?? 0) + 1);
+  const byCountry = new Map<string, [string, number][]>();
+  for (const [key, n] of counts) {
+    const [country, decision] = key.split(':') as [string, string];
+    byCountry.set(country, [...(byCountry.get(country) ?? []), [decision, n]]);
+  }
+  if (byCountry.size > 0) console.log('  computer choices per game:');
+  for (const country of [...byCountry.keys()].sort()) {
+    const list = byCountry.get(country)!.sort((a, b) => b[1] - a[1]);
+    const total = list.reduce((sum, [, n]) => sum + n, 0);
+    const parts = list.map(([d, n]) => `${d} ${(n / games.length).toFixed(1)}`).join(', ');
+    console.log(
+      `    ${country.padEnd(8)} ${(total / games.length).toFixed(1).padStart(4)}  (${parts})`,
+    );
+  }
 }
 
-const scenarioName = process.argv[2] ?? 'first-crisis';
-const count = Number(process.argv[3] ?? 200);
+const args = process.argv.slice(2);
+const flag = (name: string) => {
+  const i = args.indexOf(`--${name}`);
+  return i === -1 ? undefined : args.splice(i, 2)[1];
+};
+const profile = flag('ai');
+const compare = flag('compare')?.split(',');
+const scenarioName = args[0] ?? 'first-crisis';
+const count = Number(args[1] ?? 200);
 const seeds = Array.from({ length: count }, (_, i) => i + 1);
 
 console.log(`Balance report: ${scenarioName}`);
-report(
-  'Idle player',
-  seeds.map((seed) => play(scenarioName, seed, idle)),
-);
-report(
-  'Steady player',
-  seeds.map((seed) => play(scenarioName, seed, steady)),
-);
+for (const name of compare ?? [profile]) {
+  const suffix = name ? `, ${name} AI` : '';
+  report(
+    `Idle player${suffix}`,
+    seeds.map((seed) => play(scenarioName, seed, idle, name)),
+  );
+  report(
+    `Steady player${suffix}`,
+    seeds.map((seed) => play(scenarioName, seed, steady, name)),
+  );
+}

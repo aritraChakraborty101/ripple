@@ -12,7 +12,10 @@ import {
 
 const scenario = loadBuiltInScenario('first-crisis');
 const guide = loadBuiltInGuide('first-crisis', scenario);
-const quiet: ScenarioDef = { ...scenario, events: [] };
+/** No world events and no computer countries acting, for tests that need a predictable world. */
+const { ai, ...withoutAi } = scenario;
+void ai;
+const quiet: ScenarioDef = { ...withoutAi, events: [] };
 
 function days(session: Session, count: number): Session {
   let current = session;

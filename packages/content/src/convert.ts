@@ -101,7 +101,8 @@ export function toConsideration(c: RawConsideration): Consideration {
   if (c.stat !== undefined) measure = { kind: 'stat', ref: statRef(c.stat) };
   else if (c.relation !== undefined) measure = { kind: 'relation', between: c.relation };
   else if (c.price !== undefined) measure = { kind: 'price', resource: c.price };
-  else measure = { kind: 'flag', flag: c.flag! };
+  else if (c.flag !== undefined) measure = { kind: 'flag', flag: c.flag };
+  else measure = { kind: 'day' };
   let curve: Curve;
   if (c.rises) curve = { type: 'rises', from: c.rises[0], to: c.rises[1] };
   else if (c.falls) curve = { type: 'falls', from: c.falls[0], to: c.falls[1] };
@@ -131,6 +132,13 @@ export function toTuning(p: RawTuningProfile): TuningOverrides {
     ...(p.cooperation !== undefined ? { cooperation: basisPoints(p.cooperation) } : {}),
     ...(p.ambitionBoost !== undefined ? { ambitionBoost: basisPoints(p.ambitionBoost) } : {}),
     ...(p.compensation !== undefined ? { compensation: p.compensation } : {}),
+    ...(p.attention !== undefined ? { attention: Math.round(p.attention * 100) } : {}),
+    ...(p.maxDailyChance !== undefined
+      ? { maxDailyChance: Math.round(p.maxDailyChance * 100) }
+      : {}),
+    ...(p.noticeBoost !== undefined ? { noticeBoost: basisPoints(p.noticeBoost) } : {}),
+    ...(p.noticeDays !== undefined ? { noticeDays: p.noticeDays } : {}),
+    ...(p.restDays !== undefined ? { restDays: p.restDays } : {}),
     ...(p.countries ? { countries: p.countries } : {}),
     ...(p.actions ? { actions } : {}),
   };
@@ -166,6 +174,7 @@ export function toScenarioDef(s: RawScenario): ScenarioDef {
     headline: e.headline,
     ...(e.detail !== undefined ? { detail: e.detail } : {}),
     trigger: e.trigger ? toCondition(e.trigger) : null,
+    ...(e.requires ? { requires: toCondition(e.requires) } : {}),
     once: e.once,
     cooldownDays: e.cooldownDays,
     effects: e.effects.map(toEffect),
@@ -186,6 +195,8 @@ export function toScenarioDef(s: RawScenario): ScenarioDef {
     successHeadline: d.successHeadline,
     ...(d.failureHeadline !== undefined ? { failureHeadline: d.failureHeadline } : {}),
     ...(d.policyFlag !== undefined ? { policyFlag: d.policyFlag } : {}),
+    ...(d.severity !== undefined ? { severity: d.severity } : {}),
+    ...(d.detail !== undefined ? { detail: d.detail } : {}),
     ...(d.for !== undefined ? { for: d.for } : {}),
     ...(d.targets !== undefined ? { targets: d.targets } : {}),
     ...(d.drives !== undefined ? { drives: d.drives } : {}),

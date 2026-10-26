@@ -51,6 +51,7 @@ export const worldEventSystem: System = {
       for (const item of due) {
         const def = current.defs.events[item.event];
         if (!def) continue;
+        if (def.requires && !evaluate(current, def.requires).value) continue;
         current = fire(current, def, [], item.cause);
         events.push({ kind: 'event_fired', tick: state.tick, event: def.id, scheduled: true });
       }
@@ -59,6 +60,7 @@ export const worldEventSystem: System = {
     for (const id of sortedIds(current.defs.events)) {
       const def = current.defs.events[id]!;
       if (!def.trigger || onCooldown(current, def)) continue;
+      if (def.requires && !evaluate(current, def.requires).value) continue;
       const result = evaluate(current, def.trigger);
       current = result.state;
       if (!result.value) continue;

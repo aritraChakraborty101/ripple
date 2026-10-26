@@ -61,6 +61,16 @@ export const tuningProfileSchema = z.strictObject({
   ambitionBoost: factor.optional(),
   /** Make up for multiplying many considerations. Default true. */
   compensation: z.boolean().optional(),
+  /** Daily chance of acting per point of urgency, in percent. Default 0.2. */
+  attention: factor.optional(),
+  /** The most a country's daily chance of acting can be, in percent. Default 50. */
+  maxDailyChance: z.number().min(0).max(100).optional(),
+  /** Multiplier on attention while a country notices something that touched it. Default 3. */
+  noticeBoost: factor.optional(),
+  /** Days noticing lasts. Default 7. */
+  noticeDays: z.int().nonnegative().optional(),
+  /** Days a country rests after acting. Default 5. */
+  restDays: z.int().nonnegative().optional(),
   countries: z
     .record(id, z.strictObject({ weights: z.record(goalId, z.int().min(0).max(100)) }))
     .optional(),

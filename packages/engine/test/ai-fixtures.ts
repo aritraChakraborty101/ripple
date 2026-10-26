@@ -68,7 +68,15 @@ export const aiScenario: ScenarioDef = {
   events: [],
   decisions: [
     order({ id: 'player_only' }),
-    order({ id: 'raise_fees', for: ['strait'], drives: { wealth: 3 } }),
+    order({
+      id: 'raise_fees',
+      for: ['strait'],
+      drives: { wealth: 3 },
+      effects: [
+        { type: 'adjust', target: { kind: 'country', id: 'self', stat: 'treasury' }, by: 30 },
+        { type: 'adjust', target: homeStraitRef, by: -5 },
+      ],
+    }),
     order({
       id: 'court',
       for: 'any',
@@ -82,6 +90,15 @@ export const aiScenario: ScenarioDef = {
       ],
       costs: [
         { type: 'adjust', target: { kind: 'country', id: 'self', stat: 'influence' }, by: -5 },
+      ],
+      effects: [
+        {
+          type: 'modify',
+          target: { kind: 'relation', id: 'self__target', stat: 'value' },
+          op: 'add',
+          amount: 12,
+          days: 180,
+        },
       ],
     }),
     order({ id: 'detain', for: ['strait'], drives: { 'grievance(home)': 1, standing: 1 } }),

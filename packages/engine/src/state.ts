@@ -1,4 +1,5 @@
 import { DEFAULT_TUNING, mergeTuning, type TuningOverrides } from './ai/tuning';
+import type { AttentionState } from './ai/plan';
 import type { AiDef } from './ai/types';
 import type { Modifier } from './modifiers';
 import { seedRng, type RngState } from './rng';
@@ -12,6 +13,8 @@ export interface PendingDecision {
   readonly id: string;
   readonly decision: string;
   readonly by: string;
+  /** For templates: the country it is aimed at. */
+  readonly target?: string;
   readonly issuedTick: number;
   readonly dueTick: number;
 }
@@ -28,7 +31,7 @@ export interface GameOutcome {
  * and compared in tests.
  */
 export interface GameState {
-  readonly version: 4;
+  readonly version: 5;
   readonly scenarioId: string;
   readonly rules: ScenarioRules;
   /** Event and decision definitions from the scenario, by ID. */
@@ -51,7 +54,7 @@ export interface GameState {
   readonly lastFired: Readonly<Record<string, number>>;
   /** Events waiting to fire, in the order they were scheduled. */
   readonly scheduled: readonly ScheduledEvent[];
-  /** Tick each decision was last issued. */
+  /** Tick each decision was last issued, by country (keys from `issuedKey`). */
   readonly lastIssued: Readonly<Record<string, number>>;
   readonly pending: readonly PendingDecision[];
   readonly nextPendingId: number;
@@ -61,6 +64,8 @@ export interface GameState {
   readonly outcome: GameOutcome | null;
   /** Causal records for the why-trace: what fired and why, and what changed what. */
   readonly trace: Trace;
+  /** Each computer country's attention: when it last acted, and whether it is noticing something. */
+  readonly attention: Readonly<Record<string, AttentionState>>;
 }
 
 export interface GameOptions {
@@ -91,7 +96,7 @@ export function createGame(
     throw new Error(`Player country "${scenario.rules.playerCountry}" is not in the scenario`);
   }
   return {
-    version: 4,
+    version: 5,
     scenarioId: scenario.id,
     rules: scenario.rules,
     defs: {
@@ -114,6 +119,7 @@ export function createGame(
     lowStabilityTicks: 0,
     outcome: null,
     trace: emptyTrace,
+    attention: {},
   };
 }
 

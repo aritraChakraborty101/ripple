@@ -18,10 +18,11 @@ export {
   currentAmbition,
   goalMeasure,
   goalNeed,
+  goalRef,
   parseGoalId,
   type ParsedGoal,
 } from './goals';
-export { measureLabel, readMeasure } from './measures';
+export { measureLabel, measureRef, readMeasure } from './measures';
 export {
   PLACEHOLDERS,
   SELF,
@@ -43,3 +44,13 @@ export type {
   Personality,
   Tuning,
 } from './types';
+export { NOTICE_RELATION_CHANGE, notice } from './attention';
+export {
+  FRESH_ATTENTION,
+  dailyChance,
+  isFree,
+  planOrders,
+  worthTaking,
+  type AttentionState,
+  type Plan,
+} from './plan';

@@ -1,5 +1,6 @@
 import { formatShortDate } from '../game/format';
 import type { Dispatch } from '../game/news';
+import { whyOfDispatch } from '../game/why';
 import { useWhy } from './WhyContext';
 
 interface Props {
@@ -34,15 +35,15 @@ export function Dispatches({ dispatches, onSelectCountry }: Props) {
             </div>
             <h3>{d.headline}</h3>
             {d.detail && <p>{d.detail}</p>}
-            {(d.event || d.country) && (
+            {(whyOfDispatch(d) || d.country) && (
               <div className="dispatch-links">
-                {d.event && (
+                {whyOfDispatch(d) && (
                   <button
                     type="button"
                     className="text-button inline"
-                    onClick={() => why({ kind: 'event', event: d.event!, tick: d.tick })}
+                    onClick={() => why(whyOfDispatch(d)!)}
                   >
-                    Why did this happen?
+                    {d.choice ? `Why did ${d.tag} do this?` : 'Why did this happen?'}
                   </button>
                 )}
                 {d.country && (

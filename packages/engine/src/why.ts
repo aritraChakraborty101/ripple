@@ -21,6 +21,7 @@
  */
 
 import { sameTarget, statBreakdown, type ModifierSource, type StatRef } from './modifiers';
+import type { AppealPart, GoalPart } from './ai/clearing-house';
 import { evaluate, type Condition } from './rules';
 import type { GameState } from './state';
 import { SYSTEMS } from './systems';
@@ -119,8 +120,13 @@ export type WhyNode =
   | FlagWhy
   /** An event that fired; expand it with `explainEvent`. */
   | { readonly type: 'event'; readonly event: string; readonly tick: number }
-  /** An order the player signed. */
-  | { readonly type: 'decision'; readonly decision: string; readonly tick: number }
+  /** An order a country signed: the player, or a computer country (expand with `explainChoice`). */
+  | {
+      readonly type: 'decision';
+      readonly decision: string;
+      readonly tick: number;
+      readonly by?: string;
+    }
   /** Part of the starting situation. */
   | { readonly type: 'start' }
   /** A mechanic with no further explanation. */
@@ -143,9 +149,32 @@ export interface Adjustment {
   readonly source: ModifierSource;
 }
 
+/** Why a computer country chose what it did, recorded the moment it chose. */
+export interface ChoiceRecord {
+  readonly country: string;
+  readonly decision: string;
+  readonly target?: string;
+  readonly tick: number;
+  /** In hundredths of a point, like the clearing house's reports. */
+  readonly score: number;
+  readonly ambition?: string;
+  /** Each goal's share of the value: weight x need x drive. */
+  readonly goals: readonly GoalPart[];
+  readonly appeal: readonly AppealPart[];
+  /** The next best option it passed over, if any. */
+  readonly runnerUp: {
+    readonly decision: string;
+    readonly target?: string;
+    readonly score: number;
+  } | null;
+  /** The stats behind its goals and considerations, explained at that moment. */
+  readonly because: readonly WhyNode[];
+}
+
 /** Causal records the engine keeps while the game runs. Plain data, saved with the game. */
 export interface Trace {
   readonly firings: readonly FiringRecord[];
+  readonly choices: readonly ChoiceRecord[];
   readonly adjustments: readonly Adjustment[];
   /** What last opened or closed each chokepoint. */
   readonly chokepointBy: Readonly<Record<string, ModifierSource>>;
@@ -153,7 +182,13 @@ export interface Trace {
   readonly flagBy: Readonly<Record<string, ModifierSource>>;
 }
 
-export const emptyTrace: Trace = { firings: [], adjustments: [], chokepointBy: {}, flagBy: {} };
+export const emptyTrace: Trace = {
+  firings: [],
+  choices: [],
+  adjustments: [],
+  chokepointBy: {},
+  flagBy: {},
+};
 
 /** How far a live explanation follows causes before stopping. */
 export const MAX_DEPTH = 9;
@@ -170,7 +205,9 @@ export function sourceNode(source: ModifierSource): WhyNode {
     case 'event':
       return { type: 'event', event: source.id, tick: source.tick };
     case 'decision':
-      return { type: 'decision', decision: source.id, tick: source.tick };
+      return source.by === undefined
+        ? { type: 'decision', decision: source.id, tick: source.tick }
+        : { type: 'decision', decision: source.id, tick: source.tick, by: source.by };
     case 'scenario':
       return { type: 'start' };
     case 'system':
@@ -343,4 +380,16 @@ export function explainEvent(
   tick: number,
 ): FiringRecord | undefined {
   return state.trace.firings.find((f) => f.event === event && f.tick === tick);
+}
+
+/** Why a computer country made a decision, as recorded when it chose. */
+export function explainChoice(
+  state: GameState,
+  decision: string,
+  tick: number,
+  country: string,
+): ChoiceRecord | undefined {
+  return state.trace.choices.find(
+    (c) => c.decision === decision && c.tick === tick && c.country === country,
+  );
 }

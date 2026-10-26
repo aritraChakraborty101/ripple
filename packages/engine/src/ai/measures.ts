@@ -4,7 +4,7 @@
  * `Measure`; goals and considerations can then use it from content.
  */
 
-import { effectiveStat } from '../modifiers';
+import { effectiveStat, type StatRef } from '../modifiers';
 import type { GameState } from '../state';
 import { relationId } from '../world';
 import type { Measure } from './types';
@@ -29,6 +29,7 @@ const READERS: { readonly [K in Measure['kind']]: Reader<K> } = {
     return Math.trunc(((price - resource.basePrice) * 100) / resource.basePrice);
   },
   flag: (state, m) => (state.flags.includes(m.flag) ? 1 : 0),
+  day: (state) => state.tick,
 };
 
 /** Read a measure. Placeholders must already be bound. */
@@ -47,5 +48,26 @@ export function measureLabel(measure: Measure): string {
       return `price(${measure.resource})`;
     case 'flag':
       return `flag(${measure.flag})`;
+    case 'day':
+      return 'day';
+  }
+}
+
+/** The stat behind a measure, so the why-trace can explain it; null for flags. */
+export function measureRef(measure: Measure): StatRef | null {
+  switch (measure.kind) {
+    case 'stat':
+      return measure.ref;
+    case 'relation':
+      return {
+        kind: 'relation',
+        id: relationId(measure.between[0], measure.between[1]),
+        stat: 'value',
+      };
+    case 'price':
+      return { kind: 'resource', id: measure.resource, stat: 'price' };
+    case 'flag':
+    case 'day':
+      return null;
   }
 }

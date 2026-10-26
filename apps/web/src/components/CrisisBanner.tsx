@@ -1,6 +1,7 @@
 import { formatShortDate } from '../game/format';
 import type { Dispatch } from '../game/news';
 import { actions } from '../game/store';
+import { whyOfDispatch } from '../game/why';
 import { useWhy } from './WhyContext';
 
 interface Props {
@@ -12,6 +13,7 @@ interface Props {
 /** A crisis interrupts you over the map, so you never miss one at 5× speed. */
 export function CrisisBanner({ alert, paused, onRespond }: Props) {
   const why = useWhy();
+  const cause = whyOfDispatch(alert);
   return (
     <div className="crisis" role="alert">
       <div className="crisis-text">
@@ -26,12 +28,8 @@ export function CrisisBanner({ alert, paused, onRespond }: Props) {
         <button type="button" className="button primary" onClick={onRespond}>
           See what you can do
         </button>
-        {alert.event && (
-          <button
-            type="button"
-            className="button"
-            onClick={() => why({ kind: 'event', event: alert.event!, tick: alert.tick })}
-          >
+        {cause && (
+          <button type="button" className="button" onClick={() => why(cause)}>
             Why?
           </button>
         )}

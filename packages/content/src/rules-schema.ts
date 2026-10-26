@@ -108,6 +108,8 @@ export const eventSchema = z.strictObject({
   headline: z.string().min(1),
   detail: z.string().min(1).optional(),
   trigger: conditionSchema.optional(),
+  /** Must hold for the event to fire, whether triggered or scheduled. */
+  requires: conditionSchema.optional(),
   once: z.boolean().default(false),
   cooldownDays: z.int().nonnegative().default(0),
   effects: z.array(effectSchema).min(1),
@@ -121,7 +123,7 @@ export const goalId = z
   .string()
   .regex(/^[a-z]+(\([a-z][a-z0-9_]*\))?$/, 'Goals look like wealth or ties(thessa)');
 
-const MEASURE_KEYS = ['stat', 'relation', 'price', 'flag'] as const;
+const MEASURE_KEYS = ['stat', 'relation', 'price', 'flag', 'day'] as const;
 const CURVE_KEYS = ['rises', 'falls', 'peaks', 'step'] as const;
 
 /**
@@ -135,13 +137,15 @@ export const considerationSchema = z
     relation: pair.optional(),
     price: id.optional(),
     flag: id.optional(),
+    /** The day number: `day: true` with a curve, such as `rises: [30, 90]`. */
+    day: z.literal(true).optional(),
     rises: z.tuple([int, int]).optional(),
     falls: z.tuple([int, int]).optional(),
     peaks: z.tuple([int, int, int]).optional(),
     step: int.optional(),
   })
   .refine((c) => MEASURE_KEYS.filter((k) => c[k] !== undefined).length === 1, {
-    message: 'A consideration needs exactly one of stat, relation, price or flag',
+    message: 'A consideration needs exactly one of stat, relation, price, flag or day',
   })
   .refine((c) => CURVE_KEYS.filter((k) => c[k] !== undefined).length === 1, {
     message: 'A consideration needs exactly one of rises, falls, peaks or step',
@@ -166,6 +170,10 @@ export const decisionSchema = z.strictObject({
   /** For policies: the flag set while the policy is in force. */
   policyFlag: id.optional(),
   // --- Computer orders only
+  /** How the news reports it. Default info. */
+  severity: z.enum(['critical', 'warning', 'info']).optional(),
+  /** A line of detail for the news. */
+  detail: z.string().min(1).optional(),
   /** Who may sign it: these countries, or any computer country. Missing: the player. */
   for: z.union([z.literal('any'), z.array(id).min(1)]).optional(),
   /** Makes it a template, aimed at each of these countries in turn, or every other one. */

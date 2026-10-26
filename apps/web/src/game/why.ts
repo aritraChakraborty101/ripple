@@ -5,8 +5,10 @@
  */
 
 import {
+  explainChoice,
   explainChokepoint,
   explainEvent,
+  parseGoalId,
   explainStat,
   relationId,
   sourceNode,
@@ -14,13 +16,28 @@ import {
   type StatRef,
   type WhyNode,
 } from '@ripple/engine';
-import { formatDate, formatPrice } from './format';
+import { fillNames, formatDate, formatPrice } from './format';
+import type { Dispatch } from './news';
 
 /** What the player asked about. */
 export type WhyTarget =
   | { readonly kind: 'stat'; readonly ref: StatRef }
   | { readonly kind: 'event'; readonly event: string; readonly tick: number }
-  | { readonly kind: 'chokepoint'; readonly id: string };
+  | { readonly kind: 'chokepoint'; readonly id: string }
+  /** A computer country's choice, on the day it chose. */
+  | {
+      readonly kind: 'choice';
+      readonly decision: string;
+      readonly country: string;
+      readonly tick: number;
+    };
+
+/** What to ask about for a piece of news, if anything caused it. */
+export function whyOfDispatch(d: Dispatch): WhyTarget | null {
+  if (d.choice) return { kind: 'choice', ...d.choice };
+  if (d.event) return { kind: 'event', event: d.event, tick: d.tick };
+  return null;
+}
 
 export function rootOf(game: GameState, target: WhyTarget): WhyNode {
   switch (target.kind) {
@@ -30,6 +47,8 @@ export function rootOf(game: GameState, target: WhyTarget): WhyNode {
       return { type: 'event', event: target.event, tick: target.tick };
     case 'chokepoint':
       return explainChokepoint(game, target.id);
+    case 'choice':
+      return { type: 'decision', decision: target.decision, tick: target.tick, by: target.country };
   }
 }
 
@@ -155,16 +174,61 @@ export function describeNode(game: GameState, node: WhyNode): NodeText {
         title: game.defs.events[node.event]?.headline ?? node.event,
         when: formatDate(node.tick),
       };
-    case 'decision':
+    case 'decision': {
+      const def = game.defs.decisions[node.decision];
+      if (node.by === undefined || node.by === game.rules.playerCountry) {
+        return { title: `You signed: ${def?.name ?? node.decision}`, when: formatDate(node.tick) };
+      }
+      const choice = explainChoice(game, node.decision, node.tick, node.by);
+      const title = def
+        ? fillNames(def.successHeadline, game.world.countries, node.by, choice?.target)
+        : node.decision;
+      const motive = choice ? motiveOf(game, node.by, choice.goals) : null;
       return {
-        title: `You signed: ${game.defs.decisions[node.decision]?.name ?? node.decision}`,
+        title,
         when: formatDate(node.tick),
+        note: motive
+          ? `${possessive(countryName(game, node.by))} choice: ${motive}`
+          : `${possessive(countryName(game, node.by))} choice`,
       };
+    }
     case 'start':
       return { title: 'How things stood at the start' };
     case 'system':
       return { title: 'The way the world works' };
   }
+}
+
+/** A goal in plain words, from the acting country's point of view. */
+export function goalLabel(game: GameState, goalId: string): string {
+  const goal = parseGoalId(goalId);
+  if (!goal) return goalId;
+  const arg = goal.arg ?? '';
+  switch (goal.kind) {
+    case 'wealth':
+      return 'money';
+    case 'standing':
+      return 'standing';
+    case 'security':
+      return 'security';
+    case 'prices':
+      return `dearer ${lowerFirst(game.world.resources[arg]?.name ?? arg)}`;
+    case 'ties':
+      return `closer ties with ${countryName(game, arg)}`;
+    case 'grievance':
+      return `a grudge against ${countryName(game, arg)}`;
+  }
+}
+
+/** What mostly drove a choice: its biggest goal, with how badly the country needed it. */
+function motiveOf(
+  game: GameState,
+  country: string,
+  goals: readonly { goal: string; need: number; part: number }[],
+): string | null {
+  const top = [...goals].filter((g) => g.part > 0).sort((a, b) => b.part - a.part)[0];
+  if (!top) return null;
+  return `driven by ${goalLabel(game, top.goal)} (need ${Math.round(top.need / 100)}%)`;
 }
 
 // ---------------------------------------------------------------- Children
@@ -230,6 +294,14 @@ export function childrenOf(game: GameState, node: WhyNode): WhyItem[] {
       for (const b of because) items.push({ node: b, note: 'at the time' });
       return items;
     }
+    case 'decision': {
+      if (node.by === undefined) return [];
+      const record = explainChoice(game, node.decision, node.tick, node.by);
+      if (!record) return [];
+      return [...record.because]
+        .sort((a, b) => significance(b) - significance(a))
+        .map((b) => ({ node: b, note: 'at the time' }));
+    }
     default:
       return [];
   }
@@ -287,6 +359,8 @@ export function questionFor(game: GameState, target: WhyTarget): string {
     }
     case 'event':
       return 'Why did this happen?';
+    case 'choice':
+      return `Why did ${countryName(game, target.country)} do this?`;
     case 'chokepoint': {
       const chokepoint = game.world.chokepoints[target.id];
       return `Why is the ${chokepoint?.name ?? target.id} ${chokepoint?.open ? 'open' : 'closed'}?`;
