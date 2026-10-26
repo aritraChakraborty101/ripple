@@ -5,6 +5,11 @@
 
 import {
   relationId,
+  type Consideration,
+  type Curve,
+  type Measure,
+  type ScenarioAi,
+  type TuningOverrides,
   type Condition,
   type DecisionDef,
   type Effect,
@@ -13,7 +18,8 @@ import {
   type StatEntityKind,
   type StatRef,
 } from '@ripple/engine';
-import type { RawCondition, RawEffect } from './rules-schema';
+import type { RawTuningProfile } from './ai-schema';
+import type { RawCondition, RawConsideration, RawEffect } from './rules-schema';
 import type { RawScenario } from './schema';
 
 function statRef(path: string): StatRef {
@@ -90,6 +96,68 @@ export function toEffect(e: RawEffect): Effect {
   };
 }
 
+export function toConsideration(c: RawConsideration): Consideration {
+  let measure: Measure;
+  if (c.stat !== undefined) measure = { kind: 'stat', ref: statRef(c.stat) };
+  else if (c.relation !== undefined) measure = { kind: 'relation', between: c.relation };
+  else if (c.price !== undefined) measure = { kind: 'price', resource: c.price };
+  else measure = { kind: 'flag', flag: c.flag! };
+  let curve: Curve;
+  if (c.rises) curve = { type: 'rises', from: c.rises[0], to: c.rises[1] };
+  else if (c.falls) curve = { type: 'falls', from: c.falls[0], to: c.falls[1] };
+  else if (c.peaks) curve = { type: 'peaks', from: c.peaks[0], peak: c.peaks[1], to: c.peaks[2] };
+  else curve = { type: 'step', at: c.step! };
+  return { measure, curve };
+}
+
+const points = (n: number) => Math.round(n * 100);
+const basisPoints = (n: number) => Math.round(n * 10_000);
+
+/** Friendly tuning units to the engine's integers: points to hundredths, factors to basis points. */
+export function toTuning(p: RawTuningProfile): TuningOverrides {
+  const actions: Record<string, { enabled?: boolean; scoreMultiplier?: number }> = {};
+  for (const [id, a] of Object.entries(p.actions ?? {})) {
+    actions[id] = {
+      ...(a.enabled !== undefined ? { enabled: a.enabled } : {}),
+      ...(a.scoreMultiplier !== undefined
+        ? { scoreMultiplier: basisPoints(a.scoreMultiplier) }
+        : {}),
+    };
+  }
+  return {
+    ...(p.inertia !== undefined ? { inertia: points(p.inertia) } : {}),
+    ...(p.temperature !== undefined ? { temperature: basisPoints(p.temperature) } : {}),
+    ...(p.hostility !== undefined ? { hostility: basisPoints(p.hostility) } : {}),
+    ...(p.cooperation !== undefined ? { cooperation: basisPoints(p.cooperation) } : {}),
+    ...(p.ambitionBoost !== undefined ? { ambitionBoost: basisPoints(p.ambitionBoost) } : {}),
+    ...(p.compensation !== undefined ? { compensation: p.compensation } : {}),
+    ...(p.countries ? { countries: p.countries } : {}),
+    ...(p.actions ? { actions } : {}),
+  };
+}
+
+function toAi(s: RawScenario): ScenarioAi | undefined {
+  if (!s.ai) return undefined;
+  const personalities: ScenarioAi['personalities'] = Object.fromEntries(
+    Object.entries(s.ai.personalities).map(([country, p]) => [
+      country,
+      {
+        goals: Object.entries(p.goals).map(([goal, g]) => ({
+          id: goal,
+          weight: g.weight,
+          ...(g.aspire !== undefined ? { aspire: g.aspire } : {}),
+        })),
+        ambitions: p.ambitions,
+      },
+    ]),
+  );
+  if (!s.aiTuning) return { personalities, profiles: { standard: {} }, defaultProfile: 'standard' };
+  const profiles = Object.fromEntries(
+    Object.entries(s.aiTuning.profiles).map(([name, p]) => [name, toTuning(p)]),
+  );
+  return { personalities, profiles, defaultProfile: s.aiTuning.default };
+}
+
 export function toScenarioDef(s: RawScenario): ScenarioDef {
   const events: EventDef[] = s.events.map((e) => ({
     id: e.id,
@@ -118,7 +186,12 @@ export function toScenarioDef(s: RawScenario): ScenarioDef {
     successHeadline: d.successHeadline,
     ...(d.failureHeadline !== undefined ? { failureHeadline: d.failureHeadline } : {}),
     ...(d.policyFlag !== undefined ? { policyFlag: d.policyFlag } : {}),
+    ...(d.for !== undefined ? { for: d.for } : {}),
+    ...(d.targets !== undefined ? { targets: d.targets } : {}),
+    ...(d.drives !== undefined ? { drives: d.drives } : {}),
+    ...(d.consider !== undefined ? { consider: d.consider.map(toConsideration) } : {}),
   }));
+  const ai = toAi(s);
 
   return {
     id: s.id,
@@ -132,5 +205,6 @@ export function toScenarioDef(s: RawScenario): ScenarioDef {
     relations: s.relations,
     events,
     decisions,
+    ...(ai ? { ai } : {}),
   };
 }

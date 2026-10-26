@@ -1,5 +1,6 @@
-import { sortedIds, type GameState } from '@ripple/engine';
+import type { GameState } from '@ripple/engine';
 import { useEffect, useRef } from 'react';
+import { playerDecisions } from '../game/describe';
 import { DecisionCard } from './DecisionCard';
 
 interface Props {
@@ -41,8 +42,8 @@ export function DecisionsDialog({ game, open, onClose }: Props) {
         country on the map to see only the orders that concern it.
       </p>
       <ul className="decision-list">
-        {sortedIds(game.defs.decisions).map((id) => (
-          <DecisionCard key={id} game={game} def={game.defs.decisions[id]!} onSigned={onClose} />
+        {playerDecisions(game).map((def) => (
+          <DecisionCard key={def.id} game={game} def={def} onSigned={onClose} />
         ))}
       </ul>
     </dialog>

@@ -53,5 +53,10 @@ export function scenarioFromYaml(
       raw[section] = parseYaml(text, `${source}/${section}.yaml`) ?? [];
     }
   }
+  // Computer countries: ai.yaml (personalities) and ai-tuning.yaml (profiles) are mappings.
+  const ai = files['ai.yaml'];
+  if (ai !== undefined) raw.ai = parseYaml(ai, `${source}/ai.yaml`);
+  const tuning = files['ai-tuning.yaml'];
+  if (tuning !== undefined) raw.aiTuning = parseYaml(tuning, `${source}/ai-tuning.yaml`);
   return parseScenario(raw, source);
 }

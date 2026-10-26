@@ -1,3 +1,5 @@
+import { DEFAULT_TUNING, mergeTuning, type TuningOverrides } from './ai/tuning';
+import type { AiDef } from './ai/types';
 import type { Modifier } from './modifiers';
 import { seedRng, type RngState } from './rng';
 import type { DecisionDef, EventDef, ScheduledEvent } from './rules';
@@ -26,13 +28,15 @@ export interface GameOutcome {
  * and compared in tests.
  */
 export interface GameState {
-  readonly version: 3;
+  readonly version: 4;
   readonly scenarioId: string;
   readonly rules: ScenarioRules;
   /** Event and decision definitions from the scenario, by ID. */
   readonly defs: {
     readonly events: Readonly<Record<string, EventDef>>;
     readonly decisions: Readonly<Record<string, DecisionDef>>;
+    /** Personalities and the tuning in force. Null when no country acts on its own. */
+    readonly ai: AiDef | null;
   };
   readonly seed: number;
   /** Number of ticks simulated so far. One tick is one in-game day. */
@@ -59,18 +63,41 @@ export interface GameState {
   readonly trace: Trace;
 }
 
-export function createGame(scenario: ScenarioDef, seed: number): GameState {
+export interface GameOptions {
+  /** Which of the scenario's tuning profiles to use; its default if missing. */
+  readonly aiProfile?: string;
+  /** Extra tuning on top of the profile, for tests and experiments. */
+  readonly tuning?: TuningOverrides;
+}
+
+function aiFor(scenario: ScenarioDef, options: GameOptions): AiDef | null {
+  if (!scenario.ai) return null;
+  const name = options.aiProfile ?? scenario.ai.defaultProfile;
+  const profile = scenario.ai.profiles[name];
+  if (!profile) throw new Error(`Unknown AI profile "${name}"`);
+  return {
+    personalities: scenario.ai.personalities,
+    tuning: mergeTuning(DEFAULT_TUNING, profile, options.tuning ?? {}),
+  };
+}
+
+export function createGame(
+  scenario: ScenarioDef,
+  seed: number,
+  options: GameOptions = {},
+): GameState {
   const world = buildWorld(scenario);
   if (!world.countries[scenario.rules.playerCountry]) {
     throw new Error(`Player country "${scenario.rules.playerCountry}" is not in the scenario`);
   }
   return {
-    version: 3,
+    version: 4,
     scenarioId: scenario.id,
     rules: scenario.rules,
     defs: {
       events: byId('event', scenario.events),
       decisions: byId('decision', scenario.decisions),
+      ai: aiFor(scenario, options),
     },
     seed,
     tick: 0,

@@ -1,0 +1,48 @@
+# What the computer countries want. Each goal's weight is how much the country
+# cares (weights add up to 100); aspire is where it wants that goal to be.
+#
+# Goals:  wealth (treasury, bn)        standing (influence)
+#         ties(country) (relations)    grievance(country) (grows as relations sour)
+#         prices(resource) (% above normal)   security (relations with stronger countries)
+#
+# Ambitions are long projects: while unmet, their goal counts 1.5 times as much.
+# A country works on its first unmet ambition.
+#
+# Nothing here acts yet: computer countries start signing orders in the next
+# step. The clearing house can already score their options.
+
+personalities:
+  corvan:
+    goals:
+      wealth: { weight: 35, aspire: 250 }
+      grievance(aldoria): { weight: 30 }
+      ties(thessa): { weight: 20, aspire: 60 }
+      standing: { weight: 15, aspire: 50 }
+    ambitions:
+      - { id: strait_pays, name: Make the strait pay, goal: wealth, target: 250 }
+
+  thessa:
+    goals:
+      standing: { weight: 40, aspire: 80 }
+      ties(corvan): { weight: 25, aspire: 70 }
+      grievance(aldoria): { weight: 20 }
+      wealth: { weight: 15, aspire: 800 }
+    ambitions:
+      - { id: corvan_orbit, name: Bring Corvan into our orbit, goal: ties(corvan), target: 70 }
+
+  veskar:
+    goals:
+      prices(oil): { weight: 45, aspire: 20 }
+      wealth: { weight: 30, aspire: 700 }
+      ties(aldoria): { weight: 15, aspire: 40 }
+      security: { weight: 10 }
+    ambitions:
+      - { id: crude_dear, name: Keep crude dear, goal: prices(oil), target: 20 }
+
+  orrin:
+    goals:
+      security: { weight: 40 }
+      ties(aldoria): { weight: 30, aspire: 60 }
+      wealth: { weight: 30, aspire: 250 }
+    ambitions:
+      - { id: breadbasket, name: "Be Aldoria's breadbasket", goal: ties(aldoria), target: 60 }

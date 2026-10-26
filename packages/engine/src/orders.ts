@@ -5,8 +5,9 @@
  * seed and the list of orders with the tick each was given.
  */
 
+import { isFor } from './ai/templates';
 import type { EngineEvent } from './events';
-import { applyEffects, evaluate } from './rules';
+import { applyEffects, evaluate, type DecisionDef } from './rules';
 import type { GameState } from './state';
 
 export interface Order {
@@ -20,20 +21,34 @@ export type Availability = { readonly ok: true } | { readonly ok: false; readonl
 
 /** Whether a country can issue a decision right now, and if not, why. Pure. */
 export function canIssue(state: GameState, decisionId: string, by: string): Availability {
-  if (state.outcome) return { ok: false, reason: 'The game is over.' };
   const def = state.defs.decisions[decisionId];
   if (!def) return { ok: false, reason: `Unknown decision "${decisionId}".` };
-  if (by !== state.rules.playerCountry) {
-    return { ok: false, reason: 'Only the player issues decisions for now.' };
+  return availabilityOf(state, def, by);
+}
+
+/**
+ * The same checks for a decision definition, which may be a template already
+ * bound to a target. The clearing house uses this for computer countries.
+ */
+export function availabilityOf(state: GameState, def: DecisionDef, by: string): Availability {
+  if (state.outcome) return { ok: false, reason: 'The game is over.' };
+  if (!isFor(state, def, by)) {
+    return {
+      ok: false,
+      reason:
+        by === state.rules.playerCountry
+          ? 'That order is not yours to give.'
+          : 'Only the player gives this order.',
+    };
   }
-  if (state.pending.some((p) => p.decision === decisionId)) {
+  if (state.pending.some((p) => p.decision === def.id && p.by === by)) {
     return { ok: false, reason: 'Already under way.' };
   }
   // Requirements first: "already in force" says more than a cooldown countdown.
   if (def.requires && !evaluate(state, def.requires).value) {
     return { ok: false, reason: def.unavailableText ?? 'Not possible right now.' };
   }
-  const last = state.lastIssued[decisionId];
+  const last = state.lastIssued[def.id];
   if (last !== undefined && state.tick < last + def.cooldownDays) {
     const days = last + def.cooldownDays - state.tick;
     return { ok: false, reason: `Available again in ${days} ${days === 1 ? 'day' : 'days'}.` };

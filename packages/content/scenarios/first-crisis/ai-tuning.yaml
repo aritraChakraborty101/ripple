@@ -1,0 +1,19 @@
+# How strongly computer countries behave. Switch profiles to test the AI
+# without editing personalities. Missing knobs keep their defaults:
+#
+#   inertia        25   points an action must beat to be worth doing
+#   temperature    1    0 always picks the best option; higher is more surprising
+#   hostility      1    multiplier on grievance goals
+#   cooperation    1    multiplier on ties goals
+#   ambitionBoost  1.5  multiplier on a country's current ambition
+#   compensation   true make up for actions with many considerations
+#
+# Per country:  countries: { corvan: { weights: { wealth: 10 } } }
+# Per action:   actions: { corvan_close_strait: { enabled: false, scoreMultiplier: 0.5 } }
+
+default: standard
+
+profiles:
+  standard: {}
+  passive: { inertia: 40, hostility: 0.6 }
+  aggressive: { inertia: 15, hostility: 1.5, temperature: 0.5 }
