@@ -15,7 +15,7 @@ import { WhyDialog } from './components/WhyDialog';
 import { WorldMap } from './components/WorldMap';
 import { SPEEDS } from './game/clock';
 import { readPref, writePref } from './game/prefs';
-import { firstCrisisGuide } from './game/scenario';
+import { firstCrisisGuide, firstCrisisMap } from './game/scenario';
 import type { Selection } from './game/selection';
 import { actions, startLoop, useSession } from './game/store';
 import type { WhyTarget } from './game/why';
@@ -177,6 +177,7 @@ export function App() {
             <div className="map-area">
               <WorldMap
                 game={game}
+                map={firstCrisisMap}
                 paused={session.clock.paused}
                 selection={selection}
                 onSelect={setSelection}

@@ -12,6 +12,7 @@ import { join } from 'node:path';
 import type { ScenarioDef } from '@ripple/engine';
 import { SCENARIO_SECTIONS, scenarioFromYaml } from './assemble';
 import { guideFromYaml, type Guide } from './guide';
+import { mapFromYaml, type ScenarioMap } from './map';
 
 export function loadScenario(folder: string): ScenarioDef {
   const files: Record<string, string> = {};
@@ -40,4 +41,14 @@ export function loadBuiltInGuide(name: string, scenario: ScenarioDef): Guide {
     if (existsSync(path)) files[file] = readFileSync(path, 'utf8');
   }
   return guideFromYaml(files, scenario, folder);
+}
+
+/** How a built-in scenario is drawn. */
+export function loadBuiltInMap(name: string, scenario: ScenarioDef): ScenarioMap {
+  const folder = join(SCENARIOS_DIR, name);
+  const path = join(folder, 'map.yaml');
+  const files: Record<string, string> = existsSync(path)
+    ? { 'map.yaml': readFileSync(path, 'utf8') }
+    : {};
+  return mapFromYaml(files, scenario, folder);
 }

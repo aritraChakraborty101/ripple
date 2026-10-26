@@ -26,4 +26,4 @@ The idea behind Ripple is that small decisions spread outward. Players could see
 ## Consequences
 
 - Saves will be larger, because the trace grows with the game: one firing record per event and one entry per adjustment. That is small at this scale. If it grows, old snapshots can be dropped or compacted without affecting the simulation.
-- New effects or systems must record their cause (or be explained by an `explainSystem` case) to show up in the trace. The engine tests cover each kind of node.
+- New effects must record their cause to show up in the trace. A system that changes stats in its own way explains those changes itself (see decision 0006), and a test fails if a system keeps a modifier it cannot explain.

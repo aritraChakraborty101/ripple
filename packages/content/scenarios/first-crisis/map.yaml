@@ -1,0 +1,40 @@
+# How the world is drawn. Purely visual: the engine never sees this file.
+#
+# Coordinates are in a width x height canvas, with x to the right and y down.
+# Every country needs a shape and every chokepoint a position.
+#   outline:   the country's border, as [x, y] corners in order
+#   anchor:    where trade routes start and end
+#   label:     where the name is written; labelSize is its font size
+
+width: 900
+height: 520
+
+countries:
+  orrin:
+    outline: [[60, 40], [200, 30], [232, 92], [122, 112]]
+    anchor: [150, 82]
+    label: [145, 66]
+    labelSize: 16
+  aldoria:
+    outline: [[120, 150], [300, 118], [360, 192], [332, 300], [200, 334], [108, 262]]
+    anchor: [230, 236]
+    label: [222, 214]
+    labelSize: 20
+  thessa:
+    outline: [[400, 100], [600, 62], [760, 122], [720, 240], [560, 252], [470, 222], [362, 190]]
+    anchor: [565, 165]
+    label: [590, 140]
+    labelSize: 18
+  corvan:
+    outline: [[332, 300], [362, 190], [470, 222], [500, 318], [432, 380], [340, 362]]
+    anchor: [410, 300]
+    label: [418, 278]
+    labelSize: 17
+  veskar:
+    outline: [[560, 300], [700, 262], [820, 320], [800, 440], [640, 462], [545, 402]]
+    anchor: [670, 380]
+    label: [690, 356]
+    labelSize: 18
+
+chokepoints:
+  south_strait: [520, 356]

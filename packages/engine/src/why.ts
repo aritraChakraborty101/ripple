@@ -20,18 +20,12 @@
  * that caused them has since moved on. Explaining never changes the game.
  */
 
-import {
-  effectiveStat,
-  sameTarget,
-  statBreakdown,
-  type ModifierSource,
-  type StatRef,
-} from './modifiers';
+import { sameTarget, statBreakdown, type ModifierSource, type StatRef } from './modifiers';
 import { evaluate, type Condition } from './rules';
 import type { GameState } from './state';
-import { marketDemand, marketSupply } from './systems/market';
-import { MOOD_DIVISOR } from './systems/society';
-import { isLinkOpen, sortedIds } from './world';
+import { SYSTEMS } from './systems';
+import type { ExplainContext, System } from './systems/types';
+import { getStatEntity } from './world';
 
 // ---------------------------------------------------------------------------
 // Shapes
@@ -195,86 +189,39 @@ export function explainChokepoint(state: GameState, id: string): ChokepointWhy {
   return { type: 'chokepoint', id, open: chokepoint.open, changedBy: by ? sourceNode(by) : null };
 }
 
-function explainMarket(
-  state: GameState,
-  resource: string,
-  depth: number,
-  seen: ReadonlySet<string>,
-): MarketWhy {
-  const routes: { link: string; delta: number; cause: WhyNode }[] = [];
-  for (const id of sortedIds(state.world.links)) {
-    const link = state.world.links[id]!;
-    if (link.resource !== resource) continue;
-    const ref: StatRef = { kind: 'link', id, stat: 'capacity' };
-    const adjusted = adjustmentsOf(state, ref).reduce((sum, a) => sum + a.by, 0);
-    const normal = (link.stats.capacity ?? 0) - adjusted;
-    const open = isLinkOpen(state.world, link);
-    const now = open ? Math.max(0, effectiveStat(state, ref)) : 0;
-    const delta = now - normal;
-    if (delta === 0) continue;
-    const closedAt = link.via.find((c) => state.world.chokepoints[c]?.open === false);
-    const cause: WhyNode =
-      !open && closedAt ? explainChokepoint(state, closedAt) : explainStat(state, ref, depth, seen);
-    routes.push({ link: id, delta, cause });
-  }
-  routes.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
-  return {
-    type: 'market',
-    resource,
-    supply: marketSupply(state, resource),
-    demand: marketDemand(state, resource),
-    routes,
-  };
+/** The system that keeps a given system modifier, if any. */
+function modifierOwner(id: string): System | undefined {
+  return SYSTEMS.find((s) => s.modifierIds?.includes(id));
 }
 
-function explainSystem(
+/** The system that moves this stat's base value directly, with the stat's normal value. */
+function driftOwner(
   state: GameState,
-  id: string,
   ref: StatRef,
+): { system: System; normal: number } | undefined {
+  for (const system of SYSTEMS) {
+    const normal = system.normalOf?.(state, ref);
+    if (normal !== undefined) return { system, normal };
+  }
+  return undefined;
+}
+
+function baseWithoutAdjustments(state: GameState, ref: StatRef): number {
+  const entity = getStatEntity(state.world, ref.kind, ref.id);
+  const adjusted = adjustmentsOf(state, ref).reduce((sum, a) => sum + a.by, 0);
+  return (entity.stats[ref.stat] ?? 0) - adjusted;
+}
+
+function explainContext(
+  state: GameState,
   depth: number,
   seen: ReadonlySet<string>,
-): WhyNode {
-  if (id === 'cost_of_living' && ref.kind === 'faction') {
-    const faction = state.world.factions[ref.id]!;
-    const prices: PressureWhy['prices'][number][] = [];
-    for (const resource of sortedIds(faction.sensitivity)) {
-      const def = state.world.resources[resource];
-      if (!def) continue;
-      const priceRef: StatRef = { kind: 'resource', id: resource, stat: 'price' };
-      const price = effectiveStat(state, priceRef);
-      const percent = Math.trunc(((price - def.basePrice) * 100) / def.basePrice);
-      if (percent === 0) continue;
-      prices.push({
-        resource,
-        weightBp: faction.sensitivity[resource] ?? 0,
-        percent,
-        cause: explainStat(state, priceRef, depth, seen),
-      });
-    }
-    prices.sort((a, b) => Math.abs(b.percent * b.weightBp) - Math.abs(a.percent * a.weightBp));
-    return { type: 'pressure', faction: ref.id, prices };
-  }
-
-  if (id === 'faction_mood' && ref.kind === 'country') {
-    const factions: MoodWhy['factions'][number][] = [];
-    for (const fid of sortedIds(state.world.factions)) {
-      const faction = state.world.factions[fid]!;
-      if (faction.country !== ref.id) continue;
-      const satisfactionRef: StatRef = { kind: 'faction', id: fid, stat: 'satisfaction' };
-      const change = effectiveStat(state, satisfactionRef) - (faction.stats.satisfaction ?? 50);
-      if (change === 0) continue;
-      factions.push({
-        faction: fid,
-        change,
-        effect: Math.trunc((change * (faction.stats.power ?? 0)) / MOOD_DIVISOR),
-        cause: explainStat(state, satisfactionRef, depth, seen),
-      });
-    }
-    factions.sort((a, b) => Math.abs(b.effect) - Math.abs(a.effect));
-    return { type: 'mood', country: ref.id, factions };
-  }
-
-  return { type: 'system', id };
+): ExplainContext {
+  return {
+    explainStat: (ref) => explainStat(state, ref, depth, seen),
+    explainChokepoint: (id) => explainChokepoint(state, id),
+    baseWithoutAdjustments: (ref) => baseWithoutAdjustments(state, ref),
+  };
 }
 
 /** Explain a stat's current value: where it started and every cause since. */
@@ -287,9 +234,9 @@ export function explainStat(
   const breakdown = statBreakdown(state, ref);
   const adjustments = adjustmentsOf(state, ref);
   const adjusted = adjustments.reduce((sum, a) => sum + a.by, 0);
-  const resource =
-    ref.kind === 'resource' && ref.stat === 'price' ? state.world.resources[ref.id] : undefined;
-  const normal = resource ? resource.basePrice : breakdown.base - adjusted;
+  const unadjusted = breakdown.base - adjusted;
+  const drifted = driftOwner(state, ref);
+  const normal = drifted ? drifted.normal : unadjusted;
 
   const key = statKey(ref);
   if (depth <= 0 || seen.has(key)) {
@@ -303,17 +250,21 @@ export function explainStat(
     };
   }
   const next = new Set(seen).add(key);
+  const context = explainContext(state, depth - 1, next);
   const contributions: Contribution[] = [];
 
-  // Prices also move on their own as markets fall out of balance.
-  if (resource) {
-    const drift = breakdown.base - adjusted - resource.basePrice;
-    if (drift !== 0) {
+  // Some stats are moved by a system directly, such as prices by the market.
+  if (drifted) {
+    const amount = unadjusted - drifted.normal;
+    if (amount !== 0) {
       contributions.push({
-        effect: drift,
+        effect: amount,
         permanent: false,
         untilTick: null,
-        cause: explainMarket(state, ref.id, depth - 1, next),
+        cause: drifted.system.explain?.(state, { kind: 'drift', ref, amount }, context) ?? {
+          type: 'system',
+          id: drifted.system.name,
+        },
       });
     }
   }
@@ -334,7 +285,11 @@ export function explainStat(
     const effect = m.op === 'add' ? m.amount : Math.trunc((added * m.amount) / 10_000);
     const cause =
       m.source.kind === 'system'
-        ? explainSystem(state, m.source.id, ref, depth - 1, next)
+        ? (modifierOwner(m.source.id)?.explain?.(
+            state,
+            { kind: 'modifier', id: m.source.id, ref },
+            context,
+          ) ?? sourceNode(m.source))
         : sourceNode(m.source);
     contributions.push({
       effect,

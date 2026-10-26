@@ -2,6 +2,7 @@ import type { EngineEvent } from '../events';
 import { effectiveStat } from '../modifiers';
 import type { GameState } from '../state';
 import { isLinkOpen, setBaseStat, sortedIds } from '../world';
+import type { MarketWhy, WhyNode } from '../why';
 import type { System } from './types';
 
 /** Fraction of the gap to the target price closed each day, in basis points. */
@@ -72,5 +73,40 @@ export const marketSystem: System = {
     }
 
     return { state: world === state.world ? state : { ...state, world }, events };
+  },
+
+  /** A price's normal is its base price: where it sits when supply meets demand. */
+  normalOf(state, ref) {
+    if (ref.kind !== 'resource' || ref.stat !== 'price') return undefined;
+    return state.world.resources[ref.id]?.basePrice;
+  },
+
+  /** Why a price has drifted: supply against demand, and each route carrying more or less than normal. */
+  explain(state, request, context): MarketWhy | WhyNode {
+    if (request.kind !== 'drift') return { type: 'system', id: 'market' };
+    const resource = request.ref.id;
+    const routes: { link: string; delta: number; cause: WhyNode }[] = [];
+    for (const id of sortedIds(state.world.links)) {
+      const link = state.world.links[id]!;
+      if (link.resource !== resource) continue;
+      const ref = { kind: 'link' as const, id, stat: 'capacity' };
+      const normal = context.baseWithoutAdjustments(ref);
+      const open = isLinkOpen(state.world, link);
+      const now = open ? Math.max(0, effectiveStat(state, ref)) : 0;
+      const delta = now - normal;
+      if (delta === 0) continue;
+      const closedAt = link.via.find((c) => state.world.chokepoints[c]?.open === false);
+      const cause: WhyNode =
+        !open && closedAt ? context.explainChokepoint(closedAt) : context.explainStat(ref);
+      routes.push({ link: id, delta, cause });
+    }
+    routes.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+    return {
+      type: 'market',
+      resource,
+      supply: marketSupply(state, resource),
+      demand: marketDemand(state, resource),
+      routes,
+    };
   },
 };

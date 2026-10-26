@@ -17,7 +17,7 @@ pnpm --filter @ripple/web build   # static site in apps/web/dist
 | `src/game/news.ts`            | Turns world changes into dispatches; decides which ones are alerts               |
 | `src/game/describe.ts`        | Plain-language costs, odds and moods; which orders concern which country         |
 | `src/game/store.ts`           | The animation loop and the store React subscribes to                             |
-| `src/map/layout.ts`           | Map shapes and anchor points per country and chokepoint                          |
+| `src/map/layout.ts`           | Turns the scenario's `map.yaml` into SVG paths (outlines, curved routes)         |
 | `src/components/Header`       | Top bar: treasury, influence, stability with ousting countdown, prices, clock    |
 | `src/components/WorldMap`     | Clickable countries and strait, relation badges, routes, crisis pulses           |
 | `src/components/MapDrawer`    | Details for the selection: relations, trade, news and the orders that concern it |

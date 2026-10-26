@@ -9,18 +9,13 @@ import {
 import type { KeyboardEvent } from 'react';
 import { relationLabel, relationTone, type Tone } from '../game/describe';
 import type { Selection } from '../game/selection';
-import {
-  CHOKEPOINT_POSITIONS,
-  COUNTRY_SHAPES,
-  MAP_HEIGHT,
-  MAP_WIDTH,
-  curve,
-  throughPath,
-  type Point,
-} from '../map/layout';
+import type { ScenarioMap } from '@ripple/content';
+import { curve, outlinePoints, throughPath, type Point } from '../map/layout';
 
 interface Props {
   readonly game: GameState;
+  /** How the scenario's world is drawn, from its map.yaml. */
+  readonly map: ScenarioMap;
   readonly paused: boolean;
   readonly selection: Selection;
   readonly onSelect: (selection: Selection) => void;
@@ -37,13 +32,13 @@ const TONE_COLOR: Record<Tone, string> = {
   critical: 'var(--critical)',
 };
 
-function routePath(link: Link, bend: number): string | null {
-  const from = COUNTRY_SHAPES[link.from]?.anchor;
-  const to = COUNTRY_SHAPES[link.to]?.anchor;
+function routePath(map: ScenarioMap, link: Link, bend: number): string | null {
+  const from = map.countries[link.from]?.anchor;
+  const to = map.countries[link.to]?.anchor;
   if (!from || !to) return null;
   if (link.via.length === 0) return curve(from, to, bend);
   const waypoints: Point[] = link.via
-    .map((id) => CHOKEPOINT_POSITIONS[id])
+    .map((id) => map.chokepoints[id])
     .filter((p): p is Point => p !== undefined);
   return throughPath([from, ...waypoints, to]);
 }
@@ -74,6 +69,7 @@ function activateOnKey(action: () => void) {
 
 export function WorldMap({
   game,
+  map,
   paused,
   selection,
   onSelect,
@@ -94,7 +90,7 @@ export function WorldMap({
     pairCounts.set(pair, index + 1);
     const open = isLinkOpen(game.world, link);
     const capacity = effectiveStat(game, { kind: 'link', id, stat: 'capacity' });
-    return { link, open, capacity, d: routePath(link, 22 + index * 18) };
+    return { link, open, capacity, d: routePath(map, link, 22 + index * 18) };
   });
 
   const isSelected = (kind: 'country' | 'chokepoint', id: string) =>
@@ -103,14 +99,14 @@ export function WorldMap({
   return (
     <div className="map">
       <svg
-        viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`}
+        viewBox={`0 0 ${map.width} ${map.height}`}
         preserveAspectRatio="xMidYMid meet"
         role="group"
         aria-label="Map. Select a country or the strait for details."
       >
         {/* Clickable land */}
         {sortedIds(game.world.countries).map((id) => {
-          const shape = COUNTRY_SHAPES[id];
+          const shape = map.countries[id];
           if (!shape) return null;
           const isPlayer = id === player;
           const name = game.world.countries[id]!.name;
@@ -135,7 +131,7 @@ export function WorldMap({
             >
               <polygon
                 className="country"
-                points={shape.points}
+                points={outlinePoints(shape)}
                 fill={
                   isPlayer
                     ? 'var(--accent-tint)'
@@ -172,7 +168,7 @@ export function WorldMap({
 
         {/* Chokepoints */}
         {sortedIds(game.world.chokepoints).map((id) => {
-          const point = CHOKEPOINT_POSITIONS[id];
+          const point = map.chokepoints[id];
           const chokepoint = game.world.chokepoints[id]!;
           if (!point) return null;
           const selected = isSelected('chokepoint', id);
@@ -235,7 +231,7 @@ export function WorldMap({
         {/* Labels and relation badges sit on top but let clicks through to the land. */}
         <g pointerEvents="none">
           {sortedIds(game.world.countries).map((id) => {
-            const shape = COUNTRY_SHAPES[id];
+            const shape = map.countries[id];
             if (!shape) return null;
             const isPlayer = id === player;
             const value = isPlayer ? 0 : relationOf(id);
