@@ -8,6 +8,9 @@
 import {
   applyOrders,
   createGame,
+  retune,
+  type GameOptions,
+  type TuningOverrides,
   effectiveStat,
   sortedIds,
   step,
@@ -18,6 +21,7 @@ import {
 import type { AdvisorTip } from '@ripple/content';
 import { afterSigning, dismissTip, newAdvisor, updateAdvisor, type AdvisorState } from './advisor';
 import { advanceClock, initialClock, type ClockState, type Speed } from './clock';
+import { brewing, brewingKey, REWARN_DAYS, type Brewing } from './intel';
 import { dispatchesFor, initialNews, isAlert, type Dispatch, type NewsState } from './news';
 
 /** Days of price history kept for sparklines. */
@@ -49,6 +53,8 @@ export interface Session {
   /** Pause the clock automatically when a crisis breaks. */
   readonly autoPause: boolean;
   readonly advisor: AdvisorState;
+  /** The day each intelligence warning was last given, so warnings are not repeated too often. */
+  readonly warned: Readonly<Record<string, number>>;
 }
 
 function priceOf(game: GameState, resource: string): number {
@@ -112,12 +118,14 @@ export function newSession(
   seed: number,
   autoPause = true,
   tips: readonly AdvisorTip[] = [],
+  options: GameOptions = {},
 ): Session {
-  const game = createGame(scenario, seed);
+  const game = createGame(scenario, seed, options);
   return {
     alert: null,
     autoPause,
     advisor: newAdvisor(tips),
+    warned: {},
     game,
     clock: initialClock,
     news: initialNews,
@@ -133,14 +141,54 @@ export function newSession(
 }
 
 /** Simulate one day and collect its dispatches. */
+function intelDispatch(game: GameState, b: Brewing): Dispatch {
+  const name = game.world.countries[b.country]?.name ?? b.country;
+  const imminent = b.score > b.inertia;
+  return {
+    id: `intel-${game.tick}-${brewingKey(b)}`,
+    tick: Math.max(0, game.tick - 1),
+    tag: 'Intelligence',
+    severity: 'warning',
+    headline: `${name} is weighing: ${b.name}`,
+    detail: `${b.motive ? `Driven by ${b.motive}. ` : ''}${
+      imminent ? 'It could happen any day.' : 'It is close to tipping over.'
+    }`,
+    source: 'intel',
+    country: b.country,
+    place: name,
+  };
+}
+
+/** Warn about harmful moves that are close to happening, at most once per REWARN_DAYS each. */
+function gatherIntel(session: Session): Session {
+  const fresh = brewing(session.game).filter((b) => {
+    const last = session.warned[brewingKey(b)];
+    return last === undefined || session.game.tick - last >= REWARN_DAYS;
+  });
+  if (fresh.length === 0) return session;
+  const warned = { ...session.warned };
+  for (const b of fresh) warned[brewingKey(b)] = session.game.tick;
+  const dispatches = fresh.map((b) => intelDispatch(session.game, b));
+  return {
+    ...session,
+    warned,
+    dispatches: [...dispatches, ...session.dispatches].slice(0, MAX_DISPATCHES),
+  };
+}
+
 export function tickSession(session: Session): Session {
   const result = step(session.game, []);
   const next = absorb(session, result.state, result.events);
-  return {
+  return gatherIntel({
     ...next,
     history: recordHistory(session.history, result.state),
     advisor: updateAdvisor(next.advisor, result.state),
-  };
+  });
+}
+
+/** Change the AI's knobs mid-game (the dev panel). The change is recorded in the game. */
+export function retuneSession(session: Session, overrides: TuningOverrides): Session {
+  return { ...session, game: retune(session.game, overrides) };
 }
 
 /** Advance by real elapsed time, simulating however many days are due. */

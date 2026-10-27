@@ -7,6 +7,7 @@
  * Knobs are added when code uses them, so every knob here does something.
  */
 
+import type { GameState } from '../state';
 import type { Tuning } from './types';
 
 export const DEFAULT_TUNING: Tuning = {
@@ -50,4 +51,25 @@ export function mergeTuning(base: Tuning, ...layers: readonly TuningOverrides[])
     merged = { ...merged, ...layer, countries, actions };
   }
   return merged;
+}
+
+/** A change to the knobs made during a game, kept so the game can be replayed exactly. */
+export interface TuningChange {
+  readonly tick: number;
+  readonly overrides: TuningOverrides;
+}
+
+/**
+ * Change the AI's knobs mid-game, for experiments such as the dev panel. The
+ * change is recorded in `tuningChanges`, so a game stays reproducible from its
+ * seed, the player's orders and these changes.
+ */
+export function retune(state: GameState, overrides: TuningOverrides): GameState {
+  const ai = state.defs.ai;
+  if (!ai) throw new Error('This scenario has no AI to tune');
+  return {
+    ...state,
+    defs: { ...state.defs, ai: { ...ai, tuning: mergeTuning(ai.tuning, overrides) } },
+    tuningChanges: [...state.tuningChanges, { tick: state.tick, overrides }],
+  };
 }

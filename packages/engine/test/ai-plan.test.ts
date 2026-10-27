@@ -7,6 +7,7 @@ import {
   isFree,
   notice,
   planOrders,
+  retune,
   run,
   step,
   type GameState,
@@ -108,5 +109,18 @@ describe('attention', () => {
     expect(noticed.attention.strait?.noticeUntil).toBe(before.tick + 7);
     expect(noticed.attention.patron).toBeUndefined();
     expect(insulted.tick).toBe(1);
+  });
+});
+
+describe('retuning mid-game', () => {
+  it('changes the knobs from now on and records the change', () => {
+    const before = days(game(), 10);
+    const after = retune(before, { inertia: 1_000_000 });
+    expect(after.defs.ai!.tuning.inertia).toBe(1_000_000);
+    expect(after.defs.ai!.tuning.restDays).toBe(before.defs.ai!.tuning.restDays);
+    expect(after.tuningChanges).toEqual([{ tick: 10, overrides: { inertia: 1_000_000 } }]);
+    // With nothing worth doing, no country acts any more.
+    const later = days(after, 60);
+    expect(later.trace.choices.length).toBe(before.trace.choices.length);
   });
 });

@@ -27,7 +27,7 @@ export function Dispatches({ dispatches, onSelectCountry }: Props) {
             <div className="dispatch-meta">
               <span className={`dot ${mine ? 'mine' : d.severity}`} />
               <span
-                className={`dispatch-tag ${mine ? 'mine' : d.severity === 'critical' ? 'critical' : ''}`}
+                className={`dispatch-tag ${mine ? 'mine' : d.source === 'intel' ? 'intel' : d.severity === 'critical' ? 'critical' : ''}`}
               >
                 {d.tag}
               </span>
@@ -52,7 +52,7 @@ export function Dispatches({ dispatches, onSelectCountry }: Props) {
                     className="text-button inline"
                     onClick={() => onSelectCountry(d.country!)}
                   >
-                    Show {d.tag} on the map
+                    Show {d.place ?? d.tag} on the map
                   </button>
                 )}
               </div>

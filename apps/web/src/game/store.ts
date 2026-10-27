@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import type { TuningOverrides } from '@ripple/engine';
 import type { Speed } from './clock';
 import { firstCrisis, firstCrisisGuide } from './scenario';
 import {
@@ -7,6 +8,7 @@ import {
   dismissAlert,
   issueDecision,
   newSession,
+  retuneSession,
   setAutoPause,
   setPaused,
   setSpeed,
@@ -21,8 +23,35 @@ function freshSeed(): number {
   return Math.floor(Math.random() * 2 ** 31);
 }
 
+/** Options read from the address: `?dev` opens the AI dev panel, `?ai=aggressive` picks a profile. */
+function readParams(): { dev: boolean; profile: string | null } {
+  if (typeof window === 'undefined') return { dev: false, profile: null };
+  const params = new URLSearchParams(window.location.search);
+  const profile = params.get('ai');
+  const known = profile !== null && firstCrisis.ai?.profiles[profile] !== undefined;
+  return { dev: params.has('dev'), profile: known ? profile : null };
+}
+
+const params = readParams();
+
+/** Whether the AI dev panel is available (`?dev` in the address). */
+export const devMode = params.dev;
+/** The tuning profiles the scenario offers. */
+export const aiProfiles: readonly string[] = Object.keys(firstCrisis.ai?.profiles ?? {}).sort();
+let profile: string | null = params.profile;
+/** The profile the current game uses: the one chosen, or the scenario's default. */
+export function currentProfile(): string {
+  return profile ?? firstCrisis.ai?.defaultProfile ?? 'standard';
+}
+
 const start = (autoPause = true) =>
-  newSession(firstCrisis, freshSeed(), autoPause, firstCrisisGuide.tips);
+  newSession(
+    firstCrisis,
+    freshSeed(),
+    autoPause,
+    firstCrisisGuide.tips,
+    profile ? { aiProfile: profile } : {},
+  );
 
 let session: Session = start();
 const listeners = new Set<() => void>();
@@ -47,6 +76,13 @@ export const actions = {
   dismissAdvice: () => update(dismissAdvice(session)),
   setAutoPause: (on: boolean) => update(setAutoPause(session, on)),
   newGame: () => update(start(session.autoPause)),
+  /** Start a new game with another tuning profile (the dev panel). */
+  newGameWithProfile: (name: string) => {
+    profile = name;
+    update(start(session.autoPause));
+  },
+  /** Change the AI's knobs for the rest of this game (the dev panel). */
+  retune: (overrides: TuningOverrides) => update(retuneSession(session, overrides)),
 };
 
 let frame = 0;

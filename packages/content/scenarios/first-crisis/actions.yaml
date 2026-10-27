@@ -22,7 +22,7 @@
 - id: court
   for: any
   targets: others
-  name: '{self} courts {target}'
+  name: 'Court {target}'
   description: Trade offers and friendly visits.
   requires:
     stat: { target: country.self.influence, above: 4 }
@@ -42,7 +42,7 @@
 - id: denounce_aldoria
   for: any
   targets: [aldoria]
-  name: '{self} denounces {target}'
+  name: 'Denounce {target}'
   description: A public attack on Aldoria's government.
   drives: { grievance(target): 2, standing: 1, ties(target): -2 }
   consider:

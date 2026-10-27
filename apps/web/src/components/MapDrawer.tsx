@@ -10,6 +10,7 @@ import { decisionsConcerning, relationLabel, relationTone } from '../game/descri
 import { ARCHETYPE_LABELS, formatShortDate } from '../game/format';
 import type { Dispatch } from '../game/news';
 import type { Selection } from '../game/selection';
+import { CountryMind } from './CountryMind';
 import { DecisionCard } from './DecisionCard';
 import { HomeFront } from './HomeFront';
 import { useWhy } from './WhyContext';
@@ -137,6 +138,7 @@ function CountryDetails({
       >
         Why are relations here?
       </button>
+      <CountryMind game={game} country={id} />
       <section className="drawer-section">
         <h3>Trade with you</h3>
         <RouteList game={game} links={shared} />

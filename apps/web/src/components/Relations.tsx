@@ -1,5 +1,6 @@
 import { effectiveStat, relationId, sortedIds, type GameState } from '@ripple/engine';
 import { relationLabel, relationTone } from '../game/describe';
+import { ambitionOf } from '../game/intel';
 
 interface Props {
   readonly game: GameState;
@@ -34,7 +35,12 @@ export function Relations({ game, onSelectCountry }: Props) {
                 onClick={() => onSelectCountry(id)}
                 aria-label={`${game.world.countries[id]!.name}: ${value}, ${relationLabel(value)}. Show on the map.`}
               >
-                <span>{game.world.countries[id]!.name}</span>
+                <span className="relation-name">
+                  {game.world.countries[id]!.name}
+                  {ambitionOf(game, id) && (
+                    <span className="relation-ambition">{ambitionOf(game, id)!.name}</span>
+                  )}
+                </span>
                 <span className="center-meter" aria-hidden="true">
                   <span
                     className={tone}
@@ -54,7 +60,10 @@ export function Relations({ game, onSelectCountry }: Props) {
           );
         })}
       </ul>
-      <p className="hint">Select a country to see its routes and the orders that concern it.</p>
+      <p className="hint">
+        Under each name is that country's current ambition. Select a country to see what it wants,
+        its routes and the orders that concern it.
+      </p>
     </section>
   );
 }
