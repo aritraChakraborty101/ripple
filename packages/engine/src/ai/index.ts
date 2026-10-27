@@ -32,7 +32,13 @@ export {
   isFor,
   targetsOf,
 } from './templates';
-export { DEFAULT_TUNING, mergeTuning, type TuningOverrides } from './tuning';
+export {
+  DEFAULT_TUNING,
+  mergeTuning,
+  retune,
+  type TuningChange,
+  type TuningOverrides,
+} from './tuning';
 export type {
   AiDef,
   AmbitionDef,

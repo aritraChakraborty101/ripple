@@ -91,7 +91,7 @@ Computer orders live in `actions.yaml` and are written like the player's, plus `
 
 ```yaml
 - id: court
-  name: '{self} courts {target}'
+  name: 'Court {target}'
   for: any
   targets: others
   drives: { ties(target): 2, standing: 1 }

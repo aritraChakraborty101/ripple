@@ -20,7 +20,7 @@ import { fillNames, formatDate, formatPrice } from './format';
 
 export type { Severity };
 
-export type DispatchSource = 'world' | 'order' | 'market' | 'outcome';
+export type DispatchSource = 'world' | 'order' | 'market' | 'outcome' | 'intel';
 
 export interface Dispatch {
   readonly id: string;
@@ -33,6 +33,8 @@ export interface Dispatch {
   readonly source: DispatchSource;
   /** The country the news concerns, when there is one, for linking to it on the map. */
   readonly country?: string;
+  /** That country's name, when the tag says something else (such as "Intelligence"). */
+  readonly place?: string;
   /** The world event behind this news, for asking why it happened. */
   readonly event?: string;
   /** The computer country's choice behind this news, for asking why it did it. */

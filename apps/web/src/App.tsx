@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { AdvisorCard } from './components/AdvisorCard';
 import { BriefingDialog } from './components/BriefingDialog';
+import { DevPanel } from './components/DevPanel';
 import { CrisisBanner } from './components/CrisisBanner';
 import { DecisionsDialog } from './components/DecisionsDialog';
 import { FirstSteps, STEP_IDS, type StepId } from './components/FirstSteps';
@@ -17,16 +18,22 @@ import { SPEEDS } from './game/clock';
 import { readPref, writePref } from './game/prefs';
 import { firstCrisisGuide, firstCrisisMap } from './game/scenario';
 import type { Selection } from './game/selection';
-import { actions, startLoop, useSession } from './game/store';
+import { actions, devMode, startLoop, useSession } from './game/store';
 import type { WhyTarget } from './game/why';
 
 interface Shortcuts {
   readonly openOrders: () => void;
   readonly openHelp: () => void;
   readonly clearSelection: () => void;
+  readonly toggleDev: () => void;
 }
 
-function useKeyboardShortcuts({ openOrders, openHelp, clearSelection }: Shortcuts): void {
+function useKeyboardShortcuts({
+  openOrders,
+  openHelp,
+  clearSelection,
+  toggleDev,
+}: Shortcuts): void {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (document.querySelector('dialog[open]')) return;
@@ -50,12 +57,16 @@ function useKeyboardShortcuts({ openOrders, openHelp, clearSelection }: Shortcut
         openHelp();
         return;
       }
+      if (event.key === '`' && devMode) {
+        toggleDev();
+        return;
+      }
       const speed = SPEEDS[Number(event.key) - 1];
       if (speed !== undefined) actions.setSpeed(speed);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [openOrders, openHelp, clearSelection]);
+  }, [openOrders, openHelp, clearSelection, toggleDev]);
 }
 
 /** Tracks the first-steps checklist and remembers it across visits. */
@@ -106,6 +117,7 @@ export function App() {
   const [tab, setTab] = useState<Tab>('news');
   const [selection, setSelection] = useState<Selection>(null);
   const [whyTarget, setWhyTarget] = useState<WhyTarget | null>(null);
+  const [devOpen, setDevOpen] = useState(devMode);
   const steps = useFirstSteps();
   useEffect(() => startLoop(), []);
 
@@ -117,7 +129,8 @@ export function App() {
     actions.pause();
     setWhyTarget(target);
   }, []);
-  useKeyboardShortcuts({ openOrders, openHelp, clearSelection });
+  const toggleDev = useCallback(() => setDevOpen((open) => !open), []);
+  useKeyboardShortcuts({ openOrders, openHelp, clearSelection, toggleDev });
 
   const { game, alert } = session;
   const tip = session.advisor.current;
@@ -199,6 +212,14 @@ export function App() {
               {tip && !game.outcome && (
                 <AdvisorCard game={game} tip={tip} onShowCountry={selectCountry} />
               )}
+              {devMode &&
+                (devOpen ? (
+                  <DevPanel game={game} onClose={() => setDevOpen(false)} />
+                ) : (
+                  <button type="button" className="dev-toggle" onClick={() => setDevOpen(true)}>
+                    AI panel
+                  </button>
+                ))}
               {selection && (
                 <MapDrawer
                   game={game}

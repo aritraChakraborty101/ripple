@@ -1,4 +1,4 @@
-import { DEFAULT_TUNING, mergeTuning, type TuningOverrides } from './ai/tuning';
+import { DEFAULT_TUNING, mergeTuning, type TuningChange, type TuningOverrides } from './ai/tuning';
 import type { AttentionState } from './ai/plan';
 import type { AiDef } from './ai/types';
 import type { Modifier } from './modifiers';
@@ -31,7 +31,7 @@ export interface GameOutcome {
  * and compared in tests.
  */
 export interface GameState {
-  readonly version: 5;
+  readonly version: 6;
   readonly scenarioId: string;
   readonly rules: ScenarioRules;
   /** Event and decision definitions from the scenario, by ID. */
@@ -66,6 +66,8 @@ export interface GameState {
   readonly trace: Trace;
   /** Each computer country's attention: when it last acted, and whether it is noticing something. */
   readonly attention: Readonly<Record<string, AttentionState>>;
+  /** Knob changes made during the game (see `retune`), in order. */
+  readonly tuningChanges: readonly TuningChange[];
 }
 
 export interface GameOptions {
@@ -96,7 +98,7 @@ export function createGame(
     throw new Error(`Player country "${scenario.rules.playerCountry}" is not in the scenario`);
   }
   return {
-    version: 5,
+    version: 6,
     scenarioId: scenario.id,
     rules: scenario.rules,
     defs: {
@@ -120,6 +122,7 @@ export function createGame(
     outcome: null,
     trace: emptyTrace,
     attention: {},
+    tuningChanges: [],
   };
 }
 

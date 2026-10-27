@@ -183,12 +183,12 @@ export function describeNode(game: GameState, node: WhyNode): NodeText {
       const title = def
         ? fillNames(def.successHeadline, game.world.countries, node.by, choice?.target)
         : node.decision;
-      const motive = choice ? motiveOf(game, node.by, choice.goals) : null;
+      const motive = choice ? motiveText(game, choice.goals) : null;
       return {
         title,
         when: formatDate(node.tick),
         note: motive
-          ? `${possessive(countryName(game, node.by))} choice: ${motive}`
+          ? `${possessive(countryName(game, node.by))} choice: driven by ${motive}`
           : `${possessive(countryName(game, node.by))} choice`,
       };
     }
@@ -220,15 +220,14 @@ export function goalLabel(game: GameState, goalId: string): string {
   }
 }
 
-/** What mostly drove a choice: its biggest goal, with how badly the country needed it. */
-function motiveOf(
+/** What mostly drives a score: its biggest goal in words, with how badly the country needs it. */
+export function motiveText(
   game: GameState,
-  country: string,
   goals: readonly { goal: string; need: number; part: number }[],
 ): string | null {
   const top = [...goals].filter((g) => g.part > 0).sort((a, b) => b.part - a.part)[0];
   if (!top) return null;
-  return `driven by ${goalLabel(game, top.goal)} (need ${Math.round(top.need / 100)}%)`;
+  return `${goalLabel(game, top.goal)} (need ${Math.round(top.need / 100)}%)`;
 }
 
 // ---------------------------------------------------------------- Children

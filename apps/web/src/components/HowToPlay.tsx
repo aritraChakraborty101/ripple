@@ -59,6 +59,11 @@ export function HowToPlay({ open, onClose, onShowBriefing, onRestartSteps }: Pro
             oil, and Orrin wants to be your friend. The worse relations get, the bolder they become.
           </p>
           <p>
+            Select a country to see what it wants and its current ambition. When a neighbour is
+            close to a harmful move, Intelligence warns you in the news, while there is still time
+            to act.
+          </p>
+          <p>
             To trace any ripple back to its cause, click stability or a price in the top bar, a
             faction on the Home tab, or "Why did this happen?" on a piece of news. For a neighbour's
             move, the panel shows what drove it. The game pauses while you read.
