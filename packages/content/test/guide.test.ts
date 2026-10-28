@@ -34,8 +34,15 @@ describe('first-crisis guide', () => {
     expect(guide.tips.length).toBeGreaterThanOrEqual(6);
     const decisions = new Set(scenario.decisions.map((d) => d.id));
     for (const t of guide.tips) {
-      for (const d of t.suggest) expect(decisions.has(d), `${t.id} suggests ${d}`).toBe(true);
+      for (const s of t.suggest) {
+        expect(decisions.has(s.decision), `${t.id} suggests ${s.decision}`).toBe(true);
+      }
     }
+    const first = guide.tips.find((t) => t.id === 'corvan_slipping')!;
+    expect(first.suggest).toEqual([
+      { decision: 'envoy', target: 'corvan' },
+      { decision: 'transit_fees' },
+    ]);
   });
 });
 
@@ -68,6 +75,19 @@ describe('guide validation', () => {
       'advisor[0].suggest[0]: Unknown decision "nope"',
       'advisor[0].country: Unknown country "atlantis"',
       'advisor[0].when: Unknown country "atlantis"',
+    ]);
+  });
+
+  it('checks whom a suggested order is aimed at', () => {
+    const aimed = {
+      ...tip,
+      suggest: ['envoy', 'transit_fees>corvan', 'envoy>aldoria', 'tariff>orrin'],
+    };
+    expect(problemsOf({ advisor: [aimed] })).toEqual([
+      'advisor[0].suggest[0]: Say whom "envoy" is aimed at, as envoy>country',
+      'advisor[0].suggest[1]: "transit_fees" is not aimed at a country',
+      'advisor[0].suggest[2]: "envoy" cannot be aimed at "aldoria"',
+      'advisor[0].suggest[3]: "tariff" cannot be aimed at "orrin"',
     ]);
   });
 

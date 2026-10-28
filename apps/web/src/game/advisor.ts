@@ -26,7 +26,7 @@ function qualifies(game: GameState, tip: AdvisorTip): boolean {
   if (!evaluate(game, tip.when).value) return false;
   if (tip.suggest.length === 0) return true;
   const me = game.rules.playerCountry;
-  return tip.suggest.some((d) => canIssue(game, d, me).ok);
+  return tip.suggest.some((s) => canIssue(game, s.decision, me, s.target).ok);
 }
 
 /** Show the first qualifying tip not yet shown, unless one is already on screen. */
@@ -41,7 +41,14 @@ export function dismissTip(advisor: AdvisorState): AdvisorState {
   return advisor.current ? { ...advisor, current: null } : advisor;
 }
 
-/** Acting on the advice (signing one of its orders) puts the tip away. */
-export function afterSigning(advisor: AdvisorState, decision: string): AdvisorState {
-  return advisor.current?.suggest.includes(decision) ? dismissTip(advisor) : advisor;
+/** Acting on the advice (signing one of its orders, at its target) puts the tip away. */
+export function afterSigning(
+  advisor: AdvisorState,
+  decision: string,
+  target?: string,
+): AdvisorState {
+  const acted = advisor.current?.suggest.some(
+    (s) => s.decision === decision && s.target === target,
+  );
+  return acted ? dismissTip(advisor) : advisor;
 }

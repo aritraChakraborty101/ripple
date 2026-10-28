@@ -33,6 +33,7 @@ export const decisionSystem: System = {
         id: def.id,
         tick: pending.issuedTick,
         by: pending.by,
+        ...(pending.target !== undefined ? { target: pending.target } : {}),
       };
       current = applyEffects(current, success ? def.effects : def.failureEffects, source);
       events.push({

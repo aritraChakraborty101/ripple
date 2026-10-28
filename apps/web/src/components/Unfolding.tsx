@@ -1,5 +1,5 @@
 import { policiesInForce, type GameState } from '@ripple/engine';
-import { formatShortDate } from '../game/format';
+import { fillNames, formatShortDate } from '../game/format';
 
 interface Props {
   readonly game: GameState;
@@ -21,8 +21,8 @@ export function Unfolding({ game, onOpenOrders }: Props) {
         </span>
       ) : (
         <ul className="chips">
-          {policies.map((def) => (
-            <li key={def.id}>
+          {policies.map(({ def, target }) => (
+            <li key={`${def.id}>${target ?? ''}`}>
               <button
                 type="button"
                 className="chip policy"
@@ -30,7 +30,9 @@ export function Unfolding({ game, onOpenOrders }: Props) {
                 title="In force until you change it. Open your orders to change it."
               >
                 <span className="chip-kind">In force</span>
-                <span className="chip-name">{def.name}</span>
+                <span className="chip-name">
+                  {fillNames(def.name, game.world.countries, game.rules.playerCountry, target)}
+                </span>
               </button>
             </li>
           ))}
@@ -38,7 +40,9 @@ export function Unfolding({ game, onOpenOrders }: Props) {
             .filter((p) => p.by === game.rules.playerCountry)
             .map((p) => {
               const def = game.defs.decisions[p.decision];
-              const name = def?.name ?? p.decision;
+              const name = def
+                ? fillNames(def.name, game.world.countries, p.by, p.target)
+                : p.decision;
               const total = Math.max(1, p.dueTick - p.issuedTick);
               const done = Math.min(1, (game.tick - p.issuedTick) / total);
               const left = Math.max(0, p.dueTick - game.tick);

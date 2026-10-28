@@ -242,10 +242,18 @@ export const scenarioSchema = z
     s.decisions.forEach((d, i) => {
       const at: Path = ['decisions', i];
       if (d.for === undefined) {
-        for (const key of ['targets', 'drives', 'consider', 'severity', 'detail'] as const) {
+        for (const key of ['drives', 'consider', 'severity', 'detail'] as const) {
           if (d[key] !== undefined)
             issue([...at, key], `Only computer orders (with "for") have ${key}`);
         }
+        if (Array.isArray(d.targets)) {
+          d.targets.forEach((c, j) => {
+            need('country', [...at, 'targets', j], c);
+            if (c === player)
+              issue([...at, 'targets', j], 'The player cannot aim an order at itself');
+          });
+        }
+        if (d.targets !== undefined) placeholders = new Set(['self', 'target']);
       } else {
         if (d.drives === undefined) issue([...at, 'drives'], 'A computer order needs drives');
         if (d.for !== 'any') {
@@ -262,6 +270,21 @@ export const scenarioSchema = z
         placeholders = new Set(d.targets === undefined ? ['self'] : ['self', 'target']);
         for (const goal of Object.keys(d.drives ?? {})) checkGoal([...at, 'drives', goal], goal);
         d.consider?.forEach((c, j) => checkConsideration([...at, 'consider', j], c));
+      }
+      if (d.perTarget && d.targets === undefined) {
+        issue([...at, 'perTarget'], 'Only templates (with targets) can keep cooldowns per target');
+      }
+      // `{target}` in a flag only means something in a template.
+      if (d.targets === undefined) {
+        const flags = JSON.stringify([
+          d.requires,
+          d.costs,
+          d.effects,
+          d.failureEffects,
+          d.policyFlag,
+        ]);
+        if (flags.includes('{target}'))
+          issue(at, 'Only templates (with targets) can use {target} in flags');
       }
       if (d.requires) checkCondition([...at, 'requires'], d.requires);
       d.costs.forEach((x, j) => checkEffect([...at, 'costs', j], x));

@@ -122,11 +122,12 @@ function eventDraft(state: GameState, event: EngineEvent): DispatchDraft | null 
       if (event.by !== state.rules.playerCountry) return null;
       const def = state.defs.decisions[event.decision];
       if (!def || def.durationDays < REPORT_SIGNING_FROM_DAYS) return null;
+      const name = fillNames(def.name, state.world.countries, event.by, event.target);
       return {
         tick: event.tick,
         tag: 'Your orders',
         severity: 'info',
-        headline: `Order signed: ${def.name}`,
+        headline: `Order signed: ${name}`,
         detail: `Outcome expected around ${formatDate(event.dueTick)}.`,
         source: 'order',
       };
@@ -150,13 +151,17 @@ function eventDraft(state: GameState, event: EngineEvent): DispatchDraft | null 
           choice: { decision: def.id, country: event.by, tick: event.issuedTick },
         };
       }
+      const fillMine = (text: string) =>
+        fillNames(text, state.world.countries, event.by, event.target);
       return {
         tick: event.tick,
         tag: 'Your orders',
         severity: event.success ? 'info' : 'warning',
-        headline: event.success
-          ? def.successHeadline
-          : (def.failureHeadline ?? `${def.name}: it did not work`),
+        headline: fillMine(
+          event.success
+            ? def.successHeadline
+            : (def.failureHeadline ?? `${def.name}: it did not work`),
+        ),
         source: 'order',
       };
     }

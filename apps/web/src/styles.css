@@ -1180,6 +1180,36 @@ kbd {
   line-height: 1.45;
 }
 
+/* Whom an order is aimed at: one chip per country it can reach. */
+.target-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 2px 0 6px;
+}
+.target {
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 13px;
+  cursor: pointer;
+}
+.target:hover {
+  background: var(--line-soft);
+}
+.target[aria-checked='true'] {
+  border-color: var(--accent);
+  color: var(--ink);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.target.closed {
+  color: var(--ink-muted);
+  border-style: dashed;
+}
+
 .decision-meta {
   display: flex;
   flex-wrap: wrap;

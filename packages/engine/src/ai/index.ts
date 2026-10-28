@@ -28,6 +28,7 @@ export {
   SELF,
   TARGET,
   bindDecision,
+  bindFlag,
   bindGoalId,
   isFor,
   targetsOf,

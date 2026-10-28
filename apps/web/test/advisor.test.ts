@@ -84,7 +84,10 @@ describe('advisor', () => {
 
   it('ignores signing an order the tip did not suggest', () => {
     const advisor = { ...newAdvisor(guide.tips), current: guide.tips[0]! };
-    expect(afterSigning(advisor, 'steel_tariff')).toBe(advisor);
+    expect(afterSigning(advisor, 'tariff', 'thessa')).toBe(advisor);
+    // The first tip suggests an envoy to Corvan; one to Orrin is not that.
+    expect(afterSigning(advisor, 'envoy', 'orrin')).toBe(advisor);
+    expect(afterSigning(advisor, 'envoy', 'corvan').current).toBeNull();
   });
 
   it('never changes the game', () => {

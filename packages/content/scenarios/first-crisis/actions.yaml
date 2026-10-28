@@ -182,7 +182,7 @@
   for: [thessa]
   name: Curb steel exports
   description: Answer Aldoria's tariffs in kind.
-  requires: { flag: steel_tariff_active }
+  requires: { flag: tariff_on_thessa }
   drives: { grievance(aldoria): 2, wealth: -1, standing: 1 }
   cooldownDays: 360
   effects:

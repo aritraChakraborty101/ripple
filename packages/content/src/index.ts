@@ -22,6 +22,7 @@ export {
   guideFromYaml,
   parseGuide,
   type AdvisorTip,
+  type Suggestion,
   type Briefing,
   type Guide,
 } from './guide';
