@@ -11,10 +11,12 @@
  *     when:
  *       stat: { target: resource.oil.price, above: 8760 }
  *     text: Fuel prices are hurting workers and industry.
- *     suggest: [fuel_subsidy, release_reserves]
+ *     suggest: [fuel_subsidy, release_reserves, envoy>corvan]
+ *
+ * An order aimed at a country is written `decision>target`.
  */
 
-import { createGame, evaluate, type Condition, type ScenarioDef } from '@ripple/engine';
+import { createGame, evaluate, targetsOf, type Condition, type ScenarioDef } from '@ripple/engine';
 import { z } from 'zod';
 import { parseYaml } from './assemble';
 import { toCondition } from './convert';
@@ -34,8 +36,14 @@ export const advisorTipSchema = z.strictObject({
   id,
   when: conditionSchema,
   text,
-  /** Orders the advisor recommends; shown with the tip, ready to sign. */
-  suggest: z.array(id).default([]),
+  /** Orders the advisor recommends; shown with the tip, ready to sign. `envoy>corvan` aims one. */
+  suggest: z
+    .array(
+      z
+        .string()
+        .regex(/^[a-z][a-z0-9_]*(>[a-z][a-z0-9_]*)?$/, 'Suggestions look like envoy>corvan'),
+    )
+    .default([]),
   /** The country the tip is about, so the player can open it on the map. */
   country: id.optional(),
 });
@@ -46,11 +54,17 @@ export interface Briefing {
   readonly focusCountry: string;
 }
 
+/** An order the advisor recommends, aimed at a country if it is a template. */
+export interface Suggestion {
+  readonly decision: string;
+  readonly target?: string;
+}
+
 export interface AdvisorTip {
   readonly id: string;
   readonly when: Condition;
   readonly text: string;
-  readonly suggest: readonly string[];
+  readonly suggest: readonly Suggestion[];
   readonly country?: string;
 }
 
@@ -75,7 +89,7 @@ export function parseGuide(
 ): Guide {
   const problems: string[] = [];
   const countries = new Set(scenario.countries.map((c) => c.id));
-  const decisions = new Set(scenario.decisions.map((d) => d.id));
+  const decisions = new Map(scenario.decisions.map((d) => [d.id, d]));
   // A fresh game to check that every stat a condition reads exists.
   const probe = createGame(scenario, 0);
 
@@ -115,8 +129,25 @@ export function parseGuide(
       if (usesChance(tip.when)) {
         problems.push(`${at}.when: Advisor tips cannot use chance; they must not affect the game`);
       }
-      tip.suggest.forEach((d, j) => {
-        if (!decisions.has(d)) problems.push(`${at}.suggest[${j}]: Unknown decision "${d}"`);
+      const suggest: Suggestion[] = [];
+      tip.suggest.forEach((written, j) => {
+        const [decision, target] = written.split('>') as [string, string | undefined];
+        const def = decisions.get(decision);
+        if (!def) {
+          problems.push(`${at}.suggest[${j}]: Unknown decision "${decision}"`);
+          return;
+        }
+        const player = scenario.rules.playerCountry;
+        if (def.targets === undefined && target !== undefined) {
+          problems.push(`${at}.suggest[${j}]: "${decision}" is not aimed at a country`);
+        } else if (def.targets !== undefined && target === undefined) {
+          problems.push(
+            `${at}.suggest[${j}]: Say whom "${decision}" is aimed at, as ${decision}>country`,
+          );
+        } else if (target !== undefined && !targetsOf(probe, def, player).includes(target)) {
+          problems.push(`${at}.suggest[${j}]: "${decision}" cannot be aimed at "${target}"`);
+        }
+        suggest.push(target === undefined ? { decision } : { decision, target });
       });
       if (tip.country !== undefined && !countries.has(tip.country)) {
         problems.push(`${at}.country: Unknown country "${tip.country}"`);
@@ -131,7 +162,7 @@ export function parseGuide(
         id: tip.id,
         when,
         text: tip.text,
-        suggest: tip.suggest,
+        suggest,
         ...(tip.country !== undefined ? { country: tip.country } : {}),
       });
     });

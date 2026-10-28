@@ -71,7 +71,7 @@ export const actions = {
   },
   setSpeed: (speed: Speed) => update(dismissAlert(setSpeed(session, speed))),
   pause: () => update(setPaused(session, true)),
-  issue: (decision: string) => update(issueDecision(session, decision)),
+  issue: (decision: string, target?: string) => update(issueDecision(session, decision, target)),
   dismissAlert: () => update(dismissAlert(session)),
   dismissAdvice: () => update(dismissAdvice(session)),
   setAutoPause: (on: boolean) => update(setAutoPause(session, on)),

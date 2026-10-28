@@ -211,15 +211,21 @@ export function advanceSession(session: Session, elapsedMs: number): Session {
 }
 
 /**
- * Sign a decision now, even while paused: costs are paid at once and the
+ * Sign a decision now (aimed at `target`, for an order aimed at a country), even while paused: costs are paid at once and the
  * outcome is scheduled. Invalid orders change nothing (the UI checks first).
  */
-export function issueDecision(session: Session, decision: string): Session {
+export function issueDecision(session: Session, decision: string, target?: string): Session {
   const by = session.game.rules.playerCountry;
-  const result = applyOrders(session.game, [{ kind: 'decide', decision, by }]);
+  const order = {
+    kind: 'decide' as const,
+    decision,
+    by,
+    ...(target !== undefined ? { target } : {}),
+  };
+  const result = applyOrders(session.game, [order]);
   if (result.events.every((e) => e.kind === 'order_rejected')) return session;
   const next = absorb(session, result.state, result.events, session.game.tick);
-  return { ...next, advisor: afterSigning(next.advisor, decision) };
+  return { ...next, advisor: afterSigning(next.advisor, decision, target) };
 }
 
 export function setPaused(session: Session, paused: boolean): Session {

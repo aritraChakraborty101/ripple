@@ -50,7 +50,9 @@ Each condition or effect is a mapping with one key that names it.
 
 An event can also have `requires`: a condition that must hold for it to fire at all. That matters for scheduled events, which otherwise fire whatever has changed since. For example, the strait's forced reopening only happens if it is still closed.
 
-**Policies** are decisions that stay in force until reversed. Give the decision a `policyFlag`, set that flag in its effects, and write a second decision that requires the flag, clears it and uses `endEffectsOf` to undo the policy's lingering effects. The game lists policies in force so the player can see and reverse them. See `steel_tariff` and `lift_steel_tariff`.
+**Orders aimed at a country.** Give a player decision `targets` (a list of countries, or `others` for every other country) and the player picks whom to aim it at. Inside it, `self` is the player's country and `target` the chosen one, in stat paths, relations and flags; names, descriptions, headlines and `unavailableText` use `{target}`. Add `perTarget: true` to keep cooldowns and "already under way" per target, so an envoy to Corvan does not hold up one to Orrin. See `envoy`.
+
+**Policies** are decisions that stay in force until reversed. Give the decision a `policyFlag`, set that flag in its effects, and write a second decision that requires the flag, clears it and uses `endEffectsOf` to undo the policy's lingering effects. The game lists policies in force so the player can see and reverse them. A policy aimed at a country puts `{target}` in its flag (`tariff_on_{target}`), so it can be in force against several countries at once, and `endEffectsOf` in the lifting order ends only what was done to that target. See `tariff` and `lift_tariff`.
 
 **Stat targets** are written `kind.id.stat`, such as `country.aldoria.treasury`, `faction.aldoria_workers.satisfaction`, `resource.oil.price` or `link.oil_veskar_aldoria.capacity`.
 
@@ -66,7 +68,7 @@ An event can also have `requires`: a condition that must hold for it to fire at 
     relation: { between: [aldoria, corvan], below: -12 }
   country: corvan # optional: lets the player open it on the map
   text: Relations with Corvan are slipping. An envoy now costs far less than a closed strait later.
-  suggest: [envoy_corvan, transit_fees]
+  suggest: [envoy>corvan, transit_fees] # an order aimed at a country is decision>target
 ```
 
 Each tip appears once per game, one at a time, the first time its `when` holds and at least one suggested order can be signed. Conditions use the event vocabulary except `chance`. Every suggested order, country and stat is checked when the guide loads.

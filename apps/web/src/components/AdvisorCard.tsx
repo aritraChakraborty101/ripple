@@ -11,7 +11,10 @@ interface Props {
 
 /** Advice at the moment it matters, with the orders it recommends ready to sign. */
 export function AdvisorCard({ game, tip, onShowCountry }: Props) {
-  const suggested = tip.suggest.map((id) => game.defs.decisions[id]).filter((d) => d !== undefined);
+  const suggested = tip.suggest.flatMap((s) => {
+    const def = game.defs.decisions[s.decision];
+    return def ? [{ def, target: s.target }] : [];
+  });
   const country = tip.country ? game.world.countries[tip.country] : undefined;
 
   return (
@@ -39,8 +42,14 @@ export function AdvisorCard({ game, tip, onShowCountry }: Props) {
       <p className="advisor-text">{tip.text}</p>
       {suggested.length > 0 && (
         <ul className="decision-list">
-          {suggested.map((def) => (
-            <DecisionCard key={def.id} game={game} def={def} compact />
+          {suggested.map(({ def, target }) => (
+            <DecisionCard
+              key={`${def.id}>${target ?? ''}`}
+              game={game}
+              def={def}
+              {...(target !== undefined ? { target } : {})}
+              compact
+            />
           ))}
         </ul>
       )}

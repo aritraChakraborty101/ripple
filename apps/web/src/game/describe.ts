@@ -1,6 +1,6 @@
 /** Plain-language descriptions of decisions, relations and moods for the UI. */
 
-import { isFor, type DecisionDef, type GameState } from '@ripple/engine';
+import { isFor, targetsOf, type DecisionDef, type GameState } from '@ripple/engine';
 import { formatMillions } from './format';
 
 /**
@@ -89,16 +89,27 @@ export function playerDecisions(game: GameState): DecisionDef[] {
     .filter((def) => isFor(game, def, me));
 }
 
+/** An order as the player would sign it: aimed at `target` if it is aimed at a country. */
+export interface OrderChoice {
+  readonly def: DecisionDef;
+  readonly target?: string;
+}
+
 /**
- * Decisions that concern a country: those whose effects change relations with
- * it or routes to and from it. The player's own country is excluded, since
- * almost every decision touches it.
+ * Orders that concern a country: those aimed at it, and those whose effects
+ * change relations with it or routes to and from it. The player's own country
+ * is excluded, since almost every decision touches it.
  */
-export function decisionsConcerning(game: GameState, countryId: string): DecisionDef[] {
-  if (countryId === game.rules.playerCountry) return [];
-  return playerDecisions(game).filter((def) =>
-    [...def.costs, ...def.effects, ...def.failureEffects].some((e) =>
+export function decisionsConcerning(game: GameState, countryId: string): OrderChoice[] {
+  const me = game.rules.playerCountry;
+  if (countryId === me) return [];
+  return playerDecisions(game).flatMap((def): OrderChoice[] => {
+    if (def.targets !== undefined) {
+      return targetsOf(game, def, me).includes(countryId) ? [{ def, target: countryId }] : [];
+    }
+    const touches = [...def.costs, ...def.effects, ...def.failureEffects].some((e) =>
       countriesTouched(game, e).includes(countryId),
-    ),
-  );
+    );
+    return touches ? [{ def }] : [];
+  });
 }

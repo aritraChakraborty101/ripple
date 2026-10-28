@@ -10,7 +10,7 @@
   text: >-
     Relations with Corvan are slipping. Your oil sails through their strait.
     An envoy now costs far less than a closed strait later.
-  suggest: [envoy_corvan, transit_fees]
+  suggest: [envoy>corvan, transit_fees]
 
 - id: corvan_on_the_edge
   when:
@@ -21,7 +21,7 @@
   text: >-
     Corvan is close to closing the South Strait. Below -40 it could happen any
     day. Buy goodwill quickly: transit fees work at once.
-  suggest: [transit_fees, envoy_corvan]
+  suggest: [transit_fees, envoy>corvan]
 
 - id: strait_closed
   when:
@@ -39,7 +39,7 @@
     Crude is 20% above normal, and workers and industry feel it at once.
     A fuel subsidy shields them for three months; Veskar might also agree to
     a discount.
-  suggest: [fuel_subsidy, envoy_veskar]
+  suggest: [fuel_subsidy, veskar_discount]
 
 - id: stability_sliding
   when:
@@ -65,7 +65,7 @@
   text: >-
     Thessa is angry, and Thessa is courting Corvan. Lifting the steel tariffs
     would win back some goodwill, at a cost to your own industry.
-  suggest: [lift_steel_tariff]
+  suggest: [lift_tariff>thessa]
 
 - id: treasury_low
   when:
@@ -74,4 +74,4 @@
     The treasury is running low, and dear imports drain it every month. Spend
     on what fixes causes rather than symptoms. Tariffs on Thessa raise about
     3 bn a month, at a diplomatic price.
-  suggest: [steel_tariff]
+  suggest: [tariff>thessa]

@@ -181,6 +181,8 @@ export type WhyNode =
       readonly decision: string;
       readonly tick: number;
       readonly by?: string;
+      /** For orders aimed at a country. */
+      readonly target?: string;
     }
   /** Part of the starting situation. */
   | { readonly type: 'start' }
@@ -260,9 +262,13 @@ export function sourceNode(source: ModifierSource): WhyNode {
     case 'event':
       return { type: 'event', event: source.id, tick: source.tick };
     case 'decision':
-      return source.by === undefined
-        ? { type: 'decision', decision: source.id, tick: source.tick }
-        : { type: 'decision', decision: source.id, tick: source.tick, by: source.by };
+      return {
+        type: 'decision',
+        decision: source.id,
+        tick: source.tick,
+        ...(source.by !== undefined ? { by: source.by } : {}),
+        ...(source.target !== undefined ? { target: source.target } : {}),
+      };
     case 'scenario':
       return { type: 'start' };
     case 'system':

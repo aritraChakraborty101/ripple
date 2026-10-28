@@ -36,8 +36,18 @@ function bindRef(ref: StatRef, b: Binding): StatRef {
   return { ...ref, id: bindId(ref.id, b) };
 }
 
+/**
+ * Flag names in templates carry `{self}` and `{target}`, so one policy can be
+ * in force against several countries at once: `tariff_on_{target}`.
+ */
+export function bindFlag(flag: string, b: Binding): string {
+  return flag.replaceAll('{self}', b.self).replaceAll('{target}', b.target ?? '{target}');
+}
+
 function bindCondition(c: Condition, b: Binding): Condition {
   switch (c.type) {
+    case 'flag':
+      return { ...c, flag: bindFlag(c.flag, b) };
     case 'all':
     case 'any':
       return { ...c, of: c.of.map((x) => bindCondition(x, b)) };
@@ -55,6 +65,12 @@ function bindEffect(e: Effect, b: Binding): Effect {
     case 'modify':
     case 'adjust':
       return { ...e, target: bindRef(e.target, b) };
+    case 'set_flag':
+    case 'clear_flag':
+      return { ...e, flag: bindFlag(e.flag, b) };
+    case 'end_effects':
+      // A template ends what the same kind of order did to the same target.
+      return b.target === undefined ? e : { ...e, target: b.target };
     default:
       return e;
   }
@@ -89,6 +105,7 @@ export function bindDecision(def: DecisionDef, self: string, target?: string): D
     effects: def.effects.map((e) => bindEffect(e, b)),
     failureEffects: def.failureEffects.map((e) => bindEffect(e, b)),
     ...(def.drives ? { drives } : {}),
+    ...(def.policyFlag !== undefined ? { policyFlag: bindFlag(def.policyFlag, b) } : {}),
     ...(def.consider
       ? {
           consider: def.consider.map((c): Consideration => ({

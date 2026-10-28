@@ -9,6 +9,7 @@ import {
   explainChokepoint,
   explainEvent,
   parseGoalId,
+  policyForFlag,
   explainStat,
   relationId,
   sourceNode,
@@ -199,8 +200,11 @@ export function describeNode(game: GameState, node: WhyNode): NodeText {
       return { title: `The ${name} ${node.open ? 'is open' : 'is closed'}` };
     }
     case 'flag': {
-      const policy = Object.values(game.defs.decisions).find((d) => d.policyFlag === node.flag);
-      return { title: policy ? `${policy.name}: in force` : node.flag.replaceAll('_', ' ') };
+      const policy = policyForFlag(game, node.flag);
+      if (!policy) return { title: node.flag.replaceAll('_', ' ') };
+      const me = game.rules.playerCountry;
+      const name = fillNames(policy.def.name, game.world.countries, me, policy.target);
+      return { title: `${name}: in force` };
     }
     case 'event':
       return {
@@ -210,7 +214,10 @@ export function describeNode(game: GameState, node: WhyNode): NodeText {
     case 'decision': {
       const def = game.defs.decisions[node.decision];
       if (node.by === undefined || node.by === game.rules.playerCountry) {
-        return { title: `You signed: ${def?.name ?? node.decision}`, when: formatDate(node.tick) };
+        const name = def
+          ? fillNames(def.name, game.world.countries, game.rules.playerCountry, node.target)
+          : node.decision;
+        return { title: `You signed: ${name}`, when: formatDate(node.tick) };
       }
       const choice = explainChoice(game, node.decision, node.tick, node.by);
       const title = def

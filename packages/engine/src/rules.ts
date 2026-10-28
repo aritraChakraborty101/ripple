@@ -4,7 +4,14 @@
  * these small building blocks instead of needing new engine code per crisis.
  */
 
-import { addModifier, effectiveStat, type ModifierSource, type StatRef } from './modifiers';
+import { bindDecision, targetsOf } from './ai/templates';
+import {
+  addModifier,
+  effectiveStat,
+  type Modifier,
+  type ModifierSource,
+  type StatRef,
+} from './modifiers';
 import type { Consideration } from './ai/types';
 import { chance } from './rng';
 import type { GameState } from './state';
@@ -114,6 +121,8 @@ export type Effect =
   | {
       readonly type: 'end_effects';
       readonly source: { readonly kind: 'decision' | 'event'; readonly id: string };
+      /** Only the modifiers of that decision aimed at this country (set when a template is bound). */
+      readonly target?: string;
     };
 
 export interface ScheduledEvent {
@@ -196,7 +205,11 @@ export function applyEffect(state: GameState, effect: Effect, source: ModifierSo
     }
     case 'end_effects': {
       const { kind, id } = effect.source;
-      const kept = state.modifiers.filter((m) => !(m.source.kind === kind && m.source.id === id));
+      const ends = (m: Modifier) =>
+        m.source.kind === kind &&
+        m.source.id === id &&
+        (effect.target === undefined || m.source.target === effect.target);
+      const kept = state.modifiers.filter((m) => !ends(m));
       return kept.length === state.modifiers.length ? state : { ...state, modifiers: kept };
     }
   }
@@ -271,12 +284,20 @@ export interface DecisionDef {
    * Lets the UI list what the player currently has in force.
    */
   readonly policyFlag?: string;
+  /**
+   * For templates: keep cooldowns and "already under way" per target, so an
+   * envoy to Corvan does not hold up one to Orrin. Off by default.
+   */
+  readonly perTarget?: boolean;
 
   // --- For computer countries (see ai/). Player decisions leave these out.
 
   /** Who may sign it: missing means the player; otherwise these countries, or "any" computer country. */
   readonly for?: readonly string[] | 'any';
-  /** Makes it a template: one candidate per target country. "others" means every other country. */
+  /**
+   * Makes it a template: one candidate per target country. "others" means every
+   * other country. The player's orders can be templates too.
+   */
   readonly targets?: 'others' | readonly string[];
   /** Which goals it moves, by goal ID, from -5 to 5. `ties(target)` names the target's goal. */
   readonly drives?: Readonly<Record<string, number>>;
@@ -284,10 +305,34 @@ export interface DecisionDef {
   readonly consider?: readonly Consideration[];
 }
 
-/** Decisions whose policy is currently in force, in ID order. */
-export function policiesInForce(state: GameState): DecisionDef[] {
-  return Object.keys(state.defs.decisions)
-    .sort()
-    .map((id) => state.defs.decisions[id]!)
-    .filter((d) => d.policyFlag !== undefined && state.flags.includes(d.policyFlag));
+/** A policy in force: the decision as bound to its target, if it has one. */
+export interface PolicyInForce {
+  readonly def: DecisionDef;
+  readonly target?: string;
+}
+
+/**
+ * The player's policies currently in force, in ID order then target order. A
+ * template policy (`policyFlag: tariff_on_{target}`) is listed once per target
+ * it is in force against.
+ */
+export function policiesInForce(state: GameState): PolicyInForce[] {
+  const me = state.rules.playerCountry;
+  const found: PolicyInForce[] = [];
+  for (const id of Object.keys(state.defs.decisions).sort()) {
+    const raw = state.defs.decisions[id]!;
+    if (raw.policyFlag === undefined || raw.for !== undefined) continue;
+    for (const target of targetsOf(state, raw, me)) {
+      const def = target === undefined ? raw : bindDecision(raw, me, target);
+      if (def.policyFlag !== undefined && state.flags.includes(def.policyFlag)) {
+        found.push(target === undefined ? { def } : { def, target });
+      }
+    }
+  }
+  return found;
+}
+
+/** The player's policy whose flag this is, if any: what the why-trace names for a policy flag. */
+export function policyForFlag(state: GameState, flag: string): PolicyInForce | undefined {
+  return policiesInForce(state).find((p) => p.def.policyFlag === flag);
 }

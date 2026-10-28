@@ -81,7 +81,7 @@ describe('session', () => {
   });
 
   it('signs orders while paused: costs now, outcome later', () => {
-    const session = issueDecision(newSession(quiet, 1), 'envoy_corvan');
+    const session = issueDecision(newSession(quiet, 1), 'envoy', 'corvan');
     const influence = effectiveStat(session.game, {
       kind: 'country',
       id: 'aldoria',
@@ -109,8 +109,16 @@ describe('session', () => {
   });
 
   it('ignores orders that are not allowed', () => {
-    const once = issueDecision(newSession(quiet, 1), 'envoy_corvan');
-    expect(issueDecision(once, 'envoy_corvan')).toBe(once);
+    const once = issueDecision(newSession(quiet, 1), 'envoy', 'corvan');
+    expect(issueDecision(once, 'envoy', 'corvan')).toBe(once);
+    // An order aimed at a country needs its target.
+    expect(issueDecision(once, 'envoy')).toBe(once);
+  });
+
+  it('keeps an envoy to one country from holding up an envoy to another', () => {
+    const once = issueDecision(newSession(quiet, 1), 'envoy', 'corvan');
+    const twice = issueDecision(once, 'envoy', 'orrin');
+    expect(twice.game.pending.map((p) => p.target)).toEqual(['corvan', 'orrin']);
   });
 
   it('keeps a bounded price history for sparklines', () => {
@@ -141,8 +149,11 @@ describe('describing decisions', () => {
 
   it('lists what signing costs', () => {
     expect(describeCosts(game, game.defs.decisions.transit_fees!)).toEqual(['30 bn']);
-    expect(describeCosts(game, game.defs.decisions.envoy_corvan!)).toEqual(['8 influence']);
-    expect(describeCosts(game, game.defs.decisions.steel_tariff!)).toEqual([]);
+    expect(describeCosts(game, game.defs.decisions.envoy!)).toEqual(['8 influence']);
+    expect(describeCosts(game, game.defs.decisions.tariff!)).toEqual([]);
+    expect(describeCosts(game, game.defs.decisions.fuel_subsidy!)).toEqual([
+      '13 bn a month for 3 months',
+    ]);
   });
 
   it('speaks in rough durations and odds', () => {
@@ -208,13 +219,16 @@ describe('crisis alerts', () => {
 
 describe('orders concerning a country', () => {
   const game = newSession(scenario, 1).game;
-  const ids = (country: string) => decisionsConcerning(game, country).map((d) => d.id);
+  const ids = (country: string) =>
+    decisionsConcerning(game, country).map((c) =>
+      c.target ? `${c.def.id}>${c.target}` : c.def.id,
+    );
 
-  it('finds the orders that touch relations or routes with each country', () => {
-    expect(ids('corvan')).toEqual(['envoy_corvan', 'transit_fees']);
-    expect(ids('thessa')).toEqual(['lift_steel_tariff', 'steel_tariff']);
-    expect(ids('veskar')).toEqual(['envoy_veskar', 'overland_pipeline']);
-    expect(ids('orrin')).toEqual([]);
+  it('finds the orders aimed at each country, or touching relations or routes with it', () => {
+    expect(ids('corvan')).toEqual(['envoy>corvan', 'transit_fees']);
+    expect(ids('thessa')).toEqual(['envoy>thessa', 'lift_tariff>thessa', 'tariff>thessa']);
+    expect(ids('veskar')).toEqual(['envoy>veskar', 'overland_pipeline', 'veskar_discount']);
+    expect(ids('orrin')).toEqual(['envoy>orrin']);
   });
 
   it('lists nothing for the player country, since almost everything touches it', () => {

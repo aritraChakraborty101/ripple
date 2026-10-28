@@ -22,6 +22,16 @@
 import { z } from 'zod';
 
 export const id = z.string().regex(/^[a-z][a-z0-9_]*$/, 'IDs use lower_snake_case');
+/**
+ * A flag name. In templates it may carry `{self}` and `{target}`, so one policy
+ * can be in force against several countries: `tariff_on_{target}`.
+ */
+export const flagId = z
+  .string()
+  .regex(
+    /^(?:[a-z]|\{(?:self|target)\})(?:[a-z0-9_]|\{(?:self|target)\})*$/,
+    'Flags use lower_snake_case, with {self} or {target} in templates',
+  );
 const int = z.int();
 const basisPoints = z.int().min(0).max(10_000);
 
@@ -64,8 +74,8 @@ export const conditionSchema: z.ZodType<RawCondition> = z.lazy(() =>
     z.strictObject({ relation: z.strictObject({ between: pair, ...bounds }) }),
     z.strictObject({ chokepointOpen: id }),
     z.strictObject({ chokepointClosed: id }),
-    z.strictObject({ flag: id }),
-    z.strictObject({ noFlag: id }),
+    z.strictObject({ flag: flagId }),
+    z.strictObject({ noFlag: flagId }),
     z.strictObject({ afterDay: z.int().nonnegative() }),
     z.strictObject({ chance: basisPoints }),
   ]),
@@ -90,8 +100,8 @@ export const effectSchema = z.union([
   z.strictObject({ relation: z.strictObject({ between: pair, by: int, days: days.optional() }) }),
   z.strictObject({ setChokepoint: z.strictObject({ id, open: z.boolean() }) }),
   z.strictObject({ schedule: z.strictObject({ event: id, inDays: days }) }),
-  z.strictObject({ setFlag: id }),
-  z.strictObject({ clearFlag: id }),
+  z.strictObject({ setFlag: flagId }),
+  z.strictObject({ clearFlag: flagId }),
   // Remove the lingering modifiers of an earlier decision or event.
   z.strictObject({
     endEffectsOf: z.union([z.strictObject({ decision: id }), z.strictObject({ event: id })]),
@@ -168,7 +178,9 @@ export const decisionSchema = z.strictObject({
   successHeadline: z.string().min(1),
   failureHeadline: z.string().min(1).optional(),
   /** For policies: the flag set while the policy is in force. */
-  policyFlag: id.optional(),
+  policyFlag: flagId.optional(),
+  /** For templates: cooldowns and "under way" are kept per target. */
+  perTarget: z.boolean().optional(),
   // --- Computer orders only
   /** How the news reports it. Default info. */
   severity: z.enum(['critical', 'warning', 'info']).optional(),
@@ -176,7 +188,10 @@ export const decisionSchema = z.strictObject({
   detail: z.string().min(1).optional(),
   /** Who may sign it: these countries, or any computer country. Missing: the player. */
   for: z.union([z.literal('any'), z.array(id).min(1)]).optional(),
-  /** Makes it a template, aimed at each of these countries in turn, or every other one. */
+  /**
+   * Makes it a template, aimed at each of these countries in turn, or every
+   * other one. Player orders can be templates too; the player picks the target.
+   */
   targets: z.union([z.literal('others'), z.array(id).min(1)]).optional(),
   /** Which goals it moves, from -5 to 5. */
   drives: z.record(goalId, z.int().min(-5).max(5)).optional(),

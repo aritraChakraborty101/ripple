@@ -3,6 +3,7 @@ import {
   canIssue,
   createGame,
   policiesInForce,
+  relationId,
   effectiveStat,
   marketDemand,
   marketSupply,
@@ -129,46 +130,80 @@ describe('first-crisis full games', () => {
     expect({ outcome: state.outcome, story: story.slice(0, 16) }).toEqual(GOLDEN_IDLE_SEED_3);
   });
 
-  it('lets the player lift steel tariffs, at a price', () => {
+  it('lets the player lift tariffs on Thessa, at a price', () => {
     const me = 'aldoria';
     const thessa = { kind: 'relation' as const, id: 'aldoria__thessa', stat: 'value' };
     const industry = { kind: 'faction' as const, id: 'aldoria_industry', stat: 'satisfaction' };
-    const decide = (decision: string) => [{ kind: 'decide' as const, decision, by: me }];
+    const decide = (decision: string) => [
+      { kind: 'decide' as const, decision, by: me, target: 'thessa' },
+    ];
 
     const quietGame = createGame(quiet, 1);
-    expect(canIssue(quietGame, 'lift_steel_tariff', me)).toEqual({
+    expect(canIssue(quietGame, 'lift_tariff', me, 'thessa')).toEqual({
       ok: false,
-      reason: 'No steel tariffs are in force.',
+      reason: 'No tariffs on {target} are in force.',
     });
 
-    const raised = step(quietGame, decide('steel_tariff')).state;
-    expect(policiesInForce(raised).map((d) => d.id)).toEqual(['steel_tariff']);
+    const raised = step(quietGame, decide('tariff')).state;
+    expect(raised.flags).toContain('tariff_on_thessa');
+    expect(policiesInForce(raised).map((p) => [p.def.id, p.target])).toEqual([
+      ['tariff', 'thessa'],
+    ]);
     expect(effectiveStat(raised, thessa)).toBe(-25);
     expect(effectiveStat(raised, industry)).toBe(63);
-    expect(canIssue(raised, 'steel_tariff', me)).toEqual({
+    expect(canIssue(raised, 'tariff', me, 'thessa')).toEqual({
       ok: false,
-      reason: 'Tariffs on Thessa are already in force.',
+      reason: 'Tariffs on {target} are already in force.',
     });
 
-    const lifted = step(raised, decide('lift_steel_tariff')).state;
+    const lifted = step(raised, decide('lift_tariff')).state;
     expect(policiesInForce(lifted)).toEqual([]);
-    expect(lifted.flags).not.toContain('steel_tariff_active');
+    expect(lifted.flags).not.toContain('tariff_on_thessa');
     // Half the goodwill comes back; industry loses its boost and grumbles for a while.
     expect(effectiveStat(lifted, thessa)).toBe(-10);
     expect(effectiveStat(lifted, industry)).toBe(50);
-    expect(lifted.modifiers.some((m) => m.source.id === 'steel_tariff')).toBe(false);
+    expect(lifted.modifiers.some((m) => m.source.id === 'tariff')).toBe(false);
     // The tariff paid a monthly line while in force; lifting it ends that revenue.
     const tariffRevenue = (state: GameState) =>
-      state.modifiers.filter((m) => m.source.id === 'steel_tariff' && m.target.stat === 'revenue');
-    expect(tariffRevenue(raised).map((m) => m.amount)).toEqual([3000]);
+      state.modifiers.filter((m) => m.source.id === 'tariff' && m.target.stat === 'revenue');
+    expect(tariffRevenue(raised).map((m) => [m.amount, m.source.target])).toEqual([
+      [3000, 'thessa'],
+    ]);
     expect(tariffRevenue(lifted)).toEqual([]);
+  });
+
+  it('sends one envoy template to any neighbour, each with its own cooldown', () => {
+    const me = 'aldoria';
+    const send = (state: GameState, target: string) =>
+      step(state, [{ kind: 'decide', decision: 'envoy', by: me, target }]).state;
+    const game = createGame(quiet, 1);
+    expect(canIssue(game, 'envoy', me)).toEqual({ ok: true });
+    expect(canIssue(game, 'envoy', me, 'aldoria')).toEqual({
+      ok: false,
+      reason: 'Not a valid target.',
+    });
+
+    const toCorvan = send(game, 'corvan');
+    expect(canIssue(toCorvan, 'envoy', me, 'corvan')).toEqual({
+      ok: false,
+      reason: 'Already under way.',
+    });
+    expect(canIssue(toCorvan, 'envoy', me, 'thessa')).toEqual({ ok: true });
+
+    // Two weeks later the talks end; relations with Corvan alone have moved.
+    const later = run(send(toCorvan, 'thessa'), 14);
+    const relation = (other: string) =>
+      effectiveStat(later, { kind: 'relation', id: relationId(me, other), stat: 'value' });
+    expect([relation('corvan'), relation('thessa')]).not.toEqual([-10, 5]);
+    expect(relation('veskar')).toBe(10);
+    expect(canIssue(later, 'envoy', me, 'corvan').ok).toBe(false); // cooling down
   });
 
   it('gives Thessa a reason to answer a steel tariff in kind', () => {
     let seedsWithAnswer = 0;
     for (let seed = 1; seed <= 20; seed += 1) {
       let state = step(createGame(scenario, seed), [
-        { kind: 'decide', decision: 'steel_tariff', by: 'aldoria' },
+        { kind: 'decide', decision: 'tariff', by: 'aldoria', target: 'thessa' },
       ]).state;
       for (let day = 0; day < 360 && !state.outcome; day += 1) state = step(state, []).state;
       if (state.trace.choices.some((c) => c.decision === 'thessa_curb_steel')) seedsWithAnswer += 1;

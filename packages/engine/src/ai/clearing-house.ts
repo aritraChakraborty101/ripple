@@ -171,7 +171,7 @@ function scoreBound(
   const availability =
     actionTuning?.enabled === false
       ? { ok: false as const, reason: 'Switched off by tuning.' }
-      : availabilityOf(state, bound, country);
+      : availabilityOf(state, bound, country, target);
 
   return {
     country,

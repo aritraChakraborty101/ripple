@@ -24,6 +24,8 @@ export interface ModifierSource {
   readonly tick: number;
   /** For decisions: the country that signed it. */
   readonly by?: string;
+  /** For decisions aimed at a country (templates): that country. */
+  readonly target?: string;
 }
 
 export interface Modifier {

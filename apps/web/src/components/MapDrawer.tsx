@@ -89,8 +89,14 @@ function Orders({ game, countryId }: { game: GameState; countryId: string }) {
         <p className="muted small">No orders concern {name} directly.</p>
       ) : (
         <ul className="decision-list">
-          {orders.map((def) => (
-            <DecisionCard key={def.id} game={game} def={def} compact />
+          {orders.map(({ def, target }) => (
+            <DecisionCard
+              key={def.id}
+              game={game}
+              def={def}
+              {...(target !== undefined ? { target } : {})}
+              compact
+            />
           ))}
         </ul>
       )}

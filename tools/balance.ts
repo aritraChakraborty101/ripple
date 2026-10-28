@@ -26,7 +26,13 @@ import {
   type Order,
 } from '@ripple/engine';
 
-type Player = (state: GameState) => string[];
+/** What a player wants to sign today: a decision, aimed at a country if it is a template. */
+interface Want {
+  readonly decision: string;
+  readonly target?: string;
+}
+
+type Player = (state: GameState) => Want[];
 
 const idle: Player = () => [];
 
@@ -40,13 +46,21 @@ const steady: Player = (state) => {
   const oil = state.world.resources.oil!;
   const oilUp = (stat('resource', 'oil', 'price') - oil.basePrice) / oil.basePrice;
 
-  const wants: string[] = [];
-  if (relation('corvan') < -20) wants.push('envoy_corvan', 'transit_fees');
-  if (stat('country', me, 'stability') < 45) wants.push('fuel_subsidy');
-  if (oilUp > 0.4) wants.push('release_reserves', 'envoy_veskar');
-  if (stat('country', me, 'stability') < 30) wants.push('address_nation');
-  if (state.tick > 60 && stat('country', me, 'treasury') > 200) wants.push('overland_pipeline');
-  return wants.filter((d) => canIssue(state, d, me).ok);
+  const wants: Want[] = [];
+  const want = (decision: string, target?: string) =>
+    wants.push(target === undefined ? { decision } : { decision, target });
+  if (relation('corvan') < -20) {
+    want('envoy', 'corvan');
+    want('transit_fees');
+  }
+  if (stat('country', me, 'stability') < 45) want('fuel_subsidy');
+  if (oilUp > 0.4) {
+    want('release_reserves');
+    want('veskar_discount');
+  }
+  if (stat('country', me, 'stability') < 30) want('address_nation');
+  if (state.tick > 60 && stat('country', me, 'treasury') > 200) want('overland_pipeline');
+  return wants.filter((w) => canIssue(state, w.decision, me, w.target).ok);
 };
 
 interface GameSummary {
@@ -71,7 +85,7 @@ function play(scenarioName: string, seed: number, player: Player, aiProfile?: st
   let firstClosure: number | null = null;
   let decisions = 0;
   while (!state.outcome) {
-    const orders: Order[] = player(state).map((decision) => ({ kind: 'decide', decision, by: me }));
+    const orders: Order[] = player(state).map((w) => ({ kind: 'decide', ...w, by: me }));
     const before = state;
     const result = step(state, orders);
     state = result.state;
