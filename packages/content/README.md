@@ -46,7 +46,11 @@ Each condition or effect is a mapping with one key that names it.
 
 **Conditions:** `all`, `any`, `not`, `stat: { target, above, below }`, `relation: { between, above, below }`, `chokepointOpen`, `chokepointClosed`, `flag`, `noFlag`, `afterDay`, `chance`. Bounds are exclusive. Put `chance` last, so randomness is only drawn when everything else holds.
 
-**Effects:** `modify: { target, add | pct, days }` (lasts `days`; permanent if omitted), `adjust: { target, by }` (permanent change to the base value), `relation: { between, by, days }`, `setChokepoint`, `schedule: { event, inDays }`, `setFlag`, `clearFlag`, `endEffectsOf: { decision | event }` (removes the lingering modifiers an earlier decision or event created; base changes stay).
+**Effects:** `modify: { target, add | pct, days }` (lasts `days`; permanent if omitted), `adjust: { target, by }` (permanent change to the base value), `relation: { between, by, days }`, `setChokepoint`, `schedule: { event, inDays }`, `setFlag`, `clearFlag`, `endEffectsOf: { decision | event }` (removes the lingering modifiers an earlier decision or event created; base changes stay; in a template, only those aimed at the same target, or at `target: self`), `embargo: { by, against, active }` (`by` stops all trade with `against` until it lifts its own embargo). A `relation` change with `untilLifted: true` lasts until `endEffectsOf` ends it.
+
+**Names inside templates.** In a template, `{self}` and `{target}` can sit inside a stat path, link ID or flag: `link.deal_{target}.capacity`, `country.self.tariff_{target}`, `treaty_with_{self}`. Quote them inside `{ }` maps (`{ target: 'link.deal_{target}.capacity', add: 5 }`). The loader checks the name exists for every country the template can be aimed at.
+
+**Tariffs** are the stat `tariff_<partner>` on the importing country, in basis points: the economy charges it on the value of everything that country's open routes bring in from the partner.
 
 An event can also have `requires`: a condition that must hold for it to fire at all. That matters for scheduled events, which otherwise fire whatever has changed since. For example, the strait's forced reopening only happens if it is still closed.
 
@@ -110,7 +114,7 @@ Keep drives honest: an order that drives `standing` should raise influence, and 
 
 Computer orders can also set `severity` and `detail` for the news. Use them for deliberate choices (closing a strait, massing troops); keep accidents and moods (an explosion, a drought, a strike) as events.
 
-A consideration has one measure (`stat`, `relation`, `price`, `flag`, or `day: true` for the day number) and one curve (`rises: [from, to]`, `falls: [from, to]`, `peaks: [from, peak, to]` or `step: at`).
+A consideration has one measure (`stat`, `relation`, `price`, `flag`, or `day: true` for the day number) and one curve (`rises: [from, to]`, `falls: [from, to]`, `peaks: [from, peak, to]` or `step: at`). Add `gate: true` to a check that is usually wide open, such as "is there a treaty?": a gate multiplies the appeal after the other considerations are combined and does not count toward their compensation, so it changes nothing until it closes. Flags in computer templates can name the acting country: `treaty_with_{self}`.
 
 `ai-tuning.yaml` holds profiles of knobs, such as `aggressive: { inertia: 15, hostility: 1.5 }`. Its comments list every knob and its default.
 

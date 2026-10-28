@@ -50,6 +50,11 @@
       rises: [-20, -50]
     - day: true
       rises: [60, 150]
+    # A treaty partner thinks twice: half the appeal while one is in force. A
+    # gate, so it changes nothing until a treaty exists.
+    - flag: treaty_with_{self}
+      falls: [0, 2]
+      gate: true
   cooldownDays: 150
   effects:
     - relation: { between: [self, target], by: -6, days: 90 }
@@ -89,6 +94,9 @@
       rises: [-10, -40]
     - day: true
       rises: [45, 120]
+    - flag: treaty_with_corvan
+      falls: [0, 2]
+      gate: true
   cooldownDays: 120
   effects:
     - relation: { between: [aldoria, corvan], by: -8, days: 90 }
@@ -108,6 +116,9 @@
       rises: [-40, -70]
     - day: true
       rises: [60, 150]
+    - flag: treaty_with_corvan
+      falls: [0, 2]
+      gate: true
   cooldownDays: 150
   effects:
     - setChokepoint: { id: south_strait, open: false }
@@ -169,6 +180,9 @@
   consider:
     - relation: [aldoria, thessa]
       rises: [-30, -60]
+    - flag: treaty_with_thessa
+      falls: [0, 2]
+      gate: true
   cooldownDays: 180
   effects:
     - relation: { between: [aldoria, corvan], by: -10, days: 90 }
@@ -192,6 +206,85 @@
   severity: warning
   successHeadline: Thessa curbs steel exports in retaliation
   detail: Steel gets dearer for three months.
+
+- id: thessa_aid
+  for: [thessa]
+  targets: [corvan, orrin]
+  name: Send aid to {target}
+  description: Buy goodwill, and a sphere of influence, with money.
+  requires:
+    stat: { target: country.thessa.treasury, above: 200 }
+  drives: { ties(target): 3, standing: 1 }
+  consider:
+    - relation: [self, target]
+      falls: [30, 70]
+    - day: true
+      rises: [60, 180]
+  costs:
+    - adjust: { target: country.thessa.treasury, by: -15 }
+  cooldownDays: 200
+  effects:
+    # A lasting step closer, so Thessa stops once it has the friendship it wants.
+    - relation: { between: [self, target], by: 8 }
+    - modify: { target: country.target.stability, add: 4, days: 90 }
+    - adjust: { target: country.target.treasury, by: 15 }
+    - adjust: { target: country.thessa.influence, by: 1 }
+  severity: warning
+  successHeadline: Thessa sends aid to {target}
+  detail: '{target} draws closer to Thessa.'
+
+# Thessa's answer of last resort. The embargo is Thessa's own, so it stands
+# until Thessa lifts it, whatever Aldoria does with its own sanctions. Like
+# Corvan's closure, it is both a choice and a backstop: Thessa lifts it by
+# choice once relations mend, and if it has not after eight months its own
+# exporters force it (an event). Money will not do it: with Aldoria cut off,
+# steel soars and Thessa's other sales earn nearly as much as before.
+- id: thessa_sanction_aldoria
+  for: [thessa]
+  name: Impose sanctions on Aldoria
+  description: Cut all trade with Aldoria.
+  requires:
+    all:
+      - noFlag: sanctioned_by_thessa
+      - relation: { between: [aldoria, thessa], below: -39 }
+  drives: { grievance(aldoria): 4, standing: 1, wealth: -2 }
+  consider:
+    - relation: [aldoria, thessa]
+      rises: [-40, -70]
+    - day: true
+      rises: [120, 240]
+    - flag: treaty_with_thessa
+      falls: [0, 2]
+      gate: true
+  cooldownDays: 360
+  effects:
+    - embargo: { by: thessa, against: aldoria }
+    - setFlag: sanctioned_by_thessa
+    - schedule: { event: thessa_sanctions_collapse, inDays: 240 }
+    - adjust: { target: country.thessa.influence, by: 3 }
+  severity: critical
+  successHeadline: Thessa imposes sanctions on Aldoria
+  detail: All trade between them stops, steel included, until Thessa lifts them.
+
+- id: thessa_lift_sanctions
+  for: [thessa]
+  name: Lift sanctions on Aldoria
+  description: Sell steel to Aldoria again, and be seen to be generous.
+  requires: { flag: sanctioned_by_thessa }
+  drives: { wealth: 3, standing: 2, grievance(aldoria): -1 }
+  consider:
+    # Once Aldoria has mended relations: an envoy, or lifting its tariffs.
+    - relation: [aldoria, thessa]
+      rises: [-45, -10]
+  cooldownDays: 60
+  effects:
+    - embargo: { by: thessa, against: aldoria, active: false }
+    - clearFlag: sanctioned_by_thessa
+    - adjust: { target: country.thessa.influence, by: 3 }
+    - relation: { between: [aldoria, thessa], by: 10, days: 120 }
+  severity: info
+  successHeadline: Thessa lifts its sanctions on Aldoria
+  detail: Steel flows again.
 
 # --- Veskar: wants dearer oil, without losing its best customer --------------
 
@@ -245,3 +338,64 @@
   severity: info
   successHeadline: Orrin offers Aldoria discounted grain
   detail: Grain is 10% cheaper for two months.
+
+# --- Answers to Aldoria's trade, aid and treaties -----------------------------
+#
+# Templates aimed at Aldoria, open to any computer country. Their flags use
+# {self}: Aldoria's tariff on Thessa is tariff_on_thessa, which Thessa reads as
+# tariff_on_{self}.
+
+- id: retaliate_tariffs
+  for: any
+  targets: [aldoria]
+  name: Answer {target}'s tariffs
+  description: Duties of its own on what Aldoria buys from it.
+  requires: { flag: 'tariff_on_{self}' }
+  drives: { grievance(target): 2, standing: 1, ties(target): -1 }
+  cooldownDays: 360
+  effects:
+    - relation: { between: [self, target], by: -8, days: 180 }
+    - modify: { target: country.target.spending, add: 1500, days: 180 }
+    - adjust: { target: country.self.influence, by: 2 }
+  severity: warning
+  successHeadline: "{self} answers Aldoria's tariffs with duties of its own"
+  detail: Aldoria's import bill rises by about 1.5 bn a month for six months.
+
+- id: end_deal_with_aldoria
+  for: any
+  targets: [aldoria]
+  name: End the trade deal with {target}
+  description: Walk away from a deal with a government it no longer trusts.
+  requires: { flag: 'deal_with_{self}' }
+  drives: { grievance(target): 2, ties(target): -2, standing: 1 }
+  consider:
+    - relation: [self, target]
+      rises: [0, -30]
+  cooldownDays: 180
+  effects:
+    - endEffectsOf: { decision: trade_deal, target: self }
+    - clearFlag: deal_with_{self}
+    - relation: { between: [self, target], by: -5, days: 90 }
+    - adjust: { target: country.self.influence, by: 1 }
+  severity: warning
+  successHeadline: '{self} ends its trade deal with Aldoria'
+  detail: The extra supply route closes.
+
+- id: renounce_treaty_with_aldoria
+  for: any
+  targets: [aldoria]
+  name: Renounce the treaty with {target}
+  description: End a friendship that has gone sour.
+  requires: { flag: 'treaty_with_{self}' }
+  drives: { grievance(target): 2, ties(target): -3, standing: 1 }
+  consider:
+    - relation: [self, target]
+      rises: [10, -30]
+  cooldownDays: 180
+  effects:
+    - endEffectsOf: { decision: treaty, target: self }
+    - clearFlag: treaty_with_{self}
+    - relation: { between: [self, target], by: -15 }
+    - adjust: { target: country.self.influence, by: 1 }
+  severity: warning
+  successHeadline: '{self} renounces its treaty with Aldoria'

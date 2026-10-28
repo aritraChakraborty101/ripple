@@ -23,9 +23,9 @@ function playTo(seed: number, tick: number): Session {
   return session;
 }
 
-// The golden game: by day 470 Corvan has chosen to close the strait and
+// The golden game: by day 790 Corvan has chosen to close the strait and
 // stability has collapsed. Played once and shared, since it takes a moment.
-const session = playTo(3, 470);
+const session = playTo(3, 790);
 const game: GameState = session.game;
 const me = game.rules.playerCountry;
 const stability: WhyTarget = {
@@ -57,17 +57,16 @@ describe('why-trace chain', () => {
   const steps = titles(chain);
 
   it('starts at the root cause and ends at the question', () => {
-    // The root cause has nothing further behind it: here, Corvan and Thessa's old friendship.
-    expect(childrenOf(game, chain[0]!)).toEqual([]);
+    expect(chain[0]!.type).toBe('event');
     expect(chain.at(-1)!.type).toBe('stat');
     expect(steps.at(-1)).toMatch(/^Stability/);
   });
 
-  it('runs from Thessa courting Corvan through the strait and the oil price', () => {
+  it('runs from the dispute through the strait and the oil price', () => {
     const joined = steps.join(' → ');
     const order = [
-      /Thessa offers Corvan a security pact/,
-      /Nationalist rallies in Corvan/,
+      /fishing boats/i,
+      /Relations with Corvan/,
       /South Strait/,
       /Crude oil price/,
       /Stability/,

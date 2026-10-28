@@ -76,6 +76,9 @@ export function toEffect(e: RawEffect): Effect {
   if ('adjust' in e) return { type: 'adjust', target: statRef(e.adjust.target), by: e.adjust.by };
   if ('relation' in e) {
     const target = relationRef(e.relation.between);
+    if (e.relation.untilLifted) {
+      return { type: 'modify', target, op: 'add', amount: e.relation.by, days: null };
+    }
     return e.relation.days === undefined
       ? { type: 'adjust', target, by: e.relation.by }
       : { type: 'modify', target, op: 'add', amount: e.relation.by, days: e.relation.days };
@@ -88,11 +91,20 @@ export function toEffect(e: RawEffect): Effect {
   }
   if ('setFlag' in e) return { type: 'set_flag', flag: e.setFlag };
   if ('clearFlag' in e) return { type: 'clear_flag', flag: e.clearFlag };
+  if ('embargo' in e) {
+    return {
+      type: 'embargo',
+      by: e.embargo.by,
+      against: e.embargo.against,
+      active: e.embargo.active,
+    };
+  }
   const ref = e.endEffectsOf;
   return {
     type: 'end_effects',
     source:
       'decision' in ref ? { kind: 'decision', id: ref.decision } : { kind: 'event', id: ref.event },
+    ...('decision' in ref && ref.target !== undefined ? { target: ref.target } : {}),
   };
 }
 
@@ -108,7 +120,7 @@ export function toConsideration(c: RawConsideration): Consideration {
   else if (c.falls) curve = { type: 'falls', from: c.falls[0], to: c.falls[1] };
   else if (c.peaks) curve = { type: 'peaks', from: c.peaks[0], peak: c.peaks[1], to: c.peaks[2] };
   else curve = { type: 'step', at: c.step! };
-  return { measure, curve };
+  return c.gate ? { measure, curve, gate: true } : { measure, curve };
 }
 
 const points = (n: number) => Math.round(n * 100);

@@ -30,6 +30,8 @@ export {
   hasBudget,
   monthlyBalance,
   tradeItems,
+  tariffStat,
+  TRADE_LINES,
   MILLIONS_PER_BN,
   TRADE_CENTS_PER_MILLION,
   type TradeItem,

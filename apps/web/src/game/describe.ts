@@ -1,6 +1,13 @@
 /** Plain-language descriptions of decisions, relations and moods for the UI. */
 
-import { isFor, targetsOf, type DecisionDef, type GameState } from '@ripple/engine';
+import {
+  canIssue,
+  isFor,
+  targetsOf,
+  type Condition,
+  type DecisionDef,
+  type GameState,
+} from '@ripple/engine';
 import { formatMillions } from './format';
 
 /**
@@ -80,13 +87,37 @@ function countriesTouched(game: GameState, effect: DecisionDef['effects'][number
   return [];
 }
 
-/** The orders the player can give, in ID order. Computer countries' orders are left out. */
+/** The flags a condition needs set, looking inside `all`. */
+function flagsRequired(condition: Condition | null): string[] {
+  if (!condition) return [];
+  if (condition.type === 'flag') return condition.set ? [condition.flag] : [];
+  if (condition.type === 'all') return condition.of.flatMap(flagsRequired);
+  return [];
+}
+
+/**
+ * An order that undoes a policy (lifting tariffs, ending aid): it needs that
+ * policy's flag to be set. Undo orders are only worth showing once there is
+ * something to undo.
+ */
+export function isUndo(game: GameState, def: DecisionDef): boolean {
+  const policyFlags = new Set(
+    Object.values(game.defs.decisions).flatMap((d) => (d.policyFlag ? [d.policyFlag] : [])),
+  );
+  return flagsRequired(def.requires).some((f) => policyFlags.has(f));
+}
+
+/**
+ * The orders the player can give, in ID order. Computer countries' orders are
+ * left out, and so are undo orders while there is nothing to undo.
+ */
 export function playerDecisions(game: GameState): DecisionDef[] {
   const me = game.rules.playerCountry;
   return Object.keys(game.defs.decisions)
     .sort()
     .map((id) => game.defs.decisions[id]!)
-    .filter((def) => isFor(game, def, me));
+    .filter((def) => isFor(game, def, me))
+    .filter((def) => !isUndo(game, def) || canIssue(game, def.id, me).ok);
 }
 
 /** An order as the player would sign it: aimed at `target` if it is aimed at a country. */
@@ -105,7 +136,10 @@ export function decisionsConcerning(game: GameState, countryId: string): OrderCh
   if (countryId === me) return [];
   return playerDecisions(game).flatMap((def): OrderChoice[] => {
     if (def.targets !== undefined) {
-      return targetsOf(game, def, me).includes(countryId) ? [{ def, target: countryId }] : [];
+      if (!targetsOf(game, def, me).includes(countryId)) return [];
+      // An undo order shows only for the country it can undo something for.
+      if (isUndo(game, def) && !canIssue(game, def.id, me, countryId).ok) return [];
+      return [{ def, target: countryId }];
     }
     const touches = [...def.costs, ...def.effects, ...def.failureEffects].some((e) =>
       countriesTouched(game, e).includes(countryId),

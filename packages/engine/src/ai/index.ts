@@ -3,6 +3,7 @@ export {
   candidates,
   computerCountries,
   rank,
+  rankOpen,
   score,
   urgency,
   type AppealPart,

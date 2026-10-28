@@ -1,7 +1,7 @@
 import type { EngineEvent } from '../events';
 import type { StatRef } from '../modifiers';
 import type { GameState } from '../state';
-import type { ChokepointWhy, StatWhy, WhyNode } from '../why';
+import type { ChokepointWhy, EmbargoWhy, StatWhy, WhyNode } from '../why';
 
 export interface SystemResult {
   readonly state: GameState;
@@ -20,6 +20,7 @@ export interface ExplainContext {
   /** Explain another stat, following its causes further. */
   explainStat(ref: StatRef): StatWhy;
   explainChokepoint(id: string): ChokepointWhy;
+  explainEmbargo(a: string, b: string): EmbargoWhy;
   /** A stat's base value without permanent adjustments: what it was before anything was spent or changed for good. */
   baseWithoutAdjustments(ref: StatRef): number;
 }

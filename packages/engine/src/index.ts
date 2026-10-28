@@ -67,6 +67,8 @@ export {
   type ScenarioRules,
 } from './scenario';
 export {
+  embargoKey,
+  isEmbargoed,
   isLinkOpen,
   relationId,
   sortedIds,
@@ -91,6 +93,8 @@ export {
   pricePressure,
   targetPrice,
   tradeItems,
+  tariffStat,
+  TRADE_LINES,
   MILLIONS_PER_BN,
   TRADE_CENTS_PER_MILLION,
   type System,
@@ -102,6 +106,7 @@ export {
   SNAPSHOT_DEPTH,
   emptyTrace,
   explainChokepoint,
+  explainEmbargo,
   explainChoice,
   explainEvent,
   explainStat,
@@ -111,6 +116,7 @@ export {
   type Adjustment,
   type BudgetWhy,
   type ChokepointWhy,
+  type EmbargoWhy,
   type DebtWhy,
   type Contribution,
   type ChoiceRecord,

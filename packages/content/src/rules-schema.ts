@@ -35,11 +35,14 @@ export const flagId = z
 const int = z.int();
 const basisPoints = z.int().min(0).max(10_000);
 
+/** A name with `{self}` or `{target}` allowed inside, for templates. */
+const NAME = '(?:[a-z]|\\{(?:self|target)\\})(?:[a-z0-9_]|\\{(?:self|target)\\})*';
+
 export const statPath = z
   .string()
   .regex(
-    /^(country|faction|resource|link)\.[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$/,
-    'Stat targets look like country.aldoria.stability',
+    new RegExp(`^(country|faction|resource|link)\\.${NAME}\\.${NAME}$`),
+    'Stat targets look like country.aldoria.stability, or link.deal_{target}.capacity in templates',
   );
 
 const pair = z.tuple([id, id]);
@@ -97,14 +100,34 @@ export const effectSchema = z.union([
       }),
   }),
   z.strictObject({ adjust: z.strictObject({ target: statPath, by: int }) }),
-  z.strictObject({ relation: z.strictObject({ between: pair, by: int, days: days.optional() }) }),
+  z.strictObject({
+    relation: z
+      .strictObject({
+        between: pair,
+        by: int,
+        days: days.optional(),
+        /** Lasts until the order is lifted (ended by endEffectsOf), instead of for good. */
+        untilLifted: z.literal(true).optional(),
+      })
+      .refine((r) => r.days === undefined || r.untilLifted === undefined, {
+        message: 'A relation change lasts for days or until lifted, not both',
+      }),
+  }),
+  /** `by` stops (or, with active: false, restarts) all trade with `against`. */
+  z.strictObject({
+    embargo: z.strictObject({ by: id, against: id, active: z.boolean().default(true) }),
+  }),
   z.strictObject({ setChokepoint: z.strictObject({ id, open: z.boolean() }) }),
   z.strictObject({ schedule: z.strictObject({ event: id, inDays: days }) }),
   z.strictObject({ setFlag: flagId }),
   z.strictObject({ clearFlag: flagId }),
   // Remove the lingering modifiers of an earlier decision or event.
   z.strictObject({
-    endEffectsOf: z.union([z.strictObject({ decision: id }), z.strictObject({ event: id })]),
+    endEffectsOf: z.union([
+      /** In a template, `target` names whose: `self` ends what was done to the acting country. */
+      z.strictObject({ decision: id, target: id.optional() }),
+      z.strictObject({ event: id }),
+    ]),
   }),
 ]);
 
@@ -146,13 +169,15 @@ export const considerationSchema = z
     stat: statPath.optional(),
     relation: pair.optional(),
     price: id.optional(),
-    flag: id.optional(),
+    flag: flagId.optional(),
     /** The day number: `day: true` with a curve, such as `rises: [30, 90]`. */
     day: z.literal(true).optional(),
     rises: z.tuple([int, int]).optional(),
     falls: z.tuple([int, int]).optional(),
     peaks: z.tuple([int, int, int]).optional(),
     step: int.optional(),
+    /** Multiplies the appeal after the others combine, and does not count toward compensation. */
+    gate: z.literal(true).optional(),
   })
   .refine((c) => MEASURE_KEYS.filter((k) => c[k] !== undefined).length === 1, {
     message: 'A consideration needs exactly one of stat, relation, price, flag or day',

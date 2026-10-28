@@ -34,15 +34,27 @@ export const DEBT_INFLUENCE_BASE = 2;
 export const DEBT_BN_PER_INFLUENCE = 20;
 export const DEBT_INFLUENCE_MAX = 10;
 
-export type TradeLine = 'imports' | 'exports' | 'transit';
+export type TradeLine = 'imports' | 'exports' | 'transit' | 'tariffs';
+
+export const TRADE_LINES: readonly TradeLine[] = ['imports', 'exports', 'transit', 'tariffs'];
 
 /** Which budget stat each system-kept line sits on. */
 const LINE_STAT: Record<TradeLine | 'activity', 'revenue' | 'spending'> = {
   imports: 'spending',
   exports: 'revenue',
   transit: 'revenue',
+  tariffs: 'revenue',
   activity: 'revenue',
 };
+
+/**
+ * A country's tariff on goods from another, in basis points of their value:
+ * the stat `tariff_<partner>` on the importing country. Content raises it with
+ * an ordinary modifier, so lifting a tariff is ending that modifier.
+ */
+export function tariffStat(partner: string): string {
+  return `tariff_${partner}`;
+}
 
 export const EMPTY_BUDGET: Budget = { accrued: 0, settled: 0, months: 0, lastMonth: null };
 
@@ -72,6 +84,8 @@ function monthly(units: number, cents: number): number {
 
 export interface TradeItem {
   readonly resource: string;
+  /** For tariffs: the country the goods come from. */
+  readonly partner?: string;
   /** Units a day. */
   readonly units: number;
   /** Millions a month. */
@@ -82,9 +96,11 @@ export interface TradeItem {
  * One trade line for a country, resource by resource:
  *   - imports: everything it consumes, at the market price (shortages are bought dear elsewhere);
  *   - exports: what its open routes carry out, at the market price;
- *   - transit: a toll on what passes through chokepoints it holds.
+ *   - transit: a toll on what passes through chokepoints it holds;
+ *   - tariffs: its duty on what its open routes bring in, partner by partner.
  */
 export function tradeItems(state: GameState, country: string, line: TradeLine): TradeItem[] {
+  if (line === 'tariffs') return tariffItems(state, country);
   const units: Record<string, number> = {};
   const tollAmount: Record<string, number> = {};
   if (line === 'imports') {
@@ -122,6 +138,32 @@ export function tradeItems(state: GameState, country: string, line: TradeLine): 
     items.push({ resource, units: u, amount });
   }
   return items;
+}
+
+function tariffItems(state: GameState, country: string): TradeItem[] {
+  const byKey = new Map<
+    string,
+    { resource: string; partner: string; units: number; amount: number }
+  >();
+  for (const id of sortedIds(state.world.links)) {
+    const link = state.world.links[id]!;
+    if (link.to !== country || !isLinkOpen(state.world, link)) continue;
+    const rate = effectiveStat(state, statRef(country, tariffStat(link.from)));
+    if (rate <= 0) continue;
+    const carried = Math.max(0, effectiveStat(state, { kind: 'link', id, stat: 'capacity' }));
+    if (carried === 0) continue;
+    const key = `${link.from}|${link.resource}`;
+    const item = byKey.get(key) ?? {
+      resource: link.resource,
+      partner: link.from,
+      units: 0,
+      amount: 0,
+    };
+    item.units += carried;
+    item.amount += Math.trunc((monthly(carried, price(state, link.resource)) * rate) / 10_000);
+    byKey.set(key, item);
+  }
+  return [...byKey.keys()].sort().map((k) => byKey.get(k)!);
 }
 
 function tradeTotal(state: GameState, country: string, line: TradeLine): number {
@@ -175,7 +217,7 @@ export function monthlyBalance(state: GameState, country: string): number {
   let balance =
     effectiveStat(state, statRef(country, 'revenue')) -
     effectiveStat(state, statRef(country, 'spending'));
-  for (const line of ['imports', 'exports', 'transit', 'activity'] as const) {
+  for (const line of [...TRADE_LINES, 'activity'] as const) {
     const ref = statRef(country, LINE_STAT[line]);
     const sign = LINE_STAT[line] === 'revenue' ? 1 : -1;
     balance += sign * (freshLine(state, country, line) - kept(state, line, ref));
@@ -219,7 +261,7 @@ export const economySystem: System = {
     for (const country of sortedIds(state.world.countries)) {
       if (!hasBudget(current, country)) continue;
 
-      for (const line of ['imports', 'exports', 'transit'] as const) {
+      for (const line of TRADE_LINES) {
         current = setSystemModifier(
           current,
           line,
@@ -234,11 +276,12 @@ export const economySystem: System = {
         activityAmount(current, country),
       );
 
+      // The lines were just refreshed, so today's rate is simply revenue minus spending.
+      const rate =
+        effectiveStat(current, statRef(country, 'revenue')) -
+        effectiveStat(current, statRef(country, 'spending'));
       const before = budgetOf(current, country);
-      let budget: Budget = {
-        ...before,
-        accrued: before.accrued + monthlyBalance(current, country),
-      };
+      let budget: Budget = { ...before, accrued: before.accrued + rate };
       if (monthEnd) {
         const millions = Math.trunc(budget.accrued / DAYS_PER_MONTH);
         const bn = Math.trunc(millions / MILLIONS_PER_BN);
@@ -277,7 +320,7 @@ export const economySystem: System = {
     return { state: current, events };
   },
 
-  modifierIds: ['imports', 'exports', 'transit', 'activity', 'fiscal_stress'],
+  modifierIds: ['imports', 'exports', 'transit', 'tariffs', 'activity', 'fiscal_stress'],
 
   /**
    * A treasury's normal is where it started. Spending and one-off gains are
@@ -310,7 +353,8 @@ export const economySystem: System = {
     switch (request.id) {
       case 'imports':
       case 'exports':
-      case 'transit': {
+      case 'transit':
+      case 'tariffs': {
         const why: TradeWhy = {
           type: 'trade',
           country,
@@ -319,7 +363,12 @@ export const economySystem: System = {
             .sort((a, b) => b.amount - a.amount)
             .map((item) => ({
               ...item,
-              cause: context.explainStat({ kind: 'resource', id: item.resource, stat: 'price' }),
+              // A tariff's amount is set by its rate (and the order that raised it); the rest by prices.
+              cause: context.explainStat(
+                item.partner !== undefined
+                  ? statRef(country, tariffStat(item.partner))
+                  : { kind: 'resource', id: item.resource, stat: 'price' },
+              ),
             })),
         };
         return why;

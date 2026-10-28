@@ -15,7 +15,7 @@ import {
 import type { Consideration } from './ai/types';
 import { chance } from './rng';
 import type { GameState } from './state';
-import { getStatEntity, setBaseStat } from './world';
+import { embargoKey, getStatEntity, setBaseStat } from './world';
 
 // ---------------------------------------------------------------------------
 // Conditions
@@ -109,6 +109,13 @@ export type Effect =
   /** A permanent change to a stat's base value, such as spending treasury. */
   | { readonly type: 'adjust'; readonly target: StatRef; readonly by: number }
   | { readonly type: 'set_chokepoint'; readonly id: string; readonly open: boolean }
+  /** Impose or lift an embargo: `by` stops all trade with `against`, both ways. */
+  | {
+      readonly type: 'embargo';
+      readonly by: string;
+      readonly against: string;
+      readonly active: boolean;
+    }
   /** Fire another event after a delay: the engine of delayed consequences. */
   | { readonly type: 'schedule'; readonly event: string; readonly inDays: number }
   | { readonly type: 'set_flag'; readonly flag: string }
@@ -121,7 +128,10 @@ export type Effect =
   | {
       readonly type: 'end_effects';
       readonly source: { readonly kind: 'decision' | 'event'; readonly id: string };
-      /** Only the modifiers of that decision aimed at this country (set when a template is bound). */
+      /**
+       * Only the modifiers of that decision aimed at this country. A template
+       * sets it to its own target when bound, unless content names one.
+       */
       readonly target?: string;
     };
 
@@ -201,6 +211,23 @@ export function applyEffect(state: GameState, effect: Effect, source: ModifierSo
         ...state,
         flags: state.flags.filter((f) => f !== effect.flag),
         trace: { ...state.trace, flagBy },
+      };
+    }
+    case 'embargo': {
+      const { by, against } = effect;
+      if (!state.world.countries[by] || !state.world.countries[against] || by === against) {
+        throw new Error(`An embargo needs two different countries, got "${by}", "${against}"`);
+      }
+      const key = embargoKey(by, against);
+      const has = state.world.embargoes.includes(key);
+      if (has === effect.active) return state;
+      const embargoes = effect.active
+        ? [...state.world.embargoes, key].sort()
+        : state.world.embargoes.filter((k) => k !== key);
+      return {
+        ...state,
+        world: { ...state.world, embargoes },
+        trace: { ...state.trace, embargoBy: { ...state.trace.embargoBy, [key]: source } },
       };
     }
     case 'end_effects': {

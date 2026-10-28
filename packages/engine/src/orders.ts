@@ -41,6 +41,16 @@ export function boundDecision(def: DecisionDef, by: string, target?: string): De
   return def.for === undefined && def.targets === undefined ? def : bindDecision(def, by, target);
 }
 
+/** Whether this country already has this order (for this target, if kept per target) pending. */
+function isUnderWay(state: GameState, def: DecisionDef, by: string, target?: string): boolean {
+  for (const p of state.pending) {
+    if (p.decision === def.id && p.by === by && (!def.perTarget || p.target === target)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export type Availability = { readonly ok: true } | { readonly ok: false; readonly reason: string };
 
 /**
@@ -95,11 +105,7 @@ export function availabilityOf(
           : 'Only the player gives this order.',
     };
   }
-  const sameOrder = (p: GameState['pending'][number]) =>
-    p.decision === def.id && p.by === by && (!def.perTarget || p.target === target);
-  if (state.pending.some(sameOrder)) {
-    return { ok: false, reason: 'Already under way.' };
-  }
+  if (isUnderWay(state, def, by, target)) return { ok: false, reason: 'Already under way.' };
   // Requirements first: "already in force" says more than a cooldown countdown.
   if (def.requires && !evaluate(state, def.requires).value) {
     return { ok: false, reason: def.unavailableText ?? 'Not possible right now.' };

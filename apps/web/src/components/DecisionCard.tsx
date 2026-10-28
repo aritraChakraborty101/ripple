@@ -1,6 +1,6 @@
 import { canIssue, targetsOf, type DecisionDef, type GameState } from '@ripple/engine';
 import { useState } from 'react';
-import { describeCosts, durationLabel, oddsLabel } from '../game/describe';
+import { describeCosts, durationLabel, isUndo, oddsLabel } from '../game/describe';
 import { fillNames } from '../game/format';
 import { actions } from '../game/store';
 
@@ -24,10 +24,12 @@ interface Props {
  */
 export function DecisionCard({ game, def, target, onSigned, compact = false }: Props) {
   const me = game.rules.playerCountry;
-  const options =
+  const all =
     def.targets === undefined || target !== undefined
       ? []
       : targetsOf(game, def, me).filter((t): t is string => t !== undefined);
+  // An undo order offers only the countries it can undo something for.
+  const options = isUndo(game, def) ? all.filter((t) => canIssue(game, def.id, me, t).ok) : all;
   const firstOpen = options.find((t) => canIssue(game, def.id, me, t).ok) ?? options[0];
   const [picked, setPicked] = useState<string | undefined>(undefined);
   // A pick that is no longer offered falls back to the first open target.

@@ -22,7 +22,7 @@ import { sortedIds } from '../world';
 import { curveLabel, curveValue, FULL } from './curves';
 import { currentAmbition, goalNeed, parseGoalId } from './goals';
 import { measureLabel, readMeasure } from './measures';
-import { bindDecision, isFor, targetsOf } from './templates';
+import { bindDecision, bindRequires, isFor, targetsOf } from './templates';
 import type { AiDef, Personality, Tuning } from './types';
 
 /** The decision ID that stands for doing nothing in a ranking. */
@@ -52,6 +52,8 @@ export interface AppealPart {
   readonly curve: string;
   /** The curve's output, in basis points. */
   readonly factor: number;
+  /** Applied after the others are combined (see `Consideration.gate`). */
+  readonly gate?: boolean;
 }
 
 export interface ScoreReport {
@@ -155,12 +157,18 @@ function scoreBound(
       value: measured,
       curve: curveLabel(c.curve),
       factor: curveValue(c.curve, measured),
+      ...(c.gate ? { gate: true } : {}),
     };
   });
-  const appealTotal = combineAppeal(
-    appeal.map((a) => a.factor),
-    tuning.compensation,
-  );
+  const appealTotal = appeal
+    .filter((a) => a.gate)
+    .reduce(
+      (total, a) => Math.trunc((total * a.factor) / FULL),
+      combineAppeal(
+        appeal.filter((a) => !a.gate).map((a) => a.factor),
+        tuning.compensation,
+      ),
+    );
 
   const actionTuning = tuning.actions[def.id];
   const multiplier = actionTuning?.scoreMultiplier ?? FULL;
@@ -248,6 +256,29 @@ export function rank(state: GameState, country: string): ScoreReport[] {
   const order = (r: ScoreReport) => (r.available ? 0 : 1);
   // A stable sort keeps the candidate order for ties, so rankings are deterministic.
   return reports.sort((a, b) => order(a) - order(b) || b.score - a.score);
+}
+
+/** Whether an option is open to its country right now, checked without scoring it. */
+function isOpen(state: GameState, query: ScoreQuery): boolean {
+  const def = state.defs.decisions[query.decision];
+  if (!def) return false;
+  if (aiOf(state).tuning.actions[def.id]?.enabled === false) return false;
+  const bound = bindRequires(def, query.country, query.target);
+  return availabilityOf(state, bound, query.country, query.target).ok;
+}
+
+/**
+ * The options a country can take right now, scored, best first: `rank`
+ * without the options that are closed and without doing nothing. The planner
+ * runs this every day for every country, so closed options (most templates
+ * aimed at Aldoria, most of the time) are skipped before they are scored. Same
+ * order as `rank`, so choices do not change.
+ */
+export function rankOpen(state: GameState, country: string): ScoreReport[] {
+  return candidates(state, country)
+    .filter((q) => isOpen(state, q))
+    .map((q) => score(state, q))
+    .sort((a, b) => b.score - a.score);
 }
 
 /** How far the best available option beats doing nothing, in hundredths of a point; 0 if none does. */

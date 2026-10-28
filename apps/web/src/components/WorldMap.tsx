@@ -1,5 +1,6 @@
 import {
   effectiveStat,
+  isEmbargoed,
   isLinkOpen,
   relationId,
   sortedIds,
@@ -47,14 +48,18 @@ function routeTitle(game: GameState, link: Link, open: boolean, capacity: number
   const resource = game.world.resources[link.resource]?.name ?? link.resource;
   const from = game.world.countries[link.from]?.name ?? link.from;
   const to = game.world.countries[link.to]?.name ?? link.to;
-  if (capacity <= 0) return `${resource}: ${from} to ${to}, planned, not built yet`;
+  if (capacity <= 0) return `${resource}: ${from} to ${to}, not in use yet`;
   const blocked = link.via
     .map((id) => game.world.chokepoints[id])
     .filter((c) => c && !c.open)
     .map((c) => c!.name);
-  return `${resource}: ${from} to ${to}, ${capacity} a day${
-    open ? '' : `. Cut at the ${blocked.join(', ')}`
-  }`;
+  const cut =
+    blocked.length > 0
+      ? `. Cut at the ${blocked.join(', ')}`
+      : isEmbargoed(game.world, link.from, link.to)
+        ? '. Cut by sanctions'
+        : '';
+  return `${resource}: ${from} to ${to}, ${capacity} a day${open ? '' : cut}`;
 }
 
 /** Enter or Space activates an SVG element that acts as a button. */

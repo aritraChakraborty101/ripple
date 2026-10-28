@@ -19,13 +19,26 @@ interface Binding {
   readonly target?: string;
 }
 
+/**
+ * `{self}` and `{target}` inside a name: `deal_{target}` becomes `deal_orrin`.
+ * Flags, link IDs and stat names use this, so one template can reach the
+ * route, flag or stat that belongs to whichever country it is aimed at.
+ */
+function bindText(text: string, b: Binding): string {
+  if (!text.includes('{')) return text;
+  if (text.includes('{target}') && b.target === undefined) {
+    throw new Error('This action needs a target');
+  }
+  return text.replaceAll('{self}', b.self).replaceAll('{target}', b.target ?? '');
+}
+
 function bindId(id: string, b: Binding): string {
   if (id === SELF) return b.self;
   if (id === TARGET) {
     if (b.target === undefined) throw new Error('This action needs a target');
     return b.target;
   }
-  return id;
+  return bindText(id, b);
 }
 
 function bindRef(ref: StatRef, b: Binding): StatRef {
@@ -33,7 +46,7 @@ function bindRef(ref: StatRef, b: Binding): StatRef {
     const [x, y] = ref.id.split('__') as [string, string];
     return { ...ref, id: relationId(bindId(x, b), bindId(y, b)) };
   }
-  return { ...ref, id: bindId(ref.id, b) };
+  return { ...ref, id: bindId(ref.id, b), stat: bindText(ref.stat, b) };
 }
 
 /**
@@ -41,7 +54,9 @@ function bindRef(ref: StatRef, b: Binding): StatRef {
  * in force against several countries at once: `tariff_on_{target}`.
  */
 export function bindFlag(flag: string, b: Binding): string {
-  return flag.replaceAll('{self}', b.self).replaceAll('{target}', b.target ?? '{target}');
+  // Unbound, a {target} flag stays as written, so a template can be listed before it is aimed.
+  if (b.target === undefined) return flag.replaceAll('{self}', b.self);
+  return bindText(flag, b);
 }
 
 function bindCondition(c: Condition, b: Binding): Condition {
@@ -69,8 +84,13 @@ function bindEffect(e: Effect, b: Binding): Effect {
     case 'clear_flag':
       return { ...e, flag: bindFlag(e.flag, b) };
     case 'end_effects':
-      // A template ends what the same kind of order did to the same target.
+      // A template ends what the same kind of order did to the same target,
+      // unless content names whose: `target: self` for a country undoing what
+      // was done to it.
+      if (e.target !== undefined) return { ...e, target: bindId(e.target, b) };
       return b.target === undefined ? e : { ...e, target: b.target };
+    case 'embargo':
+      return { ...e, by: bindId(e.by, b), against: bindId(e.against, b) };
     default:
       return e;
   }
@@ -82,6 +102,8 @@ function bindMeasure(m: Measure, b: Binding): Measure {
       return { ...m, ref: bindRef(m.ref, b) };
     case 'relation':
       return { ...m, between: [bindId(m.between[0], b), bindId(m.between[1], b)] };
+    case 'flag':
+      return { ...m, flag: bindFlag(m.flag, b) };
     default:
       return m;
   }
@@ -90,6 +112,20 @@ function bindMeasure(m: Measure, b: Binding): Measure {
 /** `ties(target)` becomes `ties(thessa)`. */
 export function bindGoalId(goalId: string, b: Binding): string {
   return goalId.replace(/\((self|target)\)$/, (_, p: string) => `(${bindId(p, b)})`);
+}
+
+/**
+ * Only what decides whether the decision can be signed (`requires`, and the
+ * policy flag) bound: enough for an availability check, and much cheaper than
+ * binding everything for options that turn out to be closed.
+ */
+export function bindRequires(def: DecisionDef, self: string, target?: string): DecisionDef {
+  const b: Binding = target === undefined ? { self } : { self, target };
+  return {
+    ...def,
+    requires: def.requires ? bindCondition(def.requires, b) : null,
+    ...(def.policyFlag !== undefined ? { policyFlag: bindFlag(def.policyFlag, b) } : {}),
+  };
 }
 
 /** The decision with every placeholder replaced by a real country. */

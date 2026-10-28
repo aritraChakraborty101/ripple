@@ -90,6 +90,12 @@ export interface World {
   readonly links: Readonly<Record<string, Link>>;
   readonly chokepoints: Readonly<Record<string, Chokepoint>>;
   readonly relations: Readonly<Record<string, Relation>>;
+  /**
+   * Embargoes in force, as `by>against` (from `embargoKey`), kept sorted. Every
+   * route between the two carries nothing, in either direction, while either
+   * side's embargo stands: each side lifts only its own.
+   */
+  readonly embargoes: readonly string[];
 }
 
 /** Entity kinds that carry stats, and so can be targeted by modifiers. */
@@ -141,7 +147,23 @@ export function setBaseStat(
   };
 }
 
-/** True if a link can carry goods: every chokepoint it passes through is open. */
+/** The key of an embargo one country imposes on another. */
+export function embargoKey(by: string, against: string): string {
+  return `${by}>${against}`;
+}
+
+/** True if either country has stopped trading with the other. */
+export function isEmbargoed(world: World, a: string, b: string): boolean {
+  return world.embargoes.includes(embargoKey(a, b)) || world.embargoes.includes(embargoKey(b, a));
+}
+
+/**
+ * True if a link can carry goods: every chokepoint it passes through is open,
+ * and its two ends are not under an embargo.
+ */
 export function isLinkOpen(world: World, link: Link): boolean {
-  return link.via.every((id) => world.chokepoints[id]?.open === true);
+  return (
+    link.via.every((id) => world.chokepoints[id]?.open === true) &&
+    !isEmbargoed(world, link.from, link.to)
+  );
 }

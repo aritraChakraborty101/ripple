@@ -1,5 +1,11 @@
 import { loadBuiltInScenario } from '@ripple/content/node';
-import { effectiveStat, setChokepointOpen, type ScenarioDef } from '@ripple/engine';
+import {
+  effectiveStat,
+  setChokepointOpen,
+  step,
+  type GameState,
+  type ScenarioDef,
+} from '@ripple/engine';
 import { describe, expect, it } from 'vitest';
 import { decisionsConcerning, describeCosts, durationLabel, oddsLabel } from '../src/game/describe';
 import { priceBand } from '../src/game/news';
@@ -134,10 +140,10 @@ describe('session', () => {
   });
 
   it('pauses the clock and reports when the game ends', () => {
-    // Seed 3, left alone, is ousted on day 492.
+    // Seed 3, left alone, is ousted on day 828.
     let session = setPaused(newSession(scenario, 3), false);
     while (!session.game.outcome) session = tickSession(session);
-    expect(session.game.outcome).toEqual({ result: 'ousted', tick: 492 });
+    expect(session.game.outcome).toEqual({ result: 'ousted', tick: 828 });
     expect(session.clock.paused).toBe(true);
     expect(session.dispatches[0]!.headline).toBe('The government falls after weeks of unrest');
     expect(session.tallies.crises).toBeGreaterThan(0);
@@ -225,10 +231,37 @@ describe('orders concerning a country', () => {
     );
 
   it('finds the orders aimed at each country, or touching relations or routes with it', () => {
-    expect(ids('corvan')).toEqual(['envoy>corvan', 'transit_fees']);
-    expect(ids('thessa')).toEqual(['envoy>thessa', 'lift_tariff>thessa', 'tariff>thessa']);
-    expect(ids('veskar')).toEqual(['envoy>veskar', 'overland_pipeline', 'veskar_discount']);
-    expect(ids('orrin')).toEqual(['envoy>orrin']);
+    const aimed = ['aid_programme', 'emergency_aid', 'envoy', 'sanction'];
+    const withTarget = (c: string, ids: string[]) =>
+      ids.map((d) => (game.defs.decisions[d]?.targets ? `${d}>${c}` : d)).sort();
+    expect(ids('corvan')).toEqual(withTarget('corvan', [...aimed, 'transit_fees', 'treaty']));
+    expect(ids('thessa')).toEqual(
+      withTarget('thessa', [...aimed, 'tariff', 'trade_deal', 'treaty']),
+    );
+    expect(ids('veskar')).toEqual(
+      withTarget('veskar', [
+        ...aimed,
+        'overland_pipeline',
+        'tariff',
+        'trade_deal',
+        'treaty',
+        'veskar_discount',
+      ]),
+    );
+    expect(ids('orrin')).toEqual(withTarget('orrin', [...aimed, 'tariff', 'trade_deal', 'treaty']));
+  });
+
+  it('shows an undo order only where there is something to undo', () => {
+    const me = game.rules.playerCountry;
+    const taxed = step(game, [
+      { kind: 'decide', decision: 'tariff', by: me, target: 'thessa' },
+    ]).state;
+    const undo = (state: GameState, c: string) =>
+      decisionsConcerning(state, c)
+        .filter((o) => o.def.id === 'lift_tariff')
+        .map((o) => o.target);
+    expect(undo(taxed, 'thessa')).toEqual(['thessa']);
+    expect(undo(taxed, 'orrin')).toEqual([]);
   });
 
   it('lists nothing for the player country, since almost everything touches it', () => {

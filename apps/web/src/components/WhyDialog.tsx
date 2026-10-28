@@ -32,7 +32,7 @@ function Line({ game, node }: { game: GameState; node: WhyNode }) {
   const text = describeNode(game, node);
   return (
     <span className="why-line">
-      <span className={`why-kind ${node.type}`} aria-hidden="true" />
+      <span className={`why-kind kind-${node.type}`} aria-hidden="true" />
       <span className="why-title">{text.title}</span>
       {text.note && <span className="why-note">{text.note}</span>}
       {text.when && <span className="why-when">{text.when}</span>}
