@@ -1,7 +1,20 @@
-import { effectiveStat, sortedIds, type GameState } from '@ripple/engine';
+import {
+  effectiveStat,
+  hasBudget,
+  monthlyBalance,
+  sortedIds,
+  type GameState,
+} from '@ripple/engine';
 import { SPEEDS, type ClockState } from '../game/clock';
 import { stabilityTone } from '../game/describe';
-import { ARCHETYPE_LABELS, formatChange, formatDate, formatPrice } from '../game/format';
+import {
+  ARCHETYPE_LABELS,
+  formatChange,
+  formatDate,
+  formatMillions,
+  formatPrice,
+} from '../game/format';
+import { TREASURY_HISTORY } from '../game/session';
 import { actions } from '../game/store';
 import { Hint } from './Hint';
 import { Sparkline } from './Sparkline';
@@ -25,6 +38,9 @@ export function Header({ game, clock, history, onOpenHelp, nudgePlay }: Props) {
   const stability = stat(ousting.stat);
   const tone = stabilityTone(stability, ousting.below);
   const why = useWhy();
+  const budgeted = hasBudget(game, id);
+  const balance = budgeted ? monthlyBalance(game, id) : 0;
+  const balanceTone = balance < 0 ? (balance <= -5_000 ? 'critical' : 'warning') : 'calm';
 
   return (
     <header className="topbar">
@@ -34,11 +50,33 @@ export function Header({ game, clock, history, onOpenHelp, nudgePlay }: Props) {
       </div>
 
       <div className="stats">
-        <Hint text="Money for orders, in billions. It has no steady income yet, so spend it on what fixes causes.">
-          <span className="stat">
+        <Hint
+          focusable={false}
+          text="Money for orders, in billions. Taxes and trade pay into it at the end of every month, and dearer imports drain it. Below zero, debt weighs on stability. Click to see why it is where it is."
+        >
+          <button
+            type="button"
+            className="stat stat-button treasury"
+            onClick={() => why({ kind: 'stat', ref: { kind: 'country', id, stat: 'treasury' } })}
+            aria-label={`Treasury ${stat('treasury')} bn${budgeted ? `, ${formatMillions(balance, true)} a month` : ''}. Why?`}
+          >
             <span className="stat-label">Treasury</span>
             <span className="stat-value">{stat('treasury')} bn</span>
-          </span>
+            {budgeted && (
+              <span className={`stat-sub tone-${balanceTone}`}>
+                {formatMillions(balance, true)}/mo
+              </span>
+            )}
+            {budgeted && (
+              <Sparkline
+                values={history[TREASURY_HISTORY] ?? [stat('treasury')]}
+                base={history[TREASURY_HISTORY]?.[0] ?? stat('treasury')}
+                tone={balance < 0 ? 'var(--warning)' : 'var(--accent)'}
+                width={48}
+                height={16}
+              />
+            )}
+          </button>
         </Hint>
         <Hint text="Diplomatic capital. Envoys and speeches spend it, and it does not come back on its own.">
           <span className="stat">

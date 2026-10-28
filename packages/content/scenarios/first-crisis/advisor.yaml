@@ -71,7 +71,7 @@
   when:
     stat: { target: country.aldoria.treasury, below: 80 }
   text: >-
-    The treasury is running low, and it has no steady income. Spend on what
-    fixes causes rather than symptoms. Tariffs on Thessa raise money, at a
-    diplomatic price.
+    The treasury is running low, and dear imports drain it every month. Spend
+    on what fixes causes rather than symptoms. Tariffs on Thessa raise about
+    3 bn a month, at a diplomatic price.
   suggest: [steel_tariff]

@@ -4,6 +4,7 @@ export {
   lastDay,
   setChokepointOpen,
   type GameOptions,
+  type Budget,
   type GameOutcome,
   type GameState,
   type PendingDecision,
@@ -80,11 +81,19 @@ export {
 } from './world';
 export {
   SYSTEMS,
+  budgetOf,
+  hasBudget,
   marketDemand,
   marketSupply,
+  monthlyBalance,
   pricePressure,
   targetPrice,
+  tradeItems,
+  MILLIONS_PER_BN,
+  TRADE_CENTS_PER_MILLION,
   type System,
+  type TradeItem,
+  type TradeLine,
 } from './systems';
 export {
   MAX_DEPTH,
@@ -96,8 +105,11 @@ export {
   explainStat,
   explainTrigger,
   sourceNode,
+  type ActivityWhy,
   type Adjustment,
+  type BudgetWhy,
   type ChokepointWhy,
+  type DebtWhy,
   type Contribution,
   type ChoiceRecord,
   type FiringRecord,
@@ -107,6 +119,7 @@ export {
   type PressureWhy,
   type StatWhy,
   type Trace,
+  type TradeWhy,
   type WhyNode,
 } from './why';
 export * from './ai';

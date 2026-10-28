@@ -179,6 +179,18 @@ button {
   background: var(--line-soft);
 }
 
+/* The month's budget result under the treasury, with its recent trend. */
+.stat-sub {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.treasury .sparkline {
+  width: 48px;
+  height: 16px;
+  align-self: center;
+}
+
 .gauge-mini .meter {
   grid-column: 1 / -1;
   width: 120px;

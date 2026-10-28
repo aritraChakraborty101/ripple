@@ -4,6 +4,8 @@
  * - Crises and other world events report their own headline.
  * - Your orders report when they are signed (if they take a while) and when
  *   they succeed or fail.
+ * - Your budget reports a month only when it ends in deficit, so a calm game
+ *   is not a monthly ledger.
  * - Prices are checked every day and reported only when they cross into a new
  *   10% band relative to normal, so a crisis produces a handful of market
  *   dispatches rather than one per day.
@@ -11,12 +13,13 @@
 
 import {
   effectiveStat,
+  tradeItems,
   sortedIds,
   type EngineEvent,
   type GameState,
   type Severity,
 } from '@ripple/engine';
-import { fillNames, formatDate, formatPrice } from './format';
+import { fillNames, formatDate, formatMillions, formatPrice } from './format';
 
 export type { Severity };
 
@@ -66,6 +69,8 @@ export function tagLabel(state: GameState, tag: string): string {
 }
 
 type DispatchDraft = Omit<Dispatch, 'id'>;
+
+const lowerFirst = (text: string) => text.charAt(0).toLowerCase() + text.slice(1);
 
 function priceDraft(
   state: GameState,
@@ -153,6 +158,23 @@ function eventDraft(state: GameState, event: EngineEvent): DispatchDraft | null 
           ? def.successHeadline
           : (def.failureHeadline ?? `${def.name}: it did not work`),
         source: 'order',
+      };
+    }
+    case 'budget_settled': {
+      if (event.country !== state.rules.playerCountry || event.millions >= 0) return null;
+      const imports = tradeItems(state, event.country, 'imports');
+      const dearest = [...imports].sort((a, b) => b.amount - a.amount)[0];
+      const total = imports.reduce((sum, i) => sum + i.amount, 0);
+      const name = dearest ? (state.world.resources[dearest.resource]?.name ?? '') : '';
+      return {
+        tick: event.tick,
+        tag: 'Home',
+        severity: event.millions <= -5_000 ? 'critical' : 'warning',
+        headline: `The month ends ${formatMillions(-event.millions)} in deficit`,
+        detail: dearest
+          ? `Imports now cost ${formatMillions(total)} a month, ${lowerFirst(name)} the most.`
+          : 'Spending ran ahead of revenue.',
+        source: 'outcome',
       };
     }
     case 'game_over':

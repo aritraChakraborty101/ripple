@@ -19,6 +19,18 @@ export interface PendingDecision {
   readonly dueTick: number;
 }
 
+/** A country's running budget (see the economy system). */
+export interface Budget {
+  /** Revenue minus spending summed over the days since the last settlement, in million-days. */
+  readonly accrued: number;
+  /** Whole billions settled into the treasury since the start. */
+  readonly settled: number;
+  /** Months settled so far. */
+  readonly months: number;
+  /** The last month's result in millions, or null before the first settlement. */
+  readonly lastMonth: number | null;
+}
+
 export interface GameOutcome {
   /** "ousted": stability collapsed. "survived": the leader saw out the full term. */
   readonly result: 'ousted' | 'survived';
@@ -31,7 +43,7 @@ export interface GameOutcome {
  * and compared in tests.
  */
 export interface GameState {
-  readonly version: 6;
+  readonly version: 7;
   readonly scenarioId: string;
   readonly rules: ScenarioRules;
   /** Event and decision definitions from the scenario, by ID. */
@@ -64,6 +76,8 @@ export interface GameState {
   readonly outcome: GameOutcome | null;
   /** Causal records for the why-trace: what fired and why, and what changed what. */
   readonly trace: Trace;
+  /** Budgets of countries that keep one, by country. */
+  readonly budgets: Readonly<Record<string, Budget>>;
   /** Each computer country's attention: when it last acted, and whether it is noticing something. */
   readonly attention: Readonly<Record<string, AttentionState>>;
   /** Knob changes made during the game (see `retune`), in order. */
@@ -98,7 +112,7 @@ export function createGame(
     throw new Error(`Player country "${scenario.rules.playerCountry}" is not in the scenario`);
   }
   return {
-    version: 6,
+    version: 7,
     scenarioId: scenario.id,
     rules: scenario.rules,
     defs: {
@@ -121,6 +135,7 @@ export function createGame(
     lowStabilityTicks: 0,
     outcome: null,
     trace: emptyTrace,
+    budgets: {},
     attention: {},
     tuningChanges: [],
   };

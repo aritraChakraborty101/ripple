@@ -37,7 +37,7 @@ describe('intelligence', () => {
   });
 
   it('warns before Corvan closes the strait in the golden game', () => {
-    // Seed 3: Corvan closes the strait on day 176.
+    // Seed 3: Corvan weighs closing the strait by day 176, though it holds off until day 421.
     const session = playTo(newSession(scenario, 3), 176);
     const warnings = session.dispatches.filter((d) => d.source === 'intel');
     expect(warnings.some((d) => d.headline === 'Corvan is weighing: Close the South Strait')).toBe(

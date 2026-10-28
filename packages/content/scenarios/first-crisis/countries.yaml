@@ -1,32 +1,42 @@
 # Stats are integers. treasury is in billions; the rest are 0 to 100 scores.
 # demand is units imported per day.
+#
+# revenue and spending are the monthly budget before trade, in millions:
+# taxes and upkeep. The economy system adds trade on top (imports, exports,
+# transit tolls) and settles the month into the treasury. Each country runs a
+# small surplus while prices are normal; Aldoria's is about 0.5 bn a month,
+# so a careful player still has to choose what to spend on.
 
 - id: aldoria
   name: Aldoria
   archetype: industrial_importer
-  stats: { stability: 61, treasury: 412, influence: 38, military: 40 }
+  stats:
+    { stability: 61, treasury: 412, influence: 38, military: 40, revenue: 30000, spending: 15250 }
   demand: { oil: 40, grain: 20, steel: 25 }
 
 - id: veskar
   name: Veskar
   archetype: resource_exporter
-  stats: { stability: 60, treasury: 520, influence: 30, military: 50 }
+  stats:
+    { stability: 60, treasury: 520, influence: 30, military: 50, revenue: 4000, spending: 18100 }
   demand: { grain: 10, steel: 5 }
 
 - id: corvan
   name: Corvan
   archetype: transit_state
-  stats: { stability: 55, treasury: 90, influence: 20, military: 25 }
+  stats: { stability: 55, treasury: 90, influence: 20, military: 25, revenue: 2000, spending: 1650 }
   demand: { oil: 5, grain: 5 }
 
 - id: thessa
   name: Thessa
   archetype: rising_power
-  stats: { stability: 64, treasury: 610, influence: 45, military: 70 }
+  stats:
+    { stability: 64, treasury: 610, influence: 45, military: 70, revenue: 12000, spending: 9800 }
   demand: { oil: 30 }
 
 - id: orrin
   name: Orrin
   archetype: resource_exporter
-  stats: { stability: 70, treasury: 140, influence: 15, military: 15 }
+  stats:
+    { stability: 70, treasury: 140, influence: 15, military: 15, revenue: 3000, spending: 3650 }
   demand: { oil: 5 }

@@ -126,7 +126,7 @@
       - chance: 300
   effects:
     - modify: { target: faction.aldoria_workers.satisfaction, add: -6, days: 60 }
-    - adjust: { target: country.aldoria.treasury, by: -15 }
+    - modify: { target: country.aldoria.revenue, add: -2000, days: 90 }
 
 - id: military_doubts
   tag: home
