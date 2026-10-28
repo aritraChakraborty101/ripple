@@ -79,6 +79,8 @@ export interface Chokepoint {
   readonly name: string;
   readonly controlledBy: string;
   readonly open: boolean;
+  /** The toll its holder takes on goods passing through, in basis points of their value. */
+  readonly tollBp?: number;
 }
 
 export interface World {

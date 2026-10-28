@@ -51,6 +51,14 @@ describe('session', () => {
     expect(days(newSession(quiet, 1), 60).dispatches).toEqual([]);
   });
 
+  it('reports a month that ends in deficit, naming the dearest import', () => {
+    const later = days(closeStrait(newSession(quiet, 1)), 30);
+    const deficit = later.dispatches.find((d) => d.headline.startsWith('The month ends'));
+    expect(deficit).toMatchObject({ tag: 'Home', tick: 29 });
+    expect(deficit!.headline).toMatch(/^The month ends [\d.]+ bn in deficit$/);
+    expect(deficit!.detail).toMatch(/crude oil the most\.$/);
+  });
+
   it('reports price rises after a closure, one dispatch per band crossed', () => {
     const later = days(closeStrait(newSession(quiet, 1)), 30);
     const oil = later.dispatches.filter((d) => d.headline.startsWith('Crude oil'));
@@ -118,10 +126,10 @@ describe('session', () => {
   });
 
   it('pauses the clock and reports when the game ends', () => {
-    // Seed 3, left alone, is ousted on day 246.
+    // Seed 3, left alone, is ousted on day 492.
     let session = setPaused(newSession(scenario, 3), false);
     while (!session.game.outcome) session = tickSession(session);
-    expect(session.game.outcome).toEqual({ result: 'ousted', tick: 246 });
+    expect(session.game.outcome).toEqual({ result: 'ousted', tick: 492 });
     expect(session.clock.paused).toBe(true);
     expect(session.dispatches[0]!.headline).toBe('The government falls after weeks of unrest');
     expect(session.tallies.crises).toBeGreaterThan(0);
@@ -132,7 +140,7 @@ describe('describing decisions', () => {
   const game = newSession(scenario, 1).game;
 
   it('lists what signing costs', () => {
-    expect(describeCosts(game, game.defs.decisions.fuel_subsidy!)).toEqual(['40 bn']);
+    expect(describeCosts(game, game.defs.decisions.transit_fees!)).toEqual(['30 bn']);
     expect(describeCosts(game, game.defs.decisions.envoy_corvan!)).toEqual(['8 influence']);
     expect(describeCosts(game, game.defs.decisions.steel_tariff!)).toEqual([]);
   });

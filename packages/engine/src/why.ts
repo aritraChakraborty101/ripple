@@ -98,6 +98,57 @@ export interface MarketWhy {
   }[];
 }
 
+/** A treasury moved by its monthly budget since the start. */
+export interface BudgetWhy {
+  readonly type: 'budget';
+  readonly country: string;
+  /** Whole billions settled into the treasury so far. */
+  readonly settled: number;
+  readonly months: number;
+  /** The current monthly rates, in millions. */
+  readonly revenue: StatWhy;
+  readonly spending: StatWhy;
+}
+
+/** A budget line that follows trade: what a country imports, exports, or tolls. */
+export interface TradeWhy {
+  readonly type: 'trade';
+  readonly country: string;
+  readonly line: 'imports' | 'exports' | 'transit';
+  /** Largest amount first. */
+  readonly items: readonly {
+    readonly resource: string;
+    /** Units a day. */
+    readonly units: number;
+    /** Millions a month. */
+    readonly amount: number;
+    readonly cause: WhyNode;
+  }[];
+}
+
+/** Tax revenue following the factions' mood. */
+export interface ActivityWhy {
+  readonly type: 'activity';
+  readonly country: string;
+  /** The change in tax revenue, in basis points. */
+  readonly percentBp: number;
+  readonly factions: readonly {
+    readonly faction: string;
+    /** Satisfaction now minus where it started. */
+    readonly change: number;
+    readonly cause: WhyNode;
+  }[];
+}
+
+/** A treasury below zero weighing on the government. */
+export interface DebtWhy {
+  readonly type: 'debt';
+  readonly country: string;
+  /** In bn. */
+  readonly debt: number;
+  readonly cause: StatWhy;
+}
+
 export interface ChokepointWhy {
   readonly type: 'chokepoint';
   readonly id: string;
@@ -116,6 +167,10 @@ export type WhyNode =
   | MoodWhy
   | PressureWhy
   | MarketWhy
+  | BudgetWhy
+  | TradeWhy
+  | ActivityWhy
+  | DebtWhy
   | ChokepointWhy
   | FlagWhy
   /** An event that fired; expand it with `explainEvent`. */

@@ -2,3 +2,5 @@
   name: South Strait
   controlledBy: corvan
   open: true
+  # Corvan's toll on goods passing through: 15% of their value.
+  tollBp: 1500

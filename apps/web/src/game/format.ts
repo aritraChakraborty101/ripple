@@ -34,6 +34,17 @@ export function formatPrice(cents: number): string {
   return `${sign}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, '0')}`;
 }
 
+/**
+ * Millions as billions with at most one decimal: 13000 → "13 bn", 2450 → "2.4 bn".
+ * With `signed`, a plus or minus sign leads.
+ */
+export function formatMillions(millions: number, signed = false): string {
+  const tenths = Math.trunc(Math.abs(millions) / 100);
+  const text = tenths % 10 === 0 ? String(tenths / 10) : (tenths / 10).toFixed(1);
+  const sign = millions < 0 && tenths > 0 ? '−' : signed && tenths > 0 ? '+' : '';
+  return `${sign}${text} bn`;
+}
+
 /** Change from a reference as a signed whole percent: "+15%", "−3%", "0%". */
 export function formatChange(value: number, reference: number): string {
   if (reference === 0) return '0%';

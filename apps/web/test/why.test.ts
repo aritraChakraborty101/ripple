@@ -23,9 +23,9 @@ function playTo(seed: number, tick: number): Session {
   return session;
 }
 
-// The golden game: by day 230 Corvan has chosen to close the strait and
+// The golden game: by day 470 Corvan has chosen to close the strait and
 // stability has collapsed. Played once and shared, since it takes a moment.
-const session = playTo(3, 230);
+const session = playTo(3, 470);
 const game: GameState = session.game;
 const me = game.rules.playerCountry;
 const stability: WhyTarget = {
@@ -57,16 +57,17 @@ describe('why-trace chain', () => {
   const steps = titles(chain);
 
   it('starts at the root cause and ends at the question', () => {
-    expect(chain[0]!.type).toBe('event');
+    // The root cause has nothing further behind it: here, Corvan and Thessa's old friendship.
+    expect(childrenOf(game, chain[0]!)).toEqual([]);
     expect(chain.at(-1)!.type).toBe('stat');
     expect(steps.at(-1)).toMatch(/^Stability/);
   });
 
-  it('runs from the dispute through the strait and the oil price', () => {
+  it('runs from Thessa courting Corvan through the strait and the oil price', () => {
     const joined = steps.join(' → ');
     const order = [
-      /fishing boats/i,
-      /Relations with Corvan/,
+      /Thessa offers Corvan a security pact/,
+      /Nationalist rallies in Corvan/,
       /South Strait/,
       /Crude oil price/,
       /Stability/,
@@ -98,6 +99,34 @@ describe('why-trace chain', () => {
     for (const item of childrenOf(game, rootOf(game, stability))) {
       expect(describeNode(game, item.node).title.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('why-trace for the treasury', () => {
+  const treasury: WhyTarget = { kind: 'stat', ref: { kind: 'country', id: me, stat: 'treasury' } };
+  const root = rootOf(game, treasury);
+  const items = childrenOf(game, root);
+  const budget = items.find((i) => i.node.type === 'budget')!;
+
+  it('names the monthly budget as a cause, with what it has added up to', () => {
+    expect(budget).toBeDefined();
+    const text = describeNode(game, budget.node);
+    expect(text.title).toBe('Your monthly budget');
+    expect(text.note).toMatch(/bn over \d+ months$/);
+  });
+
+  it('follows the budget into imports and the oil price', () => {
+    const titles = (nodes: readonly { node: WhyNode }[]) =>
+      nodes.map((n) => describeNode(game, n.node).title);
+    const sides = childrenOf(game, budget.node);
+    expect(titles(sides).join(' | ')).toMatch(/Spending .* a month/);
+    const spending = sides.find((s) => describeNode(game, s.node).title.startsWith('Spending'))!;
+    const lines = childrenOf(game, spending.node);
+    const imports = lines.find((l) => l.node.type === 'trade')!;
+    expect(describeNode(game, imports.node).title).toMatch(/^Imports cost [\d.]+ bn a month$/);
+    const goods = childrenOf(game, imports.node);
+    expect(describeNode(game, goods[0]!.node).title).toMatch(/^Crude oil price/);
+    expect(goods[0]!.note).toBe('40 a day of crude oil');
   });
 });
 

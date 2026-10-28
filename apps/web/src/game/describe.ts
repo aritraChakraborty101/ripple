@@ -1,8 +1,12 @@
 /** Plain-language descriptions of decisions, relations and moods for the UI. */
 
 import { isFor, type DecisionDef, type GameState } from '@ripple/engine';
+import { formatMillions } from './format';
 
-/** The costs paid on signing, for example ["30 bn", "8 influence"]. */
+/**
+ * What signing costs, for example ["30 bn", "8 influence"], including running
+ * costs added to the budget, such as "13 bn a month for 3 months".
+ */
 export function describeCosts(state: GameState, def: DecisionDef): string[] {
   const me = state.rules.playerCountry;
   const parts: string[] = [];
@@ -11,6 +15,15 @@ export function describeCosts(state: GameState, def: DecisionDef): string[] {
     const amount = -cost.by;
     if (amount <= 0) continue;
     parts.push(cost.target.stat === 'treasury' ? `${amount} bn` : `${amount} ${cost.target.stat}`);
+  }
+  for (const effect of def.effects) {
+    if (effect.type !== 'modify' || effect.op !== 'add' || effect.amount <= 0) continue;
+    const { kind, id, stat } = effect.target;
+    if (kind !== 'country' || id !== me || stat !== 'spending') continue;
+    const months = effect.days === null ? null : Math.round(effect.days / 30);
+    const span =
+      months === null ? ' while in force' : ` for ${months} ${months === 1 ? 'month' : 'months'}`;
+    parts.push(`${formatMillions(effect.amount)} a month${span}`);
   }
   return parts;
 }

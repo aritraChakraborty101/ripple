@@ -6,6 +6,7 @@ import {
   effectiveStat,
   marketDemand,
   marketSupply,
+  monthlyBalance,
   run,
   setChokepointOpen,
   sortedIds,
@@ -84,6 +85,28 @@ describe('first-crisis scenario', () => {
     });
   });
 
+  it('runs every budget at a small surplus while prices are normal', () => {
+    const game = createGame(quiet, 1);
+    for (const id of Object.keys(game.world.countries)) {
+      const balance = monthlyBalance(game, id);
+      expect(balance, id).toBeGreaterThan(0);
+      expect(balance, id).toBeLessThan(2_000);
+    }
+  });
+
+  it('turns a long closure into a drained treasury, and costs Corvan its tolls', () => {
+    const treasury = (state: GameState, id: string) =>
+      effectiveStat(state, { kind: 'country', id, stat: 'treasury' });
+    const calm = run(createGame(quiet, 1), 90);
+    const closed = run(setChokepointOpen(createGame(quiet, 1), 'south_strait', false), 90);
+    // Three months of dear oil cost Aldoria tens of billions.
+    expect(treasury(calm, 'aldoria') - treasury(closed, 'aldoria')).toBeGreaterThan(25);
+    expect(monthlyBalance(closed, 'aldoria')).toBeLessThan(-5_000);
+    // Corvan earns nothing from a strait nobody can sail through.
+    expect(monthlyBalance(closed, 'corvan')).toBeLessThan(0);
+    expect(treasury(closed, 'corvan')).toBeLessThan(treasury(calm, 'corvan'));
+  });
+
   it('turns a long closure into lower stability at home', () => {
     const closed = run(setChokepointOpen(createGame(quiet, 1), 'south_strait', false), 60);
     const stability = effectiveStat(closed, { kind: 'country', id: 'aldoria', stat: 'stability' });
@@ -103,7 +126,7 @@ describe('first-crisis full games', () => {
     // If this changes, the scenario or the simulation changed. Update deliberately,
     // after checking `pnpm balance` still looks healthy.
     const { state, story } = playIdle(3);
-    expect({ outcome: state.outcome, story: story.slice(0, 10) }).toEqual(GOLDEN_IDLE_SEED_3);
+    expect({ outcome: state.outcome, story: story.slice(0, 16) }).toEqual(GOLDEN_IDLE_SEED_3);
   });
 
   it('lets the player lift steel tariffs, at a price', () => {
@@ -134,8 +157,11 @@ describe('first-crisis full games', () => {
     expect(effectiveStat(lifted, thessa)).toBe(-10);
     expect(effectiveStat(lifted, industry)).toBe(50);
     expect(lifted.modifiers.some((m) => m.source.id === 'steel_tariff')).toBe(false);
-    // The revenue already raised is kept.
-    expect(effectiveStat(lifted, { kind: 'country', id: me, stat: 'treasury' })).toBe(447);
+    // The tariff paid a monthly line while in force; lifting it ends that revenue.
+    const tariffRevenue = (state: GameState) =>
+      state.modifiers.filter((m) => m.source.id === 'steel_tariff' && m.target.stat === 'revenue');
+    expect(tariffRevenue(raised).map((m) => m.amount)).toEqual([3000]);
+    expect(tariffRevenue(lifted)).toEqual([]);
   });
 
   it('gives Thessa a reason to answer a steel tariff in kind', () => {
@@ -153,10 +179,12 @@ describe('first-crisis full games', () => {
 
 // Left alone, Aldoria is squeezed by every neighbour: Corvan raises transit
 // fees, a fishing dispute sours relations, Corvan detains a tanker and
-// denounces Aldoria, Veskar cuts output, Thessa offers Corvan a pact, and Corvan
-// closes the strait on day 176. The leader falls on day 246.
+// denounces Aldoria, Veskar cuts output, and Thessa offers Corvan a pact. Corvan
+// keeps squeezing through fees rather than closing the strait, until Thessa's
+// second pact and nationalist rallies tip it: it closes the strait on day 421,
+// and the leader falls on day 492.
 const GOLDEN_IDLE_SEED_3 = {
-  outcome: { result: 'ousted', tick: 246 },
+  outcome: { result: 'ousted', tick: 492 },
   story: [
     '16:corvan_customs_checks',
     '30:orrin.court>aldoria',
@@ -167,6 +195,12 @@ const GOLDEN_IDLE_SEED_3 = {
     '116:corvan.denounce_aldoria>aldoria',
     '120:veskar.veskar_cut_output',
     '140:thessa.thessa_corvan_pact',
-    '176:corvan.corvan_close_strait',
+    '176:corvan.corvan_raise_fees',
+    '314:corvan.corvan_raise_fees',
+    '383:thessa.thessa_corvan_pact',
+    '400:corvan_nationalists',
+    '402:corvan.corvan_detain_tanker',
+    '416:corvan.denounce_aldoria>aldoria',
+    '421:corvan.corvan_close_strait',
   ],
 };

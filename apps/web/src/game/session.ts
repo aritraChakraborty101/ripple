@@ -26,6 +26,8 @@ import { dispatchesFor, initialNews, isAlert, type Dispatch, type NewsState } fr
 
 /** Days of price history kept for sparklines. */
 export const HISTORY_DAYS = 120;
+/** The history key for the player's treasury (resource IDs never start with "$"). */
+export const TREASURY_HISTORY = '$treasury';
 /** Dispatches kept in the feed. */
 export const MAX_DISPATCHES = 60;
 
@@ -43,7 +45,7 @@ export interface Session {
   readonly news: NewsState;
   /** Newest first. */
   readonly dispatches: readonly Dispatch[];
-  /** Effective price per resource per day, oldest first. */
+  /** Effective price per resource per day, oldest first, plus the treasury under `TREASURY_HISTORY`. */
   readonly history: Readonly<Record<string, readonly number[]>>;
   readonly tallies: Tallies;
   /** The player's treasury at the start, for the end-of-game summary. */
@@ -66,10 +68,15 @@ function recordHistory(
   game: GameState,
 ): Readonly<Record<string, readonly number[]>> {
   const next: Record<string, readonly number[]> = {};
-  for (const id of sortedIds(game.world.resources)) {
-    const series = [...(history[id] ?? []), priceOf(game, id)];
-    next[id] = series.length > HISTORY_DAYS ? series.slice(-HISTORY_DAYS) : series;
-  }
+  const add = (key: string, value: number) => {
+    const series = [...(history[key] ?? []), value];
+    next[key] = series.length > HISTORY_DAYS ? series.slice(-HISTORY_DAYS) : series;
+  };
+  for (const id of sortedIds(game.world.resources)) add(id, priceOf(game, id));
+  add(
+    TREASURY_HISTORY,
+    effectiveStat(game, { kind: 'country', id: game.rules.playerCountry, stat: 'treasury' }),
+  );
   return next;
 }
 

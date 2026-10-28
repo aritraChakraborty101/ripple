@@ -54,6 +54,8 @@ An event can also have `requires`: a condition that must hold for it to fire at 
 
 **Stat targets** are written `kind.id.stat`, such as `country.aldoria.treasury`, `faction.aldoria_workers.satisfaction`, `resource.oil.price` or `link.oil_veskar_aldoria.capacity`.
 
+**Budgets.** A country with `revenue` and `spending` stats keeps a monthly budget, in millions: taxes and upkeep before trade. The economy system adds imports, exports and transit tolls (a chokepoint's `tollBp`), and settles each month into the treasury in whole billions. A running cost or income is a `modify` on `revenue` or `spending`: with `days` for a fixed term (a three-month subsidy), or without for a policy that lasts until `endEffectsOf` lifts it (a tariff). Countries without a `revenue` stat keep no budget.
+
 ## The guide: briefing and advisor
 
 `briefing.yaml` and `advisor.yaml` are what a new player is told. They never affect the simulation.

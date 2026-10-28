@@ -71,6 +71,8 @@ export const chokepointSchema = z.strictObject({
   name: z.string().min(1),
   controlledBy: id,
   open: z.boolean().default(true),
+  /** The holder's toll on goods passing through, in basis points of their value. */
+  tollBp: z.int().min(0).max(10_000).default(0),
 });
 
 export const rulesSchema = z.strictObject({

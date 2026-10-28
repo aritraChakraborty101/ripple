@@ -54,6 +54,16 @@ export type EngineEvent =
       readonly reason: string;
     }
   | {
+      /** A country's month settled into its treasury. */
+      readonly kind: 'budget_settled';
+      readonly tick: number;
+      readonly country: string;
+      /** Revenue minus spending over the month, in millions (including last month's remainder). */
+      readonly millions: number;
+      /** Whole billions moved into (or out of) the treasury. */
+      readonly bn: number;
+    }
+  | {
       readonly kind: 'game_over';
       readonly tick: number;
       readonly result: 'ousted' | 'survived';

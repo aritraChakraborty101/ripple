@@ -16,7 +16,7 @@ import {
   type StatRef,
   type WhyNode,
 } from '@ripple/engine';
-import { fillNames, formatDate, formatPrice } from './format';
+import { fillNames, formatDate, formatMillions, formatPrice } from './format';
 import type { Dispatch } from './news';
 
 /** What the player asked about. */
@@ -104,8 +104,13 @@ export function statLabel(game: GameState, ref: StatRef): string {
   }
 }
 
+/** Budget stats are counted in millions a month. */
+const isBudgetStat = (ref: StatRef) =>
+  ref.kind === 'country' && (ref.stat === 'revenue' || ref.stat === 'spending');
+
 export function formatStat(ref: StatRef, value: number): string {
   if (ref.kind === 'resource' && ref.stat === 'price') return formatPrice(value);
+  if (isBudgetStat(ref)) return `${formatMillions(value)} a month`;
   if (ref.stat === 'treasury') return `${value} bn`;
   if (ref.kind === 'link') return `${value} a day`;
   if (ref.kind === 'relation') return signed(value);
@@ -115,6 +120,7 @@ export function formatStat(ref: StatRef, value: number): string {
 /** A change in the stat's units: "−27", "+45.00", "−20 bn". */
 export function formatEffect(ref: StatRef, effect: number): string {
   if (ref.kind === 'resource' && ref.stat === 'price') return signed(effect, formatPrice);
+  if (isBudgetStat(ref)) return `${formatMillions(effect, true)} a month`;
   if (ref.stat === 'treasury') return `${signed(effect)} bn`;
   if (ref.kind === 'link') return `${signed(effect)} a day`;
   return signed(effect);
@@ -161,6 +167,33 @@ export function describeNode(game: GameState, node: WhyNode): NodeText {
       const name = game.world.resources[node.resource]?.name ?? node.resource;
       return { title: `${name} supply ${node.supply} a day, against demand of ${node.demand}` };
     }
+    case 'budget': {
+      const whose =
+        node.country === game.rules.playerCountry
+          ? 'Your monthly budget'
+          : `${possessive(countryName(game, node.country))} monthly budget`;
+      const months = `${node.months} ${node.months === 1 ? 'month' : 'months'}`;
+      return { title: whose, note: `${signed(node.settled)} bn over ${months}` };
+    }
+    case 'trade': {
+      const total = node.items.reduce((sum, i) => sum + i.amount, 0);
+      const label =
+        node.line === 'imports'
+          ? 'Imports cost'
+          : node.line === 'exports'
+            ? 'Exports earn'
+            : 'Transit tolls earn';
+      return { title: `${label} ${formatMillions(total)} a month` };
+    }
+    case 'activity':
+      return {
+        title:
+          node.percentBp >= 0
+            ? `Business is good: taxes up ${Math.round(node.percentBp / 100)}%`
+            : `Business is slow: taxes down ${Math.round(-node.percentBp / 100)}%`,
+      };
+    case 'debt':
+      return { title: `Debt of ${node.debt} bn weighs on the government` };
     case 'chokepoint': {
       const name = game.world.chokepoints[node.id]?.name ?? node.id;
       return { title: `The ${name} ${node.open ? 'is open' : 'is closed'}` };
@@ -252,7 +285,16 @@ export function childrenOf(game: GameState, node: WhyNode): WhyItem[] {
     case 'stat':
       return node.contributions.map((c) => {
         // Moods, living costs and markets are recalculated every day, so they have no end date.
-        const ongoing = ['mood', 'pressure', 'market', 'system'].includes(c.cause.type);
+        const ongoing = [
+          'mood',
+          'pressure',
+          'market',
+          'system',
+          'budget',
+          'trade',
+          'activity',
+          'debt',
+        ].includes(c.cause.type);
         const note = ongoing
           ? undefined
           : c.untilTick !== null
@@ -278,6 +320,25 @@ export function childrenOf(game: GameState, node: WhyNode): WhyItem[] {
       }));
     case 'market':
       return node.routes.map((r) => ({ node: r.cause, effect: `${signed(r.delta)} a day` }));
+    case 'budget': {
+      // Whichever side moved more from its starting level leads.
+      const moved = (s: typeof node.revenue) => Math.abs(s.value - s.normal);
+      const sides = [node.revenue, node.spending].sort((a, b) => moved(b) - moved(a));
+      return sides.map((s) => ({ node: s }));
+    }
+    case 'trade':
+      return node.items.map((i) => {
+        const name = game.world.resources[i.resource]?.name ?? i.resource;
+        return {
+          node: i.cause,
+          effect: `${formatMillions(i.amount)} a month`,
+          note: `${i.units} a day of ${lowerFirst(name)}`,
+        };
+      });
+    case 'activity':
+      return node.factions.map((f) => ({ node: f.cause, effect: `${signed(f.change)} mood` }));
+    case 'debt':
+      return [{ node: node.cause }];
     case 'chokepoint':
     case 'flag': {
       const by = node.type === 'chokepoint' ? node.changedBy : node.setBy;
@@ -339,7 +400,10 @@ export function mainNodes(game: GameState, root: WhyNode): WhyNode[] {
  */
 export function chainInShort(game: GameState, root: WhyNode): WhyNode[] {
   return mainNodes(game, root)
-    .filter((n) => n.type !== 'mood' && n.type !== 'pressure' && n.type !== 'system')
+    .filter(
+      (n) =>
+        n.type !== 'mood' && n.type !== 'pressure' && n.type !== 'system' && n.type !== 'activity',
+    )
     .filter((n) => !(n.type === 'chokepoint' && n.changedBy !== null))
     .reverse();
 }
