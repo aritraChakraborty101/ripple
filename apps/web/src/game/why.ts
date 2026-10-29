@@ -269,7 +269,9 @@ export function describeNode(game: GameState, node: WhyNode): NodeText {
     case 'start':
       return { title: 'How things stood at the start' };
     case 'system':
-      return { title: 'The way the world works' };
+      return node.id === 'recovery'
+        ? { title: 'Influence recovers by a point a month, up to where it started' }
+        : { title: 'The way the world works' };
   }
 }
 
@@ -291,6 +293,10 @@ export function goalLabel(game: GameState, goalId: string): string {
       return `closer ties with ${countryName(game, arg)}`;
     case 'grievance':
       return `a grudge against ${countryName(game, arg)}`;
+    case 'balance':
+      return 'a healthier budget';
+    case 'supply':
+      return `secure supplies of ${lowerFirst(game.world.resources[arg]?.name ?? arg)}`;
   }
 }
 

@@ -12,7 +12,8 @@ import type { StatRef } from '../modifiers';
  * `grievance(aldoria)`. Actions refer to goals by the same IDs, so an action
  * that drives `ties(target)` serves whichever country it is aimed at.
  */
-export type GoalKind = 'wealth' | 'standing' | 'security' | 'prices' | 'ties' | 'grievance';
+export type GoalKind =
+  'wealth' | 'standing' | 'security' | 'prices' | 'ties' | 'grievance' | 'balance' | 'supply';
 
 export interface GoalDef {
   readonly id: string;

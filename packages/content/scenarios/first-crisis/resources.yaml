@@ -11,3 +11,9 @@
 - id: steel
   name: Steel
   basePrice: 6500
+
+# Made almost only in Ilmar. Households barely notice their price; industry and
+# the military do.
+- id: chips
+  name: Microchips
+  basePrice: 15000

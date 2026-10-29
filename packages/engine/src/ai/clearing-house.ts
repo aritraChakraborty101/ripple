@@ -288,6 +288,6 @@ export function urgency(state: GameState, country: string): number {
 }
 
 /** The countries the AI plays: those with a personality, in ID order. */
-export function computerCountries(state: GameState): string[] {
+export function computerCountries(state: GameState): readonly string[] {
   return state.defs.ai ? sortedIds(state.defs.ai.personalities) : [];
 }

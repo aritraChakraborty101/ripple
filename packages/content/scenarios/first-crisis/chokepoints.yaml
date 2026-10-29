@@ -4,3 +4,11 @@
   open: true
   # Corvan's toll on goods passing through: 15% of their value.
   tollBp: 1500
+
+# Between Thessa and the island of Ilmar. Every chip bound for anyone but
+# Thessa passes through it.
+- id: narrows
+  name: The Narrows
+  controlledBy: thessa
+  open: true
+  tollBp: 500

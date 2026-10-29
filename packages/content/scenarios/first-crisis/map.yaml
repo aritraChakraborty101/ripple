@@ -6,35 +6,52 @@
 #   anchor:    where trade routes start and end
 #   label:     where the name is written; labelSize is its font size
 
-width: 900
-height: 520
+width: 1120
+height: 640
 
 countries:
+  velmont:
+    outline: [[280, 18], [520, 8], [700, 30], [720, 96], [560, 120], [380, 116], [300, 84]]
+    anchor: [500, 64]
+    label: [500, 52]
+    labelSize: 18
+  ilmar:
+    outline: [[880, 170], [990, 150], [1060, 206], [1040, 300], [930, 316], [870, 260]]
+    anchor: [962, 236]
+    label: [962, 218]
+    labelSize: 17
+  # In the south, clear of the corner where the advisor's card opens.
+  kesh:
+    outline: [[430, 566], [600, 548], [740, 572], [720, 630], [530, 636], [420, 612]]
+    anchor: [585, 600]
+    label: [585, 588]
+    labelSize: 17
   orrin:
-    outline: [[60, 40], [200, 30], [232, 92], [122, 112]]
-    anchor: [150, 82]
-    label: [145, 66]
+    outline: [[60, 110], [200, 100], [232, 162], [122, 182]]
+    anchor: [150, 152]
+    label: [145, 136]
     labelSize: 16
   aldoria:
-    outline: [[120, 150], [300, 118], [360, 192], [332, 300], [200, 334], [108, 262]]
-    anchor: [230, 236]
-    label: [222, 214]
+    outline: [[120, 220], [300, 188], [360, 262], [332, 370], [200, 404], [108, 332]]
+    anchor: [230, 306]
+    label: [222, 284]
     labelSize: 20
   thessa:
-    outline: [[400, 100], [600, 62], [760, 122], [720, 240], [560, 252], [470, 222], [362, 190]]
-    anchor: [565, 165]
-    label: [590, 140]
+    outline: [[400, 170], [600, 132], [760, 192], [720, 310], [560, 322], [470, 292], [362, 260]]
+    anchor: [565, 235]
+    label: [590, 210]
     labelSize: 18
   corvan:
-    outline: [[332, 300], [362, 190], [470, 222], [500, 318], [432, 380], [340, 362]]
-    anchor: [410, 300]
-    label: [418, 278]
+    outline: [[332, 370], [362, 260], [470, 292], [500, 388], [432, 450], [340, 432]]
+    anchor: [410, 370]
+    label: [418, 348]
     labelSize: 17
   veskar:
-    outline: [[560, 300], [700, 262], [820, 320], [800, 440], [640, 462], [545, 402]]
-    anchor: [670, 380]
-    label: [690, 356]
+    outline: [[560, 370], [700, 332], [820, 390], [800, 510], [640, 532], [545, 472]]
+    anchor: [670, 450]
+    label: [690, 426]
     labelSize: 18
 
 chokepoints:
-  south_strait: [520, 356]
+  narrows: [815, 236]
+  south_strait: [520, 426]

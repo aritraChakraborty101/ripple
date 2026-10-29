@@ -10,6 +10,7 @@ import {
   marketSupply,
   monthlyBalance,
   explainStat,
+  goalNeed,
   score,
   run,
   setChokepointOpen,
@@ -53,7 +54,7 @@ describe('first-crisis scenario', () => {
   it('loads and validates', () => {
     expect(scenario.id).toBe('first_crisis');
     expect(scenario.rules.playerCountry).toBe('aldoria');
-    expect(scenario.countries).toHaveLength(5);
+    expect(scenario.countries).toHaveLength(8);
     expect(scenario.decisions.length).toBeGreaterThanOrEqual(8);
     expect(scenario.events.length).toBeGreaterThanOrEqual(10);
   });
@@ -84,15 +85,21 @@ describe('first-crisis scenario', () => {
     // If this changes, the market's behavior changed. Update deliberately.
     const month = run(setChokepointOpen(createGame(quiet, 1), 'south_strait', false), 30);
     expect({ oil: price(month, 'oil'), grain: price(month, 'grain') }).toEqual({
-      oil: 16_283, // 73.00 -> 162.83
-      grain: 3_039, // 22.00 -> 30.39
+      oil: 16_562, // 73.00 -> 165.62: 57 of 100 units a day pass the strait
+      grain: 2_797, // 22.00 -> 27.97
     });
   });
 
-  it('runs every budget at a small surplus while prices are normal', () => {
+  it('runs every budget at a small surplus while prices are normal, but Kesh', () => {
     const game = createGame(quiet, 1);
     for (const id of Object.keys(game.world.countries)) {
       const balance = monthlyBalance(game, id);
+      if (id === 'kesh') {
+        // Kesh alone runs a small deficit, which keeps it hungry.
+        expect(balance).toBeLessThan(0);
+        expect(balance).toBeGreaterThan(-1_000);
+        continue;
+      }
       expect(balance, id).toBeGreaterThan(0);
       expect(balance, id).toBeLessThan(2_000);
     }
@@ -126,11 +133,11 @@ describe('first-crisis full games', () => {
     expect(a.story).toEqual(b.story);
   });
 
-  it('matches the recorded idle game for seed 3 (golden run)', () => {
+  it('matches the recorded idle game for seed 5 (golden run)', () => {
     // If this changes, the scenario or the simulation changed. Update deliberately,
     // after checking `pnpm balance` still looks healthy.
-    const { state, story } = playIdle(3);
-    expect({ outcome: state.outcome, story: story.slice(0, 16) }).toEqual(GOLDEN_IDLE_SEED_3);
+    const { state, story } = playIdle(5);
+    expect({ outcome: state.outcome, story: story.slice(0, 16) }).toEqual(GOLDEN_IDLE_SEED_5);
   });
 
   it('lets the player lift tariffs on Thessa, at a price', () => {
@@ -267,7 +274,7 @@ describe('first-crisis full games', () => {
   });
 
   it('lets Thessa sanction Aldoria when relations collapse, and never for good', () => {
-    // Relations at -60 from the start: Thessa's grudge, with a year for it to build.
+    // Relations at -60 from the start: Thessa's grudge, with months for it to build.
     const hostile: ScenarioDef = {
       ...scenario,
       relations: scenario.relations.map((r) =>
@@ -275,21 +282,19 @@ describe('first-crisis full games', () => {
       ),
     };
     let sanctionedIn = 0;
-    let liftedIn = 0;
-    for (let seed = 1; seed <= 10; seed += 1) {
+    for (let seed = 1; seed <= 6; seed += 1) {
       let state = createGame(hostile, seed);
-      let wasSanctioned = false;
-      for (let day = 0; day < 720 && !state.outcome; day += 1) {
+      while (!state.outcome && !state.flags.includes('sanctioned_by_thessa')) {
         state = step(state, []).state;
-        if (state.flags.includes('sanctioned_by_thessa')) wasSanctioned = true;
-        else if (wasSanctioned) break;
       }
-      if (wasSanctioned) sanctionedIn += 1;
-      if (wasSanctioned && !state.flags.includes('sanctioned_by_thessa')) liftedIn += 1;
+      if (!state.flags.includes('sanctioned_by_thessa')) continue;
+      sanctionedIn += 1;
+      // Whatever happens next, the backstop is already set: eight months at most.
+      const backstop = state.scheduled.find((e) => e.event === 'thessa_sanctions_collapse');
+      expect(backstop?.dueTick).toBe(state.tick - 1 + 240);
     }
-    expect(sanctionedIn).toBeGreaterThan(0);
-    expect(liftedIn).toBeGreaterThan(0);
-  });
+    expect(sanctionedIn).toBeGreaterThan(2);
+  }, 20_000);
 
   it('rations fuel: less crude wanted, a cheaper price, a smaller bill, slower industry', () => {
     const me = 'aldoria';
@@ -298,7 +303,7 @@ describe('first-crisis full games', () => {
     const closed = setChokepointOpen(createGame(quiet, 1), 'south_strait', false);
     const plain = run(closed, 60);
     const rationed = run(ration(closed), 60);
-    expect(marketDemand(rationed, 'oil')).toBe(72);
+    expect(marketDemand(rationed, 'oil')).toBe(92);
     expect(price(rationed, 'oil')).toBeLessThan(price(plain, 'oil'));
     const oilBill = (state: GameState) =>
       tradeItems(state, me, 'imports').find((i) => i.resource === 'oil')!.amount;
@@ -309,7 +314,7 @@ describe('first-crisis full games', () => {
     if (market.type !== 'market') throw new Error('expected a market');
     expect(market.demands).toEqual([expect.objectContaining({ country: me, delta: -8 })]);
     const ended = step(rationed, [{ kind: 'decide', decision: 'end_rationing', by: me }]).state;
-    expect(marketDemand(ended, 'oil')).toBe(80);
+    expect(marketDemand(ended, 'oil')).toBe(100);
   });
 
   it('runs austerity and public works as monthly lines, never both at once', () => {
@@ -360,7 +365,23 @@ describe('first-crisis full games', () => {
     const me = 'aldoria';
     const hostile = (state: GameState) =>
       score(state, { country: 'corvan', decision: 'corvan_close_strait' }).appealTotal;
-    const game = run(createGame(scenario, 1), 200);
+    // Day 200, relations with Corvan at their worst: closing the strait appeals.
+    const day200 = run(createGame(scenario, 1), 200);
+    const game = {
+      ...day200,
+      modifiers: [
+        ...day200.modifiers,
+        {
+          id: 'test_relation',
+          target: { kind: 'relation' as const, id: 'aldoria__corvan', stat: 'value' },
+          op: 'add' as const,
+          amount: -100,
+          source: { kind: 'event' as const, id: 'test', tick: 0 },
+          expiresAt: null,
+        },
+      ],
+    };
+    expect(hostile(game)).toBeGreaterThan(0);
     const shaken = {
       ...game,
       modifiers: [
@@ -378,6 +399,56 @@ describe('first-crisis full games', () => {
     expect(hostile(shaken)).toBeLessThan(hostile(game));
   });
 
+  it("makes the Narrows Thessa's lever on chips: Aldoria, Velmont and Kesh go short, Thessa does not", () => {
+    const shut = run(setChokepointOpen(createGame(quiet, 1), 'narrows', false), 30);
+    expect(price(shut, 'chips')).toBeGreaterThan(15_000 * 2);
+    expect(marketSupply(shut, 'chips')).toBe(8);
+    // The military feels chips most.
+    const military = { kind: 'faction' as const, id: 'aldoria_military', stat: 'satisfaction' };
+    expect(effectiveStat(shut, military)).toBeLessThan(58);
+  });
+
+  it('lets Kesh fall to a coup that stops its oil', () => {
+    let coups = 0;
+    for (let seed = 1; seed <= 20; seed += 1) {
+      let state = createGame(scenario, seed);
+      for (let day = 0; day < 360 && !state.outcome; day += 1) {
+        const result = step(state, []);
+        state = result.state;
+        if (result.events.some((e) => e.kind === 'event_fired' && e.event === 'kesh_coup')) {
+          coups += 1;
+          expect(
+            effectiveStat(state, { kind: 'link', id: 'oil_kesh_velmont', stat: 'capacity' }),
+          ).toBe(0);
+          break;
+        }
+      }
+    }
+    expect(coups).toBeGreaterThan(2);
+  }, 20_000);
+
+  it('recovers spent influence by a point a month, up to where it started', () => {
+    const me = 'aldoria';
+    const influence = (state: GameState) =>
+      effectiveStat(state, { kind: 'country', id: me, stat: 'influence' });
+    const sent = step(createGame(quiet, 1), [
+      { kind: 'decide', decision: 'envoy', by: me, target: 'orrin' },
+    ]).state;
+    expect(influence(sent)).toBe(30);
+    expect(influence(run(sent, 29))).toBe(31);
+    expect(influence(run(sent, 400))).toBe(38);
+  });
+
+  it('gives Corvan a budget reason to reopen the strait: closing it costs its tolls', () => {
+    const closed = run(setChokepointOpen(createGame(quiet, 1), 'south_strait', false), 31);
+    const need = (state: GameState) => goalNeed(state, 'corvan', { id: 'balance', weight: 10 });
+    expect(need(createGame(quiet, 1))).toBe(0);
+    expect(need(closed)).toBeGreaterThan(0);
+    // Velmont, which buys chips through the Narrows, needs them once supply runs short.
+    const short = run(setChokepointOpen(createGame(quiet, 1), 'narrows', false), 5);
+    expect(goalNeed(short, 'velmont', { id: 'supply(chips)', weight: 15 })).toBe(10_000);
+  });
+
   it('gives Thessa a reason to answer a steel tariff in kind', () => {
     let seedsWithAnswer = 0;
     for (let seed = 1; seed <= 20; seed += 1) {
@@ -392,30 +463,29 @@ describe('first-crisis full games', () => {
   }, 20_000);
 });
 
-// Left alone, Aldoria is squeezed by every neighbour: Corvan raises transit
-// fees, a fishing dispute sours relations, Corvan detains a tanker and
-// denounces Aldoria, Veskar cuts output, and Thessa offers Corvan a pact. Corvan
-// keeps squeezing through fees for two years; a second pact, a terminal
-// explosion and nationalist rallies tip it, and it closes the strait on day 753.
-// Strikes, layoffs and a drought follow, and the leader falls on day 828.
-const GOLDEN_IDLE_SEED_3 = {
-  outcome: { result: 'ousted', tick: 828 },
+// Left alone, Aldoria is squeezed from every side. Velmont courts it, but Thessa
+// pulls Corvan into a pact; Veskar's terminal explodes, Corvan detains a tanker
+// and denounces Aldoria, and after a fishing dispute Corvan closes the strait
+// on day 176. Three weeks later the army seizes power in Kesh, the other oil
+// exporter. Strikes and doubting officers follow, and the leader falls on day 230.
+const GOLDEN_IDLE_SEED_5 = {
+  outcome: { result: 'ousted', tick: 230 },
   story: [
-    '16:corvan_customs_checks',
-    '30:orrin.court>aldoria',
-    '39:thessa.court>corvan',
-    '45:corvan.corvan_raise_fees',
-    '87:fishing_dispute',
-    '111:corvan.corvan_detain_tanker',
-    '116:corvan.denounce_aldoria>aldoria',
-    '120:veskar.veskar_cut_output',
-    '140:thessa.thessa_corvan_pact',
-    '183:corvan.corvan_raise_fees',
-    '225:corvan_nationalists',
-    '243:corvan.corvan_detain_tanker',
-    '263:orrin_bumper_harvest',
-    '290:corvan.denounce_aldoria>aldoria',
-    '316:corvan.corvan_raise_fees',
-    '420:veskar.veskar_cut_output',
+    '4:velmont.court>aldoria',
+    '17:corvan_customs_checks',
+    '25:thessa.court>corvan',
+    '33:orrin.court>aldoria',
+    '63:corvan.corvan_raise_fees',
+    '90:thessa.thessa_corvan_pact',
+    '108:velmont.velmont_court_aldoria',
+    '121:veskar_terminal_explosion',
+    '129:corvan_nationalists',
+    '131:corvan.corvan_detain_tanker',
+    '142:veskar.court>aldoria',
+    '148:corvan.denounce_aldoria>aldoria',
+    '163:velmont.court>kesh',
+    '164:kesh_protests',
+    '174:fishing_dispute',
+    '176:corvan.corvan_close_strait',
   ],
 };

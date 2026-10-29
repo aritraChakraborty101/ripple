@@ -39,13 +39,13 @@ describe('first-crisis map', () => {
 
   it('draws every country and chokepoint in the scenario', () => {
     expect(Object.keys(map.countries).sort()).toEqual(scenario.countries.map((c) => c.id).sort());
-    expect(Object.keys(map.chokepoints)).toEqual(['south_strait']);
+    expect(Object.keys(map.chokepoints).sort()).toEqual(['narrows', 'south_strait']);
   });
 
   it('converts coordinates to points', () => {
-    expect(map.width).toBe(900);
-    expect(map.chokepoints.south_strait).toEqual({ x: 520, y: 356 });
-    expect(map.countries.aldoria!.anchor).toEqual({ x: 230, y: 236 });
+    expect(map.width).toBe(1120);
+    expect(map.chokepoints.south_strait).toEqual({ x: 520, y: 426 });
+    expect(map.countries.aldoria!.anchor).toEqual({ x: 230, y: 306 });
     expect(map.countries.aldoria!.outline.length).toBe(6);
   });
 });
@@ -73,6 +73,7 @@ describe('map validation', () => {
     const raw = { ...fullMap(), chokepoints: {} };
     expect(problemsOf(raw)).toEqual([
       'map.chokepoints: "south_strait" is in the scenario but not on the map',
+      'map.chokepoints: "narrows" is in the scenario but not on the map',
     ]);
   });
 

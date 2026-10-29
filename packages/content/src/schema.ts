@@ -33,6 +33,9 @@ const archetype = z.enum([
   'resource_exporter',
   'transit_state',
   'rising_power',
+  'chip_maker',
+  'fragile_exporter',
+  'distant_power',
 ]);
 
 export const countrySchema = z.strictObject({
@@ -339,7 +342,9 @@ export const scenarioSchema = z
         checkGoal([...at, 'goals', goal], goal);
         total += def.weight;
         const kind = parseGoalId(goal)?.kind;
-        const needsAspire = kind !== undefined && kind !== 'grievance' && kind !== 'security';
+        // Grievance and security need none; balance defaults to 0 and supply to 100%.
+        const needsAspire =
+          kind !== undefined && !['grievance', 'security', 'balance', 'supply'].includes(kind);
         if (needsAspire && def.aspire === undefined) {
           issue([...at, 'goals', goal, 'aspire'], `A ${kind} goal needs an aspire value`);
         }

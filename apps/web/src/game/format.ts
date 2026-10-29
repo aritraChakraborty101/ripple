@@ -59,6 +59,9 @@ export const ARCHETYPE_LABELS: Record<string, string> = {
   resource_exporter: 'Resource exporter',
   transit_state: 'Transit state',
   rising_power: 'Rising power',
+  chip_maker: 'Chip maker',
+  fragile_exporter: 'Fragile exporter',
+  distant_power: 'Distant power',
 };
 
 /** Fill a computer order's {self} and {target} with country names. */

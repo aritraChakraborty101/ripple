@@ -23,9 +23,9 @@ function playTo(seed: number, tick: number): Session {
   return session;
 }
 
-// The golden game: by day 790 Corvan has chosen to close the strait and
+// The golden game: by day 215 Corvan has chosen to close the strait and
 // stability has collapsed. Played once and shared, since it takes a moment.
-const session = playTo(3, 790);
+const session = playTo(5, 215);
 const game: GameState = session.game;
 const me = game.rules.playerCountry;
 const stability: WhyTarget = {

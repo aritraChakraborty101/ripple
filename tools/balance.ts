@@ -35,6 +35,9 @@ interface Want {
 
 type Player = (state: GameState) => Want[];
 
+/** The chokepoint the "strait" lines report on. */
+const STRAIT = 'south_strait';
+
 const idle: Player = () => [];
 
 /** Rules of thumb a reasonable player might follow. */
@@ -50,10 +53,10 @@ const steady: Player = (state) => {
   const wants: Want[] = [];
   const want = (decision: string, target?: string) =>
     wants.push(target === undefined ? { decision } : { decision, target });
-  if (relation('corvan') < -20) {
-    want('envoy', 'corvan');
-    want('transit_fees');
-  }
+  // Corvan: lasting goodwill first, then talks, then money, as relations worsen.
+  if (relation('corvan') < -15) want('broadcast', 'corvan');
+  if (relation('corvan') < -25) want('envoy', 'corvan');
+  if (relation('corvan') < -32) want('transit_fees');
   if (stat('country', me, 'stability') < 45) want('fuel_subsidy');
   if (oilUp > 0.4) {
     want('release_reserves');
@@ -62,7 +65,7 @@ const steady: Player = (state) => {
   if (stat('country', me, 'stability') < 30) want('address_nation');
   if (state.tick > 60 && stat('country', me, 'treasury') > 200) want('overland_pipeline');
   // Friends first: deals and a treaty with whoever is friendly enough.
-  for (const partner of ['orrin', 'veskar']) {
+  for (const partner of ['orrin', 'veskar', 'kesh', 'ilmar', 'velmont']) {
     if (relation(partner) >= 25) want('trade_deal', partner);
     if (relation(partner) >= 55) want('treaty', partner);
   }
@@ -98,12 +101,16 @@ interface GameSummary {
   readonly finalStability: number;
   readonly finalTreasury: number;
   readonly straitClosures: number;
+  /** Closures of every chokepoint, by ID. */
+  readonly closures: Readonly<Record<string, number>>;
   /** The day a strait first closed, if one did. */
   readonly firstClosure: number | null;
   /** The player's orders. */
   readonly decisions: number;
   /** The player's orders by decision ID. */
   readonly orders: Readonly<Record<string, number>>;
+  /** What caused the first critical crisis (a critical event or computer move), if any. */
+  readonly firstCrisis: string | null;
   /** Computer countries' choices, as "country:decision". */
   readonly choices: readonly string[];
 }
@@ -113,9 +120,11 @@ function play(scenarioName: string, seed: number, player: Player, aiProfile?: st
   let state = createGame(scenario, seed, aiProfile ? { aiProfile } : {});
   const me = state.rules.playerCountry;
   let straitClosures = 0;
+  const closures: Record<string, number> = {};
   let firstClosure: number | null = null;
   let decisions = 0;
   const orders: Record<string, number> = {};
+  let firstCrisis: string | null = null;
   while (!state.outcome) {
     const signed: Order[] = player(state).map((w) => ({ kind: 'decide', ...w, by: me }));
     const before = state;
@@ -123,11 +132,31 @@ function play(scenarioName: string, seed: number, player: Player, aiProfile?: st
     state = result.state;
     for (const id of Object.keys(state.world.chokepoints)) {
       if (before.world.chokepoints[id]!.open && !state.world.chokepoints[id]!.open) {
-        straitClosures += 1;
-        firstClosure ??= before.tick;
+        closures[id] = (closures[id] ?? 0) + 1;
+        // The strait is the scenario's main lever; other chokepoints are reported separately.
+        if (id === STRAIT) {
+          straitClosures += 1;
+          firstClosure ??= before.tick;
+        }
       }
     }
     for (const event of result.events) {
+      if (firstCrisis === null) {
+        if (
+          event.kind === 'event_fired' &&
+          state.defs.events[event.event]?.severity === 'critical'
+        ) {
+          firstCrisis = event.event;
+        }
+        if (
+          event.kind === 'decision_resolved' &&
+          event.success &&
+          event.by !== me &&
+          state.defs.decisions[event.decision]?.severity === 'critical'
+        ) {
+          firstCrisis = event.decision;
+        }
+      }
       if (event.kind === 'decision_issued' && event.by === me) {
         decisions += 1;
         orders[event.decision] = (orders[event.decision] ?? 0) + 1;
@@ -141,8 +170,10 @@ function play(scenarioName: string, seed: number, player: Player, aiProfile?: st
     finalTreasury: effectiveStat(state, { kind: 'country', id: me, stat: 'treasury' }),
     straitClosures,
     firstClosure,
+    closures,
     decisions,
     orders,
+    firstCrisis,
     choices: state.trace.choices.map((c) => `${c.country}:${c.decision}`),
   };
 }
@@ -169,6 +200,11 @@ function report(label: string, games: GameSummary[]): void {
     `  strait closed at least once: ${pct(games.filter((g) => g.straitClosures > 0).length)}`,
   );
   console.log(`  avg strait closures:   ${avg(games.map((g) => g.straitClosures))}`);
+  const others = new Set(games.flatMap((g) => Object.keys(g.closures)).filter((c) => c !== STRAIT));
+  for (const c of [...others].sort()) {
+    const closed = games.filter((g) => (g.closures[c] ?? 0) > 0).length;
+    console.log(`  ${c} closed at least once: ${pct(closed)}`);
+  }
   console.log(
     `  final stability:       median ${percentile(
       games.map((g) => g.finalStability),
@@ -188,6 +224,18 @@ function report(label: string, games: GameSummary[]): void {
     );
   }
   console.log(`  your orders per game:  ${avg(games.map((g) => g.decisions))}`);
+  // What starts the trouble: the cause of each game's first critical crisis.
+  const causes = new Map<string, number>();
+  for (const g of games) {
+    const key = g.firstCrisis ?? '(none)';
+    causes.set(key, (causes.get(key) ?? 0) + 1);
+  }
+  console.log(
+    `  first crisis caused by: ${[...causes.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([c, n]) => `${c} ${pct(n)}`)
+      .join(', ')}`,
+  );
   // Which orders the player leans on: no single one should carry the game.
   const mine = new Map<string, number>();
   for (const g of games) {

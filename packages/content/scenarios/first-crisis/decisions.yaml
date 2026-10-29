@@ -112,7 +112,7 @@
 - id: tariff
   name: Raise tariffs on {target}
   description: A 35% duty on everything you buy from {target}, paid into the treasury every month. Industry likes the protection, workers dislike dearer goods, and {target} will not take it well. Stays in force until you lift it.
-  targets: [veskar, orrin, thessa]
+  targets: [veskar, orrin, thessa, ilmar, kesh, velmont]
   perTarget: true
   requires:
     noFlag: tariff_on_{target}
@@ -130,7 +130,7 @@
 - id: lift_tariff
   name: Lift tariffs on {target}
   description: End the tariffs. {target} recovers about half its lost goodwill, industry loses its protection, and the treasury its tariff revenue.
-  targets: [veskar, orrin, thessa]
+  targets: [veskar, orrin, thessa, ilmar, kesh, velmont]
   perTarget: true
   requires:
     flag: tariff_on_{target}
@@ -148,7 +148,7 @@
 - id: trade_deal
   name: Sign a trade deal with {target}
   description: Open a new supply route from {target} on good terms. Prices ease and relations warm while the deal lasts, but you come to depend on them. Takes about three weeks of talks, and may fail.
-  targets: [veskar, orrin, thessa]
+  targets: [veskar, orrin, thessa, ilmar, kesh, velmont]
   perTarget: true
   requires:
     all:
@@ -174,7 +174,7 @@
 - id: end_deal
   name: End the trade deal with {target}
   description: Walk away from the deal. The extra route closes and {target} takes offence for a while.
-  targets: [veskar, orrin, thessa]
+  targets: [veskar, orrin, thessa, ilmar, kesh, velmont]
   perTarget: true
   requires:
     flag: deal_with_{target}
