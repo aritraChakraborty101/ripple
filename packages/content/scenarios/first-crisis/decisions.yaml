@@ -72,7 +72,7 @@
 
 - id: release_reserves
   name: Release strategic oil reserves
-  description: Sell from national stockpiles to cut crude prices for about six weeks. Once only.
+  description: Sell from national stockpiles to cut crude prices for about six weeks. Once, until you refill the reserve.
   requires:
     noFlag: reserves_used
   unavailableText: The reserves have already been used.
@@ -341,3 +341,231 @@
   effects:
     - modify: { target: country.aldoria.stability, add: 4, days: 30 }
   successHeadline: The leader's address steadies the public mood
+# --- Propaganda --------------------------------------------------------------
+
+# Slower than an envoy, and it can backfire, but the goodwill lasts.
+- id: broadcast
+  name: Broadcast into {target}
+  description: Fund radio and television that speak well of Aldoria in {target}. Slow, but the goodwill lasts. If it is exposed as propaganda, relations sour instead. Takes about a month.
+  targets: others
+  perTarget: true
+  requires:
+    all:
+      - stat: { target: country.aldoria.influence, above: 9 }
+      - noFlag: sanctions_on_{target}
+  unavailableText: Needs 10 influence, and no sanctions on {target}.
+  costs:
+    - adjust: { target: country.aldoria.influence, by: -10 }
+  durationDays: 30
+  cooldownDays: 180
+  chance: 6500
+  effects:
+    - relation: { between: [self, target], by: 10 }
+  failureEffects:
+    - relation: { between: [self, target], by: -15, days: 120 }
+  successHeadline: Aldorian broadcasts win a following in {target}
+  failureHeadline: '{target} exposes Aldorian broadcasts as propaganda'
+
+# Cheap stability now, paid for with a lasting grudge. One rally at a time.
+- id: rally_nation
+  name: Rally the nation against {target}
+  description: Blame {target} for the country's troubles. Stability rises for two months, but the resentment between you lasts.
+  targets: others
+  requires:
+    stat: { target: country.aldoria.influence, above: 2 }
+  unavailableText: Needs at least 3 influence.
+  costs:
+    - adjust: { target: country.aldoria.influence, by: -3 }
+  cooldownDays: 180
+  effects:
+    - modify: { target: country.aldoria.stability, add: 6, days: 60 }
+    - modify: { target: faction.aldoria_workers.satisfaction, add: 4, days: 60 }
+    - relation: { between: [self, target], by: -20 }
+  successHeadline: The leader rallies the nation against {target}
+
+# --- Intelligence ------------------------------------------------------------
+
+# A file is the stat intel_<country> on Aldoria, raised for four months. The
+# interface warns earlier of that country's harmful moves and shows its budget
+# while the file is open, and countries think twice about covert moves against
+# a government that is watching them (see actions.yaml).
+- id: intel_file
+  name: Open an intelligence file on {target}
+  description: Watch {target} closely for four months. You are warned of its harmful moves earlier, and you can see its budget.
+  targets: others
+  perTarget: true
+  requires:
+    all:
+      - stat: { target: country.aldoria.treasury, above: 9 }
+      - stat: { target: 'country.self.intel_{target}', below: 1 }
+  unavailableText: Needs 10 bn, and no file on {target} already open.
+  costs:
+    - adjust: { target: country.aldoria.treasury, by: -10 }
+  cooldownDays: 30
+  effects:
+    - modify: { target: 'country.self.intel_{target}', add: 1, days: 120 }
+  successHeadline: An intelligence file on {target} is opened
+
+# A shaken government has less appetite for moves abroad: Corvan's and
+# Thessa's hostile actions are gated on their own stability.
+- id: stir_unrest
+  name: Stir unrest in {target}
+  description: Fund {target}'s opposition and strikes in secret. A shaken government has less appetite for moves against you. If your agents are caught, relations collapse and the scandal hurts at home. Takes about six weeks, and may fail.
+  targets: others
+  perTarget: true
+  requires:
+    all:
+      - stat: { target: country.aldoria.treasury, above: 19 }
+      - stat: { target: country.aldoria.influence, above: 7 }
+  unavailableText: Needs 20 bn and 8 influence.
+  costs:
+    - adjust: { target: country.aldoria.treasury, by: -20 }
+    - adjust: { target: country.aldoria.influence, by: -8 }
+  durationDays: 45
+  cooldownDays: 240
+  chance: 5500
+  effects:
+    - modify: { target: country.target.stability, add: -15, days: 120 }
+  failureEffects:
+    - relation: { between: [self, target], by: -30 }
+    - modify: { target: country.aldoria.stability, add: -4, days: 45 }
+  successHeadline: Strikes and protests shake {target}
+  failureHeadline: Aldorian agents are caught stirring unrest in {target}
+
+# --- Home --------------------------------------------------------------------
+#
+# Policies on Aldoria's own budget and people. Each stays in force until ended,
+# and its effects on the factions flow on to stability and, through the
+# factions' mood, to tax revenue.
+
+- id: austerity
+  name: Impose austerity
+  description: Cut public spending by about 3 bn a month. Workers will resent it, and strikes become likelier. Stays in force until you end it.
+  requires:
+    all:
+      - noFlag: austerity
+      - noFlag: public_works
+  unavailableText: Austerity is already in force, or public works are running.
+  cooldownDays: 60
+  policyFlag: austerity
+  effects:
+    - modify: { target: country.aldoria.spending, add: -3000 }
+    - modify: { target: faction.aldoria_workers.satisfaction, add: -8 }
+    - modify: { target: faction.aldoria_industry.satisfaction, add: -2 }
+    - setFlag: austerity
+  successHeadline: The austerity budget passes
+
+- id: end_austerity
+  name: End austerity
+  description: Restore public spending.
+  requires:
+    flag: austerity
+  unavailableText: Austerity is not in force.
+  effects:
+    - endEffectsOf: { decision: austerity }
+    - clearFlag: austerity
+  successHeadline: Austerity ends
+
+- id: public_works
+  name: Fund public works
+  description: Roads, rail and housing for about 3.5 bn a month. Workers and industry both gain. Stays in force until you end it.
+  requires:
+    all:
+      - noFlag: public_works
+      - noFlag: austerity
+      - stat: { target: country.aldoria.treasury, above: 49 }
+  unavailableText: Needs 50 bn, and no austerity or public works already in force.
+  cooldownDays: 60
+  policyFlag: public_works
+  effects:
+    - modify: { target: country.aldoria.spending, add: 3500 }
+    - modify: { target: faction.aldoria_workers.satisfaction, add: 5 }
+    - modify: { target: faction.aldoria_industry.satisfaction, add: 3 }
+    - setFlag: public_works
+  successHeadline: A public works programme begins
+
+- id: end_public_works
+  name: End public works
+  description: Stop the programme. Workers notice.
+  requires:
+    flag: public_works
+  unavailableText: No public works are running.
+  effects:
+    - endEffectsOf: { decision: public_works }
+    - clearFlag: public_works
+    - modify: { target: faction.aldoria_workers.satisfaction, add: -3, days: 60 }
+  successHeadline: The public works programme ends
+
+- id: raise_taxes
+  name: Raise taxes
+  description: About 10% more revenue every month. Every faction pays, and stability slides. Stays in force until you cut them again.
+  requires:
+    noFlag: taxes_raised
+  unavailableText: Taxes are already raised.
+  cooldownDays: 90
+  policyFlag: taxes_raised
+  effects:
+    - modify: { target: country.aldoria.revenue, pct: 1000 }
+    - modify: { target: faction.aldoria_workers.satisfaction, add: -4 }
+    - modify: { target: faction.aldoria_industry.satisfaction, add: -4 }
+    - modify: { target: faction.aldoria_military.satisfaction, add: -4 }
+    - setFlag: taxes_raised
+  successHeadline: Taxes rise
+
+- id: cut_taxes
+  name: Cut taxes back
+  description: Return taxes to where they were.
+  requires:
+    flag: taxes_raised
+  unavailableText: Taxes have not been raised.
+  effects:
+    - endEffectsOf: { decision: raise_taxes }
+    - clearFlag: taxes_raised
+  successHeadline: Taxes are cut back
+
+# Rationing lowers Aldoria's demand for crude (the stat demand_oil), so the
+# world price eases for everyone and Aldoria buys less of it. Industry slows,
+# which the factions' mood carries through to tax revenue.
+- id: ration_fuel
+  name: Ration fuel
+  description: Cut Aldoria's crude use by a fifth. Prices ease for everyone and your import bill shrinks, but industry slows. Stays in force until you end it.
+  requires:
+    noFlag: rationing
+  unavailableText: Fuel is already rationed.
+  cooldownDays: 60
+  policyFlag: rationing
+  effects:
+    - modify: { target: country.aldoria.demand_oil, add: -8 }
+    - modify: { target: faction.aldoria_industry.satisfaction, add: -8 }
+    - modify: { target: faction.aldoria_workers.satisfaction, add: -3 }
+    - setFlag: rationing
+  successHeadline: Fuel rationing begins
+
+- id: end_rationing
+  name: End fuel rationing
+  description: Let industry run freely again.
+  requires:
+    flag: rationing
+  unavailableText: Fuel is not rationed.
+  effects:
+    - endEffectsOf: { decision: ration_fuel }
+    - clearFlag: rationing
+  successHeadline: Fuel rationing ends
+
+- id: refill_reserve
+  name: Refill the strategic reserve
+  description: Buy crude to fill the national stockpile again, so it can be released in a future crisis. 50 bn, and about three months.
+  requires:
+    all:
+      - flag: reserves_used
+      - noFlag: refilling_reserve
+      - stat: { target: country.aldoria.treasury, above: 49 }
+  unavailableText: Needs 50 bn, and a reserve that has been used.
+  costs:
+    - adjust: { target: country.aldoria.treasury, by: -50 }
+    - setFlag: refilling_reserve
+  durationDays: 90
+  effects:
+    - clearFlag: reserves_used
+    - clearFlag: refilling_reserve
+  successHeadline: The strategic reserve is full again

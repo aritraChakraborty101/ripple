@@ -1,14 +1,17 @@
 import {
   effectiveStat,
+  hasBudget,
   isEmbargoed,
   isLinkOpen,
+  monthlyBalance,
   relationId,
   sortedIds,
   type GameState,
   type Link,
 } from '@ripple/engine';
 import { decisionsConcerning, relationLabel, relationTone } from '../game/describe';
-import { ARCHETYPE_LABELS, formatShortDate } from '../game/format';
+import { ARCHETYPE_LABELS, formatMillions, formatShortDate } from '../game/format';
+import { hasFile } from '../game/intel';
 import type { Dispatch } from '../game/news';
 import type { Selection } from '../game/selection';
 import { CountryMind } from './CountryMind';
@@ -112,6 +115,40 @@ function Orders({ game, countryId }: { game: GameState; countryId: string }) {
   );
 }
 
+/** A country's budget, seen only through an open intelligence file. */
+function IntelBudget({ game, country }: { game: GameState; country: string }) {
+  const name = game.world.countries[country]!.name;
+  if (!hasBudget(game, country)) return null;
+  if (!hasFile(game, country)) {
+    return (
+      <section className="drawer-section">
+        <h3>Their budget</h3>
+        <p className="muted small">Open an intelligence file on {name} to see its budget.</p>
+      </section>
+    );
+  }
+  const treasury = effectiveStat(game, { kind: 'country', id: country, stat: 'treasury' });
+  const balance = monthlyBalance(game, country);
+  return (
+    <section className="drawer-section" aria-label={`${name}'s budget, from your file`}>
+      <h3>Their budget</h3>
+      <ul className="rows">
+        <li className="row">
+          <span>Treasury</span>
+          <span className={`row-value ${treasury < 0 ? 'tone-critical' : ''}`}>{treasury} bn</span>
+        </li>
+        <li className="row">
+          <span>This month</span>
+          <span className={`row-value ${balance < 0 ? 'tone-warning' : ''}`}>
+            {formatMillions(balance, true)} a month
+          </span>
+        </li>
+      </ul>
+      <p className="muted small">From your intelligence file.</p>
+    </section>
+  );
+}
+
 function CountryDetails({
   game,
   id,
@@ -153,6 +190,7 @@ function CountryDetails({
         Why are relations here?
       </button>
       <CountryMind game={game} country={id} />
+      <IntelBudget game={game} country={id} />
       <section className="drawer-section">
         <h3>Trade with you</h3>
         <RouteList game={game} links={shared} />

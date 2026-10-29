@@ -23,7 +23,7 @@ export const SYSTEMS: readonly System[] = [
 ];
 
 export type { System, SystemResult } from './types';
-export { marketSupply, marketDemand, targetPrice } from './market';
+export { demandOf, marketSupply, marketDemand, targetPrice } from './market';
 export { pricePressure } from './society';
 export {
   budgetOf,

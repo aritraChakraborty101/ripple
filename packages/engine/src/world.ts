@@ -16,8 +16,17 @@ export interface Country {
   readonly name: string;
   readonly archetype: Archetype;
   readonly stats: Stats;
-  /** Units of each resource this country imports per day. */
+  /**
+   * Units of each resource this country imports per day, as the scenario set
+   * them. The live figure is the stat `demand_<resource>` (see `demandStat`),
+   * which orders such as rationing can modify.
+   */
   readonly demand: Readonly<Record<string, number>>;
+}
+
+/** The country stat that holds its daily demand for a resource. */
+export function demandStat(resource: string): string {
+  return `demand_${resource}`;
 }
 
 /**

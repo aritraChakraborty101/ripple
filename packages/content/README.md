@@ -50,6 +50,10 @@ Each condition or effect is a mapping with one key that names it.
 
 **Names inside templates.** In a template, `{self}` and `{target}` can sit inside a stat path, link ID or flag: `link.deal_{target}.capacity`, `country.self.tariff_{target}`, `treaty_with_{self}`. Quote them inside `{ }` maps (`{ target: 'link.deal_{target}.capacity', add: 5 }`). The loader checks the name exists for every country the template can be aimed at.
 
+**Demand** is the stat `demand_<resource>` on each country, seeded from its `demand`. Modify it to change what a country buys: `modify: { target: country.aldoria.demand_oil, add: -8 }`.
+
+**Intelligence files** are the stat `intel_<country>` on the player's country. While it is above zero, the interface warns earlier of that country's harmful moves and shows its budget.
+
 **Tariffs** are the stat `tariff_<partner>` on the importing country, in basis points: the economy charges it on the value of everything that country's open routes bring in from the partner.
 
 An event can also have `requires`: a condition that must hold for it to fire at all. That matters for scheduled events, which otherwise fire whatever has changed since. For example, the strait's forced reopening only happens if it is still closed.

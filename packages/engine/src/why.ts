@@ -96,6 +96,12 @@ export interface MarketWhy {
     readonly delta: number;
     readonly cause: WhyNode;
   }[];
+  /** Countries wanting more or less than normal, units per day, largest change first. */
+  readonly demands: readonly {
+    readonly country: string;
+    readonly delta: number;
+    readonly cause: WhyNode;
+  }[];
 }
 
 /** A treasury moved by its monthly budget since the start. */

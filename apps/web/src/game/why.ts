@@ -79,6 +79,15 @@ export function statLabel(game: GameState, ref: StatRef): string {
   const me = game.rules.playerCountry;
   switch (ref.kind) {
     case 'country': {
+      if (ref.stat.startsWith('demand_')) {
+        const resource = game.world.resources[ref.stat.slice('demand_'.length)]?.name ?? ref.stat;
+        return ref.id === me
+          ? `Your ${lowerFirst(resource)} demand`
+          : `${possessive(countryName(game, ref.id))} ${lowerFirst(resource)} demand`;
+      }
+      if (ref.stat.startsWith('intel_')) {
+        return `Your intelligence file on ${countryName(game, ref.stat.slice('intel_'.length))}`;
+      }
       if (ref.stat.startsWith('tariff_')) {
         const partner = countryName(game, ref.stat.slice('tariff_'.length));
         return ref.id === me
@@ -116,10 +125,12 @@ const isBudgetStat = (ref: StatRef) =>
   ref.kind === 'country' && (ref.stat === 'revenue' || ref.stat === 'spending');
 
 const isTariff = (ref: StatRef) => ref.kind === 'country' && ref.stat.startsWith('tariff_');
+const isDemand = (ref: StatRef) => ref.kind === 'country' && ref.stat.startsWith('demand_');
 
 export function formatStat(ref: StatRef, value: number): string {
   if (ref.kind === 'resource' && ref.stat === 'price') return formatPrice(value);
   if (isTariff(ref)) return `${Math.round(value / 100)}%`;
+  if (isDemand(ref)) return `${value} a day`;
   if (isBudgetStat(ref)) return `${formatMillions(value)} a month`;
   if (ref.stat === 'treasury') return `${value} bn`;
   if (ref.kind === 'link') return `${value} a day`;
@@ -132,6 +143,7 @@ export function formatEffect(ref: StatRef, effect: number): string {
   if (ref.kind === 'resource' && ref.stat === 'price') return signed(effect, formatPrice);
   if (isBudgetStat(ref)) return `${formatMillions(effect, true)} a month`;
   if (isTariff(ref)) return `${signed(Math.round(effect / 100))}%`;
+  if (isDemand(ref)) return `${signed(effect)} a day`;
   if (ref.stat === 'treasury') return `${signed(effect)} bn`;
   if (ref.kind === 'link') return `${signed(effect)} a day`;
   return signed(effect);
@@ -348,7 +360,21 @@ export function childrenOf(game: GameState, node: WhyNode): WhyItem[] {
         note: `weighs ${Math.round(p.weightBp / 100)}% on them`,
       }));
     case 'market':
-      return node.routes.map((r) => ({ node: r.cause, effect: `${signed(r.delta)} a day` }));
+      // Supply and demand side by side, the largest change first.
+      return [
+        ...node.routes.map((r) => ({
+          node: r.cause,
+          effect: `${signed(r.delta)} a day`,
+          size: r.delta,
+        })),
+        ...node.demands.map((d) => ({
+          node: d.cause,
+          effect: `${signed(d.delta)} a day wanted`,
+          size: d.delta,
+        })),
+      ]
+        .sort((a, b) => Math.abs(b.size) - Math.abs(a.size))
+        .map(({ node: n, effect }) => ({ node: n, effect }));
     case 'budget': {
       // Whichever side moved more from its starting level leads.
       const moved = (s: typeof node.revenue) => Math.abs(s.value - s.normal);

@@ -1,7 +1,7 @@
 import type { EngineEvent } from '../events';
 import { effectiveStat } from '../modifiers';
 import type { GameState } from '../state';
-import { isLinkOpen, setBaseStat, sortedIds } from '../world';
+import { demandStat, isLinkOpen, setBaseStat, sortedIds } from '../world';
 import type { MarketWhy, WhyNode } from '../why';
 import type { System } from './types';
 
@@ -24,11 +24,17 @@ export function marketSupply(state: GameState, resource: string): number {
   return supply;
 }
 
+/** Units a day a country wants of a resource: its `demand_<resource>` stat, never below zero. */
+export function demandOf(state: GameState, country: string, resource: string): number {
+  return Math.max(
+    0,
+    effectiveStat(state, { kind: 'country', id: country, stat: demandStat(resource) }),
+  );
+}
+
 export function marketDemand(state: GameState, resource: string): number {
   let demand = 0;
-  for (const id of sortedIds(state.world.countries)) {
-    demand += state.world.countries[id]!.demand[resource] ?? 0;
-  }
+  for (const id of sortedIds(state.world.countries)) demand += demandOf(state, id, resource);
   return demand;
 }
 
@@ -104,12 +110,21 @@ export const marketSystem: System = {
       routes.push({ link: id, delta, cause });
     }
     routes.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+    // Countries wanting more or less than they normally do, such as under rationing.
+    const demands: { country: string; delta: number; cause: WhyNode }[] = [];
+    for (const id of sortedIds(state.world.countries)) {
+      const ref = { kind: 'country' as const, id, stat: demandStat(resource) };
+      const delta = demandOf(state, id, resource) - context.baseWithoutAdjustments(ref);
+      if (delta !== 0) demands.push({ country: id, delta, cause: context.explainStat(ref) });
+    }
+    demands.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
     return {
       type: 'market',
       resource,
       supply: marketSupply(state, resource),
       demand: marketDemand(state, resource),
       routes,
+      demands,
     };
   },
 };

@@ -67,6 +67,7 @@ export {
   type ScenarioRules,
 } from './scenario';
 export {
+  demandStat,
   embargoKey,
   isEmbargoed,
   isLinkOpen,
@@ -87,6 +88,7 @@ export {
   SYSTEMS,
   budgetOf,
   hasBudget,
+  demandOf,
   marketDemand,
   marketSupply,
   monthlyBalance,

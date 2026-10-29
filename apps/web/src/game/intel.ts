@@ -6,12 +6,14 @@
  *
  * A move is harmful if its content gives it a warning or critical severity
  * (closing a strait, raising fees, cutting output). It is "being weighed" once
- * its score reaches WARN_AT of the inertia it must beat.
+ * its score reaches WARN_AT of the inertia it must beat, or WARN_AT_FILE when
+ * the player keeps an intelligence file on that country.
  */
 
 import {
   FULL,
   computerCountries,
+  effectiveStat,
   currentAmbition,
   goalMeasure,
   goalNeed,
@@ -24,6 +26,8 @@ import { goalLabel, motiveText } from './why';
 
 /** A harmful move is reported once its score reaches this share of inertia, in basis points. */
 export const WARN_AT = 8_000;
+/** With an intelligence file open on a country, its moves are reported this much earlier. */
+export const WARN_AT_FILE = 5_500;
 /** The same warning is not repeated within this many days. */
 export const REWARN_DAYS = 60;
 
@@ -59,12 +63,24 @@ function toBrewing(game: GameState, r: ScoreReport): Brewing {
   };
 }
 
+/**
+ * Whether the player keeps an intelligence file on a country: the stat
+ * `intel_<country>` on the player's country, raised for a while by the
+ * intel_file order.
+ */
+export function hasFile(game: GameState, country: string): boolean {
+  const me = game.rules.playerCountry;
+  return effectiveStat(game, { kind: 'country', id: me, stat: `intel_${country}` }) > 0;
+}
+
 /** Each computer country's most tempting harmful move, if it is close to tipping over. Strongest first. */
 export function brewing(game: GameState): Brewing[] {
   if (!game.defs.ai || game.outcome) return [];
-  const threshold = Math.trunc((game.defs.ai.tuning.inertia * WARN_AT) / FULL);
+  const { inertia } = game.defs.ai.tuning;
   const out: Brewing[] = [];
   for (const country of computerCountries(game)) {
+    const share = hasFile(game, country) ? WARN_AT_FILE : WARN_AT;
+    const threshold = Math.trunc((inertia * share) / FULL);
     const top = rank(game, country).find(
       (r) => r.available && isHarmful(game, r.decision) && r.score >= threshold,
     );

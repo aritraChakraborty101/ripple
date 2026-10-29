@@ -4,6 +4,7 @@ import { effectiveStat, setSystemModifier, type StatRef } from '../modifiers';
 import type { Budget, GameState } from '../state';
 import { isLinkOpen, setBaseStat, sortedIds } from '../world';
 import type { ActivityWhy, BudgetWhy, DebtWhy, TradeWhy, WhyNode } from '../why';
+import { demandOf } from './market';
 import type { System } from './types';
 
 /**
@@ -104,8 +105,9 @@ export function tradeItems(state: GameState, country: string, line: TradeLine): 
   const units: Record<string, number> = {};
   const tollAmount: Record<string, number> = {};
   if (line === 'imports') {
-    const demand = state.world.countries[country]?.demand ?? {};
-    for (const resource of sortedIds(demand)) units[resource] = demand[resource] ?? 0;
+    for (const resource of sortedIds(state.world.resources)) {
+      units[resource] = demandOf(state, country, resource);
+    }
   } else {
     for (const id of sortedIds(state.world.links)) {
       const link = state.world.links[id]!;
