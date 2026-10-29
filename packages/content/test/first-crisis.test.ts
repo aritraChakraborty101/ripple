@@ -4,6 +4,7 @@ import {
   createGame,
   policiesInForce,
   relationId,
+  tradeItems,
   effectiveStat,
   marketDemand,
   marketSupply,
@@ -150,7 +151,7 @@ describe('first-crisis full games', () => {
       ['tariff', 'thessa'],
     ]);
     expect(effectiveStat(raised, thessa)).toBe(-25);
-    expect(effectiveStat(raised, industry)).toBe(63);
+    expect(effectiveStat(raised, industry)).toBe(60);
     expect(canIssue(raised, 'tariff', me, 'thessa')).toEqual({
       ok: false,
       reason: 'Tariffs on {target} are already in force.',
@@ -163,13 +164,15 @@ describe('first-crisis full games', () => {
     expect(effectiveStat(lifted, thessa)).toBe(-10);
     expect(effectiveStat(lifted, industry)).toBe(50);
     expect(lifted.modifiers.some((m) => m.source.id === 'tariff')).toBe(false);
-    // The tariff paid a monthly line while in force; lifting it ends that revenue.
-    const tariffRevenue = (state: GameState) =>
-      state.modifiers.filter((m) => m.source.id === 'tariff' && m.target.stat === 'revenue');
-    expect(tariffRevenue(raised).map((m) => [m.amount, m.source.target])).toEqual([
-      [3000, 'thessa'],
+    // The tariff is a 35% duty on what Aldoria buys from Thessa, collected every month.
+    const rate = (state: GameState) =>
+      effectiveStat(state, { kind: 'country', id: me, stat: 'tariff_thessa' });
+    expect(rate(raised)).toBe(3500);
+    expect(rate(lifted)).toBe(0);
+    const later = run(raised, 1);
+    expect(tradeItems(later, me, 'tariffs')).toEqual([
+      { resource: 'steel', partner: 'thessa', units: 25, amount: 1624 },
     ]);
-    expect(tariffRevenue(lifted)).toEqual([]);
   });
 
   it('sends one envoy template to any neighbour, each with its own cooldown', () => {
@@ -199,6 +202,93 @@ describe('first-crisis full games', () => {
     expect(canIssue(later, 'envoy', me, 'corvan').ok).toBe(false); // cooling down
   });
 
+  it('opens a deal route, eases prices, and closes it when either side ends the deal', () => {
+    const me = 'aldoria';
+    const decide = (decision: string, target: string) => [
+      { kind: 'decide' as const, decision, by: me, target },
+    ];
+    const grain = (state: GameState) => price(state, 'grain');
+    const route = { kind: 'link' as const, id: 'deal_orrin', stat: 'capacity' };
+    const game = createGame(quiet, 1);
+    // Relations with Orrin start at 30, enough for talks.
+    let state = step(game, decide('trade_deal', 'orrin')).state;
+    // Talks take three weeks; play on until they succeed (the seed decides).
+    for (let tries = 0; !state.flags.includes('deal_with_orrin') && tries < 10; tries += 1) {
+      state = run(state, 21);
+      if (!state.flags.includes('deal_with_orrin')) {
+        state = run(state, 120);
+        state = step(state, decide('trade_deal', 'orrin')).state;
+      }
+    }
+    expect(state.flags).toContain('deal_with_orrin');
+    expect(effectiveStat(state, route)).toBe(5);
+    expect(grain(run(state, 60))).toBeLessThan(2_200);
+
+    const ended = step(state, decide('end_deal', 'orrin')).state;
+    expect(effectiveStat(ended, route)).toBe(0);
+    expect(ended.flags).not.toContain('deal_with_orrin');
+  });
+
+  it('makes sanctions on a supplier hurt both sides, until lifted', () => {
+    const me = 'aldoria';
+    const order = (decision: string) => [
+      { kind: 'decide' as const, decision, by: me, target: 'thessa' },
+    ];
+    const treasury = (state: GameState, id: string) =>
+      effectiveStat(state, { kind: 'country', id, stat: 'treasury' });
+    const calm = run(createGame(quiet, 1), 90);
+    const sanctioned = run(step(createGame(quiet, 1), order('sanction')).state, 89);
+    // No Thessan steel reaches Aldoria, so steel soars for everyone.
+    expect(price(sanctioned, 'steel')).toBeGreaterThan(6_500 * 2);
+    // Thessa loses its sales and a tenth of its revenue; Aldoria pays dearly for steel.
+    expect(treasury(sanctioned, 'thessa')).toBeLessThan(treasury(calm, 'thessa'));
+    expect(treasury(sanctioned, 'aldoria')).toBeLessThan(treasury(calm, 'aldoria'));
+
+    const lifted = step(sanctioned, order('lift_sanctions')).state;
+    expect(lifted.world.embargoes).toEqual([]);
+    expect(lifted.modifiers.some((m) => m.source.id === 'sanction')).toBe(false);
+  });
+
+  it('runs an aid programme as a monthly line, and gives offence when it ends', () => {
+    const me = 'aldoria';
+    const order = (decision: string) => [
+      { kind: 'decide' as const, decision, by: me, target: 'corvan' },
+    ];
+    const corvan = { kind: 'relation' as const, id: 'aldoria__corvan', stat: 'value' };
+    const aiding = step(createGame(quiet, 1), order('aid_programme')).state;
+    expect(effectiveStat(aiding, corvan)).toBe(10);
+    expect(monthlyBalance(aiding, 'corvan') - monthlyBalance(createGame(quiet, 1), 'corvan')).toBe(
+      2_000,
+    );
+    const ended = step(aiding, order('end_aid')).state;
+    expect(effectiveStat(ended, corvan)).toBe(-20);
+  });
+
+  it('lets Thessa sanction Aldoria when relations collapse, and never for good', () => {
+    // Relations at -60 from the start: Thessa's grudge, with a year for it to build.
+    const hostile: ScenarioDef = {
+      ...scenario,
+      relations: scenario.relations.map((r) =>
+        r.between.includes('thessa') && r.between.includes('aldoria') ? { ...r, value: -60 } : r,
+      ),
+    };
+    let sanctionedIn = 0;
+    let liftedIn = 0;
+    for (let seed = 1; seed <= 10; seed += 1) {
+      let state = createGame(hostile, seed);
+      let wasSanctioned = false;
+      for (let day = 0; day < 720 && !state.outcome; day += 1) {
+        state = step(state, []).state;
+        if (state.flags.includes('sanctioned_by_thessa')) wasSanctioned = true;
+        else if (wasSanctioned) break;
+      }
+      if (wasSanctioned) sanctionedIn += 1;
+      if (wasSanctioned && !state.flags.includes('sanctioned_by_thessa')) liftedIn += 1;
+    }
+    expect(sanctionedIn).toBeGreaterThan(0);
+    expect(liftedIn).toBeGreaterThan(0);
+  });
+
   it('gives Thessa a reason to answer a steel tariff in kind', () => {
     let seedsWithAnswer = 0;
     for (let seed = 1; seed <= 20; seed += 1) {
@@ -209,17 +299,18 @@ describe('first-crisis full games', () => {
       if (state.trace.choices.some((c) => c.decision === 'thessa_curb_steel')) seedsWithAnswer += 1;
     }
     expect(seedsWithAnswer).toBeGreaterThan(0);
-  });
+    // Twenty one-year games: a simulation, so it gets more time than a unit test.
+  }, 20_000);
 });
 
 // Left alone, Aldoria is squeezed by every neighbour: Corvan raises transit
 // fees, a fishing dispute sours relations, Corvan detains a tanker and
 // denounces Aldoria, Veskar cuts output, and Thessa offers Corvan a pact. Corvan
-// keeps squeezing through fees rather than closing the strait, until Thessa's
-// second pact and nationalist rallies tip it: it closes the strait on day 421,
-// and the leader falls on day 492.
+// keeps squeezing through fees for two years; a second pact, a terminal
+// explosion and nationalist rallies tip it, and it closes the strait on day 753.
+// Strikes, layoffs and a drought follow, and the leader falls on day 828.
 const GOLDEN_IDLE_SEED_3 = {
-  outcome: { result: 'ousted', tick: 492 },
+  outcome: { result: 'ousted', tick: 828 },
   story: [
     '16:corvan_customs_checks',
     '30:orrin.court>aldoria',
@@ -230,12 +321,12 @@ const GOLDEN_IDLE_SEED_3 = {
     '116:corvan.denounce_aldoria>aldoria',
     '120:veskar.veskar_cut_output',
     '140:thessa.thessa_corvan_pact',
-    '176:corvan.corvan_raise_fees',
-    '314:corvan.corvan_raise_fees',
-    '383:thessa.thessa_corvan_pact',
-    '400:corvan_nationalists',
-    '402:corvan.corvan_detain_tanker',
-    '416:corvan.denounce_aldoria>aldoria',
-    '421:corvan.corvan_close_strait',
+    '183:corvan.corvan_raise_fees',
+    '225:corvan_nationalists',
+    '243:corvan.corvan_detain_tanker',
+    '263:orrin_bumper_harvest',
+    '290:corvan.denounce_aldoria>aldoria',
+    '316:corvan.corvan_raise_fees',
+    '420:veskar.veskar_cut_output',
   ],
 };

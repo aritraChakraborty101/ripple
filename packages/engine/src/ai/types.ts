@@ -68,6 +68,12 @@ export type Curve =
 export interface Consideration {
   readonly measure: Measure;
   readonly curve: Curve;
+  /**
+   * A gate multiplies the combined appeal instead of joining it, and does not
+   * count toward compensation. So a check that is usually wide open (is there a
+   * treaty?) changes nothing until it closes.
+   */
+  readonly gate?: boolean;
 }
 
 /** Knobs that change how strongly countries behave, without changing who they are. */

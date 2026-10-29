@@ -132,8 +132,28 @@ export const scenarioSchema = z
 
     // While checking a computer order, `self` (and `target`, for templates) stand for countries.
     let placeholders: ReadonlySet<string> = new Set();
+    // While checking a template, every country pair it can be bound to: a name
+    // with {self} or {target} in it must exist for each of them.
+    let bindings: readonly { self: string; target?: string }[] = [];
     const need = (kind: keyof typeof known, path: Path, value: string) => {
       if (kind === 'country' && placeholders.has(value)) return;
+      if (value.includes('{')) {
+        if (bindings.length === 0) {
+          issue(path, `Only orders can use {self} or {target}, in "${value}"`);
+          return;
+        }
+        const missing = new Set<string>();
+        for (const b of bindings) {
+          if (value.includes('{target}') && b.target === undefined) {
+            issue(path, `Only templates (with targets) can use {target}, in "${value}"`);
+            return;
+          }
+          const bound = value.replaceAll('{self}', b.self).replaceAll('{target}', b.target ?? '');
+          if (!known[kind].has(bound)) missing.add(bound);
+        }
+        for (const m of missing) issue(path, `Unknown ${kind} "${m}" (from "${value}")`);
+        return;
+      }
       if (!known[kind].has(value)) issue(path, `Unknown ${kind} "${value}"`);
     };
     const needPair = (path: Path, [a, b]: readonly [string, string]) => {
@@ -162,14 +182,18 @@ export const scenarioSchema = z
       if ('modify' in e) needStat([...path, 'modify', 'target'], e.modify.target);
       else if ('adjust' in e) needStat([...path, 'adjust', 'target'], e.adjust.target);
       else if ('relation' in e) needPair([...path, 'relation', 'between'], e.relation.between);
-      else if ('setChokepoint' in e)
+      else if ('embargo' in e) {
+        needPair([...path, 'embargo'], [e.embargo.by, e.embargo.against]);
+      } else if ('setChokepoint' in e)
         need('chokepoint', [...path, 'setChokepoint', 'id'], e.setChokepoint.id);
       else if ('schedule' in e) need('event', [...path, 'schedule', 'event'], e.schedule.event);
       else if ('endEffectsOf' in e) {
         const ref = e.endEffectsOf;
-        if ('decision' in ref)
+        if ('decision' in ref) {
           need('decision', [...path, 'endEffectsOf', 'decision'], ref.decision);
-        else need('event', [...path, 'endEffectsOf', 'event'], ref.event);
+          if (ref.target !== undefined)
+            need('country', [...path, 'endEffectsOf', 'target'], ref.target);
+        } else need('event', [...path, 'endEffectsOf', 'event'], ref.event);
       }
     };
 
@@ -286,11 +310,23 @@ export const scenarioSchema = z
         if (flags.includes('{target}'))
           issue(at, 'Only templates (with targets) can use {target} in flags');
       }
+      // Every country that may sign it, against every country it may be aimed at.
+      const selves =
+        d.for === undefined ? [player] : d.for === 'any' ? [...computer].sort() : d.for;
+      bindings = selves.flatMap((self) => {
+        if (d.targets === undefined) return [{ self }];
+        const pool =
+          d.targets === 'others'
+            ? s.countries.map((c) => c.id).filter((c) => c !== self)
+            : d.targets;
+        return pool.filter((t) => t !== self).map((target) => ({ self, target }));
+      });
       if (d.requires) checkCondition([...at, 'requires'], d.requires);
       d.costs.forEach((x, j) => checkEffect([...at, 'costs', j], x));
       d.effects.forEach((x, j) => checkEffect([...at, 'effects', j], x));
       d.failureEffects.forEach((x, j) => checkEffect([...at, 'failureEffects', j], x));
       placeholders = new Set();
+      bindings = [];
     });
 
     for (const [country, personality] of Object.entries(s.ai?.personalities ?? {})) {

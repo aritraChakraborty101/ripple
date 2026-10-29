@@ -20,7 +20,7 @@ import { boundDecision, type Order } from '../orders';
 import { chance, nextInt } from '../rng';
 import type { GameState } from '../state';
 import { explainStat, SNAPSHOT_DEPTH, type ChoiceRecord, type WhyNode } from '../why';
-import { NOTHING, computerCountries, rank, type ScoreReport } from './clearing-house';
+import { computerCountries, rankOpen, type ScoreReport } from './clearing-house';
 import { FULL } from './curves';
 import { goalRef } from './goals';
 import { measureRef } from './measures';
@@ -66,9 +66,7 @@ export function isFree(state: GameState, country: string): boolean {
 /** The options worth taking: available, not doing nothing, and above inertia, best first. */
 export function worthTaking(state: GameState, country: string): ScoreReport[] {
   const inertia = state.defs.ai!.tuning.inertia;
-  return rank(state, country).filter(
-    (r) => r.available && r.decision !== NOTHING && r.score > inertia,
-  );
+  return rankOpen(state, country).filter((r) => r.available && r.score > inertia);
 }
 
 /** The stats behind a choice's goals and considerations, explained now, biggest part first. */

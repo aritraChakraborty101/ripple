@@ -1,5 +1,6 @@
 import {
   effectiveStat,
+  isEmbargoed,
   isLinkOpen,
   relationId,
   sortedIds,
@@ -31,7 +32,14 @@ function RouteList({ game, links }: { game: GameState; links: readonly Link[] })
         const capacity = effectiveStat(game, { kind: 'link', id: link.id, stat: 'capacity' });
         const from = game.world.countries[link.from]!.name;
         const to = game.world.countries[link.to]!.name;
-        const status = capacity <= 0 ? 'Planned' : open ? `${capacity} a day` : 'Cut';
+        const status =
+          capacity <= 0
+            ? 'Not in use'
+            : open
+              ? `${capacity} a day`
+              : isEmbargoed(game.world, link.from, link.to)
+                ? 'Sanctions'
+                : 'Cut';
         return (
           <li key={link.id} className="row">
             <span>

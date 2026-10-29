@@ -23,6 +23,16 @@
     day. Buy goodwill quickly: transit fees work at once.
   suggest: [transit_fees, envoy>corvan]
 
+- id: orrin_friendly
+  when:
+    relation: { between: [aldoria, orrin], above: 34 }
+  country: orrin
+  text: >-
+    Orrin is a real friend. A trade deal would bring more of its grain and
+    ease prices, and once relations pass 50 a friendship treaty becomes
+    possible. Friends are worth having before the strait gets rough.
+  suggest: [trade_deal>orrin]
+
 - id: strait_closed
   when:
     chokepointClosed: south_strait
@@ -72,6 +82,18 @@
     stat: { target: country.aldoria.treasury, below: 80 }
   text: >-
     The treasury is running low, and dear imports drain it every month. Spend
-    on what fixes causes rather than symptoms. Tariffs on Thessa raise about
-    3 bn a month, at a diplomatic price.
-  suggest: [tariff>thessa]
+    on what fixes causes rather than symptoms. A tariff raises money from what
+    you already buy: on Veskar's oil it pays most, on Thessa's steel about
+    1.6 bn a month. Either way, expect them to answer.
+  suggest: [tariff>thessa, tariff>veskar]
+
+- id: sanctioned_by_thessa
+  when:
+    flag: sanctioned_by_thessa
+  country: thessa
+  text: >-
+    Thessa has cut all trade, and steel will soar while its sanctions stand.
+    Thessa will lift them once relations mend, and an envoy or lifting any
+    tariffs on Thessa helps. Failing that, its own exporters will force them
+    open within months, but your industry may not last that long.
+  suggest: [envoy>thessa, lift_tariff>thessa]

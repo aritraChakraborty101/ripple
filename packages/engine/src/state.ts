@@ -43,7 +43,7 @@ export interface GameOutcome {
  * and compared in tests.
  */
 export interface GameState {
-  readonly version: 7;
+  readonly version: 8;
   readonly scenarioId: string;
   readonly rules: ScenarioRules;
   /** Event and decision definitions from the scenario, by ID. */
@@ -112,7 +112,7 @@ export function createGame(
     throw new Error(`Player country "${scenario.rules.playerCountry}" is not in the scenario`);
   }
   return {
-    version: 7,
+    version: 8,
     scenarioId: scenario.id,
     rules: scenario.rules,
     defs: {

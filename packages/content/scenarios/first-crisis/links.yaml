@@ -69,3 +69,25 @@
   from: thessa
   to: veskar
   capacity: 5
+
+# Routes a trade deal opens (decision: trade_deal). Each carries nothing until
+# Aldoria signs a deal with that country, and stops when the deal ends or
+# either side imposes sanctions. Named deal_<country> so one template finds them.
+- id: deal_veskar
+  resource: oil
+  from: veskar
+  to: aldoria
+  capacity: 0
+  via: [south_strait]
+
+- id: deal_orrin
+  resource: grain
+  from: orrin
+  to: aldoria
+  capacity: 0
+
+- id: deal_thessa
+  resource: steel
+  from: thessa
+  to: aldoria
+  capacity: 0

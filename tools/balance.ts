@@ -20,6 +20,7 @@ import {
   canIssue,
   createGame,
   effectiveStat,
+  monthlyBalance,
   relationId,
   step,
   type GameState,
@@ -60,6 +61,19 @@ const steady: Player = (state) => {
   }
   if (stat('country', me, 'stability') < 30) want('address_nation');
   if (state.tick > 60 && stat('country', me, 'treasury') > 200) want('overland_pipeline');
+  // Friends first: deals and a treaty with whoever is friendly enough.
+  for (const partner of ['orrin', 'veskar']) {
+    if (relation(partner) >= 25) want('trade_deal', partner);
+    if (relation(partner) >= 55) want('treaty', partner);
+  }
+  // Buy Corvan's goodwill when it sours and money allows.
+  if (relation('corvan') < -30 && stat('country', me, 'treasury') > 150) {
+    want('emergency_aid', 'corvan');
+  }
+  // Short of money while running a deficit: tax what comes from Thessa.
+  if (stat('country', me, 'treasury') < 150 && monthlyBalance(state, me) < -3_000) {
+    want('tariff', 'thessa');
+  }
   return wants.filter((w) => canIssue(state, w.decision, me, w.target).ok);
 };
 
@@ -73,6 +87,8 @@ interface GameSummary {
   readonly firstClosure: number | null;
   /** The player's orders. */
   readonly decisions: number;
+  /** The player's orders by decision ID. */
+  readonly orders: Readonly<Record<string, number>>;
   /** Computer countries' choices, as "country:decision". */
   readonly choices: readonly string[];
 }
@@ -84,10 +100,11 @@ function play(scenarioName: string, seed: number, player: Player, aiProfile?: st
   let straitClosures = 0;
   let firstClosure: number | null = null;
   let decisions = 0;
+  const orders: Record<string, number> = {};
   while (!state.outcome) {
-    const orders: Order[] = player(state).map((w) => ({ kind: 'decide', ...w, by: me }));
+    const signed: Order[] = player(state).map((w) => ({ kind: 'decide', ...w, by: me }));
     const before = state;
-    const result = step(state, orders);
+    const result = step(state, signed);
     state = result.state;
     for (const id of Object.keys(state.world.chokepoints)) {
       if (before.world.chokepoints[id]!.open && !state.world.chokepoints[id]!.open) {
@@ -96,7 +113,10 @@ function play(scenarioName: string, seed: number, player: Player, aiProfile?: st
       }
     }
     for (const event of result.events) {
-      if (event.kind === 'decision_issued' && event.by === me) decisions += 1;
+      if (event.kind === 'decision_issued' && event.by === me) {
+        decisions += 1;
+        orders[event.decision] = (orders[event.decision] ?? 0) + 1;
+      }
     }
   }
   return {
@@ -107,6 +127,7 @@ function play(scenarioName: string, seed: number, player: Player, aiProfile?: st
     straitClosures,
     firstClosure,
     decisions,
+    orders,
     choices: state.trace.choices.map((c) => `${c.country}:${c.decision}`),
   };
 }
@@ -152,6 +173,17 @@ function report(label: string, games: GameSummary[]): void {
     );
   }
   console.log(`  your orders per game:  ${avg(games.map((g) => g.decisions))}`);
+  // Which orders the player leans on: no single one should carry the game.
+  const mine = new Map<string, number>();
+  for (const g of games) {
+    for (const [d, n] of Object.entries(g.orders)) mine.set(d, (mine.get(d) ?? 0) + n);
+  }
+  const all = [...mine.values()].reduce((a, b) => a + b, 0);
+  if (all > 0) {
+    const top = [...mine.entries()].sort((a, b) => b[1] - a[1]);
+    const share = (n: number) => `${Math.round((n * 100) / all)}%`;
+    console.log(`  your orders by share:  ${top.map(([d, n]) => `${d} ${share(n)}`).join(', ')}`);
+  }
 
   // What the computer countries chose, per game on average.
   const counts = new Map<string, number>();

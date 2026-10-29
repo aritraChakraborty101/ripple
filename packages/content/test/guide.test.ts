@@ -81,13 +81,13 @@ describe('guide validation', () => {
   it('checks whom a suggested order is aimed at', () => {
     const aimed = {
       ...tip,
-      suggest: ['envoy', 'transit_fees>corvan', 'envoy>aldoria', 'tariff>orrin'],
+      suggest: ['envoy', 'transit_fees>corvan', 'envoy>aldoria', 'tariff>corvan'],
     };
     expect(problemsOf({ advisor: [aimed] })).toEqual([
       'advisor[0].suggest[0]: Say whom "envoy" is aimed at, as envoy>country',
       'advisor[0].suggest[1]: "transit_fees" is not aimed at a country',
       'advisor[0].suggest[2]: "envoy" cannot be aimed at "aldoria"',
-      'advisor[0].suggest[3]: "tariff" cannot be aimed at "orrin"',
+      'advisor[0].suggest[3]: "tariff" cannot be aimed at "corvan"',
     ]);
   });
 

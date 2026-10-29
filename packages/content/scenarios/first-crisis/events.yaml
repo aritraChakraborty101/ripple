@@ -59,6 +59,21 @@
     - setChokepoint: { id: south_strait, open: true }
     - relation: { between: [aldoria, corvan], by: 15, days: 120 }
 
+# --- Thessa ------------------------------------------------------------------
+
+# Scheduled by Thessa's sanctions (see actions.yaml): a backstop, if Thessa has
+# not lifted them by choice within eight months.
+- id: thessa_sanctions_collapse
+  tag: thessa
+  severity: info
+  headline: Thessa's sanctions on Aldoria collapse under pressure from its own exporters
+  detail: Steel flows to Aldoria again.
+  requires: { flag: sanctioned_by_thessa }
+  effects:
+    - embargo: { by: thessa, against: aldoria, active: false }
+    - clearFlag: sanctioned_by_thessa
+    - relation: { between: [aldoria, thessa], by: 5, days: 120 }
+
 # --- Markets -----------------------------------------------------------------
 
 - id: veskar_terminal_explosion

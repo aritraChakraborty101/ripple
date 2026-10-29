@@ -96,8 +96,11 @@ export const marketSystem: System = {
       const delta = now - normal;
       if (delta === 0) continue;
       const closedAt = link.via.find((c) => state.world.chokepoints[c]?.open === false);
-      const cause: WhyNode =
-        !open && closedAt ? context.explainChokepoint(closedAt) : context.explainStat(ref);
+      const cause: WhyNode = open
+        ? context.explainStat(ref)
+        : closedAt
+          ? context.explainChokepoint(closedAt)
+          : context.explainEmbargo(link.from, link.to);
       routes.push({ link: id, delta, cause });
     }
     routes.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));

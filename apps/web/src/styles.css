@@ -1703,19 +1703,20 @@ button.ticker:focus-visible {
   background: var(--route);
   transform: translateY(-1px);
 }
-.why-kind.event {
+.why-kind.kind-event {
   background: var(--warning);
 }
-.why-kind.decision {
+.why-kind.kind-decision {
   background: var(--accent);
 }
-.why-kind.chokepoint {
+.why-kind.kind-chokepoint,
+.why-kind.kind-embargo {
   background: var(--critical);
 }
-.why-kind.stat {
+.why-kind.kind-stat {
   background: var(--ink-soft);
 }
-.why-kind.start {
+.why-kind.kind-start {
   background: var(--land-edge);
 }
 

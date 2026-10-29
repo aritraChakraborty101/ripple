@@ -26,7 +26,7 @@ import { evaluate, type Condition } from './rules';
 import type { GameState } from './state';
 import { SYSTEMS } from './systems';
 import type { ExplainContext, System } from './systems/types';
-import { getStatEntity } from './world';
+import { embargoKey, getStatEntity } from './world';
 
 // ---------------------------------------------------------------------------
 // Shapes
@@ -110,14 +110,16 @@ export interface BudgetWhy {
   readonly spending: StatWhy;
 }
 
-/** A budget line that follows trade: what a country imports, exports, or tolls. */
+/** A budget line that follows trade: what a country imports, exports, tolls, or taxes at the border. */
 export interface TradeWhy {
   readonly type: 'trade';
   readonly country: string;
-  readonly line: 'imports' | 'exports' | 'transit';
+  readonly line: 'imports' | 'exports' | 'transit' | 'tariffs';
   /** Largest amount first. */
   readonly items: readonly {
     readonly resource: string;
+    /** For tariffs: the country the goods come from. */
+    readonly partner?: string;
     /** Units a day. */
     readonly units: number;
     /** Millions a month. */
@@ -156,6 +158,15 @@ export interface ChokepointWhy {
   readonly changedBy: WhyNode | null;
 }
 
+/** One country refusing to trade with another, and what started (or ended) it. */
+export interface EmbargoWhy {
+  readonly type: 'embargo';
+  readonly by: string;
+  readonly against: string;
+  readonly active: boolean;
+  readonly changedBy: WhyNode | null;
+}
+
 export interface FlagWhy {
   readonly type: 'flag';
   readonly flag: string;
@@ -172,6 +183,7 @@ export type WhyNode =
   | ActivityWhy
   | DebtWhy
   | ChokepointWhy
+  | EmbargoWhy
   | FlagWhy
   /** An event that fired; expand it with `explainEvent`. */
   | { readonly type: 'event'; readonly event: string; readonly tick: number }
@@ -235,6 +247,8 @@ export interface Trace {
   readonly adjustments: readonly Adjustment[];
   /** What last opened or closed each chokepoint. */
   readonly chokepointBy: Readonly<Record<string, ModifierSource>>;
+  /** What last imposed or lifted each embargo, by `embargoKey`. */
+  readonly embargoBy: Readonly<Record<string, ModifierSource>>;
   /** What set each flag that is currently set. */
   readonly flagBy: Readonly<Record<string, ModifierSource>>;
 }
@@ -244,6 +258,7 @@ export const emptyTrace: Trace = {
   choices: [],
   adjustments: [],
   chokepointBy: {},
+  embargoBy: {},
   flagBy: {},
 };
 
@@ -287,6 +302,24 @@ export function explainChokepoint(state: GameState, id: string): ChokepointWhy {
   return { type: 'chokepoint', id, open: chokepoint.open, changedBy: by ? sourceNode(by) : null };
 }
 
+/**
+ * Why trade between two countries is cut: the embargo in force between them,
+ * `a`'s on `b` first if both stand. With neither in force, the last one lifted.
+ */
+export function explainEmbargo(state: GameState, a: string, b: string): EmbargoWhy {
+  const active = (by: string, against: string) =>
+    state.world.embargoes.includes(embargoKey(by, against));
+  const [by, against] = active(a, b) || !active(b, a) ? [a, b] : [b, a];
+  const source = state.trace.embargoBy[embargoKey(by, against)];
+  return {
+    type: 'embargo',
+    by,
+    against,
+    active: active(by, against),
+    changedBy: source ? sourceNode(source) : null,
+  };
+}
+
 /** The system that keeps a given system modifier, if any. */
 function modifierOwner(id: string): System | undefined {
   return SYSTEMS.find((s) => s.modifierIds?.includes(id));
@@ -318,6 +351,7 @@ function explainContext(
   return {
     explainStat: (ref) => explainStat(state, ref, depth, seen),
     explainChokepoint: (id) => explainChokepoint(state, id),
+    explainEmbargo: (a, b) => explainEmbargo(state, a, b),
     baseWithoutAdjustments: (ref) => baseWithoutAdjustments(state, ref),
   };
 }

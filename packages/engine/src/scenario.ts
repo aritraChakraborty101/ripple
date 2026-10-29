@@ -153,5 +153,6 @@ export function buildWorld(def: ScenarioDef): World {
     links: byId('link', links),
     chokepoints: byId('chokepoint', def.chokepoints),
     relations: buildRelations(countryRecord, def.relations),
+    embargoes: [],
   };
 }

@@ -79,6 +79,12 @@ export function statLabel(game: GameState, ref: StatRef): string {
   const me = game.rules.playerCountry;
   switch (ref.kind) {
     case 'country': {
+      if (ref.stat.startsWith('tariff_')) {
+        const partner = countryName(game, ref.stat.slice('tariff_'.length));
+        return ref.id === me
+          ? `Your tariff on ${partner}`
+          : `${possessive(countryName(game, ref.id))} tariff on ${partner}`;
+      }
       const stat = ref.stat.charAt(0).toUpperCase() + ref.stat.slice(1);
       return ref.id === me ? stat : `${possessive(countryName(game, ref.id))} ${ref.stat}`;
     }
@@ -109,8 +115,11 @@ export function statLabel(game: GameState, ref: StatRef): string {
 const isBudgetStat = (ref: StatRef) =>
   ref.kind === 'country' && (ref.stat === 'revenue' || ref.stat === 'spending');
 
+const isTariff = (ref: StatRef) => ref.kind === 'country' && ref.stat.startsWith('tariff_');
+
 export function formatStat(ref: StatRef, value: number): string {
   if (ref.kind === 'resource' && ref.stat === 'price') return formatPrice(value);
+  if (isTariff(ref)) return `${Math.round(value / 100)}%`;
   if (isBudgetStat(ref)) return `${formatMillions(value)} a month`;
   if (ref.stat === 'treasury') return `${value} bn`;
   if (ref.kind === 'link') return `${value} a day`;
@@ -122,6 +131,7 @@ export function formatStat(ref: StatRef, value: number): string {
 export function formatEffect(ref: StatRef, effect: number): string {
   if (ref.kind === 'resource' && ref.stat === 'price') return signed(effect, formatPrice);
   if (isBudgetStat(ref)) return `${formatMillions(effect, true)} a month`;
+  if (isTariff(ref)) return `${signed(Math.round(effect / 100))}%`;
   if (ref.stat === 'treasury') return `${signed(effect)} bn`;
   if (ref.kind === 'link') return `${signed(effect)} a day`;
   return signed(effect);
@@ -183,7 +193,9 @@ export function describeNode(game: GameState, node: WhyNode): NodeText {
           ? 'Imports cost'
           : node.line === 'exports'
             ? 'Exports earn'
-            : 'Transit tolls earn';
+            : node.line === 'tariffs'
+              ? 'Tariffs earn'
+              : 'Transit tolls earn';
       return { title: `${label} ${formatMillions(total)} a month` };
     }
     case 'activity':
@@ -198,6 +210,16 @@ export function describeNode(game: GameState, node: WhyNode): NodeText {
     case 'chokepoint': {
       const name = game.world.chokepoints[node.id]?.name ?? node.id;
       return { title: `The ${name} ${node.open ? 'is open' : 'is closed'}` };
+    }
+    case 'embargo': {
+      const me = game.rules.playerCountry;
+      const by = node.by === me ? 'Your' : `${possessive(countryName(game, node.by))}`;
+      const against = node.against === me ? 'you' : countryName(game, node.against);
+      return {
+        title: node.active
+          ? `${by} sanctions on ${against}: no trade between them`
+          : `${by} sanctions on ${against} have been lifted`,
+      };
     }
     case 'flag': {
       const policy = policyForFlag(game, node.flag);
@@ -336,10 +358,11 @@ export function childrenOf(game: GameState, node: WhyNode): WhyItem[] {
     case 'trade':
       return node.items.map((i) => {
         const name = game.world.resources[i.resource]?.name ?? i.resource;
+        const from = i.partner !== undefined ? ` from ${countryName(game, i.partner)}` : '';
         return {
           node: i.cause,
           effect: `${formatMillions(i.amount)} a month`,
-          note: `${i.units} a day of ${lowerFirst(name)}`,
+          note: `${i.units} a day of ${lowerFirst(name)}${from}`,
         };
       });
     case 'activity':
@@ -347,8 +370,9 @@ export function childrenOf(game: GameState, node: WhyNode): WhyItem[] {
     case 'debt':
       return [{ node: node.cause }];
     case 'chokepoint':
+    case 'embargo':
     case 'flag': {
-      const by = node.type === 'chokepoint' ? node.changedBy : node.setBy;
+      const by = node.type === 'flag' ? node.setBy : node.changedBy;
       return by ? [{ node: by }] : [];
     }
     case 'event': {
@@ -411,7 +435,7 @@ export function chainInShort(game: GameState, root: WhyNode): WhyNode[] {
       (n) =>
         n.type !== 'mood' && n.type !== 'pressure' && n.type !== 'system' && n.type !== 'activity',
     )
-    .filter((n) => !(n.type === 'chokepoint' && n.changedBy !== null))
+    .filter((n) => !((n.type === 'chokepoint' || n.type === 'embargo') && n.changedBy !== null))
     .reverse();
 }
 

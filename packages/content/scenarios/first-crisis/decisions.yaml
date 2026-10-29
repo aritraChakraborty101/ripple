@@ -99,17 +99,20 @@
     - setFlag: pipeline_built
   successHeadline: The overland pipeline opens
 
-# A policy, and a template: it stays in force against its target until lifted.
-# The flag carries the target, so tariffs on one country never block or lift
-# tariffs on another. The revenue and industry's boost last as long as the
-# tariff does; lifting it ends both (endEffectsOf, which in a template ends only
-# what was done to the same target) and wins back part of the lost goodwill.
-# Only Thessa for now: tariffs on other suppliers come with trade in the next
-# content step, when tariff revenue follows what you actually import.
+# --- Trade -------------------------------------------------------------------
+#
+# Policies that are also templates: each stays in force against its target
+# until lifted. Their flags carry the target (tariff_on_{target}), so a policy
+# on one country never blocks or lifts the same policy on another, and
+# endEffectsOf in a template ends only what was done to that target.
+
+# Tariff revenue follows trade: the economy collects tariff_<country> (in basis
+# points) on the value of everything Aldoria's open routes bring in from that
+# country. A tariff on Veskar's oil pays most, and pays more as oil gets dearer.
 - id: tariff
   name: Raise tariffs on {target}
-  description: Protect Aldorian industry and raise about 3 bn a month. {target} will not take it well. Stays in force until you lift it.
-  targets: [thessa]
+  description: A 35% duty on everything you buy from {target}, paid into the treasury every month. Industry likes the protection, workers dislike dearer goods, and {target} will not take it well. Stays in force until you lift it.
+  targets: [veskar, orrin, thessa]
   perTarget: true
   requires:
     noFlag: tariff_on_{target}
@@ -117,16 +120,17 @@
   cooldownDays: 90
   policyFlag: tariff_on_{target}
   effects:
-    - modify: { target: country.aldoria.revenue, add: 3000 }
+    - modify: { target: 'country.self.tariff_{target}', add: 3500 }
     - relation: { between: [self, target], by: -30 }
-    - modify: { target: faction.aldoria_industry.satisfaction, add: 8 }
+    - modify: { target: faction.aldoria_industry.satisfaction, add: 5 }
+    - modify: { target: faction.aldoria_workers.satisfaction, add: -3 }
     - setFlag: tariff_on_{target}
   successHeadline: Tariffs on {target} take effect
 
 - id: lift_tariff
   name: Lift tariffs on {target}
-  description: End the tariffs. {target} recovers about half its lost goodwill, and industry loses its protection and the treasury its tariff revenue.
-  targets: [thessa]
+  description: End the tariffs. {target} recovers about half its lost goodwill, industry loses its protection, and the treasury its tariff revenue.
+  targets: [veskar, orrin, thessa]
   perTarget: true
   requires:
     flag: tariff_on_{target}
@@ -137,6 +141,193 @@
     - relation: { between: [self, target], by: 15 }
     - modify: { target: faction.aldoria_industry.satisfaction, add: -5, days: 60 }
   successHeadline: Tariffs on {target} are lifted
+
+# A deal opens the route deal_<country> (see links.yaml): five more units a day
+# of what that country sells. Every buyer's price eases a little, and relations
+# warm while the deal lasts. The catch is dependence: the partner can end it.
+- id: trade_deal
+  name: Sign a trade deal with {target}
+  description: Open a new supply route from {target} on good terms. Prices ease and relations warm while the deal lasts, but you come to depend on them. Takes about three weeks of talks, and may fail.
+  targets: [veskar, orrin, thessa]
+  perTarget: true
+  requires:
+    all:
+      - relation: { between: [self, target], above: 19 }
+      - noFlag: deal_with_{target}
+      - noFlag: sanctions_on_{target}
+  unavailableText: Needs relations of at least 20 with {target}, and no deal or sanctions in force.
+  costs:
+    - adjust: { target: country.aldoria.influence, by: -10 }
+  durationDays: 21
+  cooldownDays: 120
+  chance: 7000
+  policyFlag: deal_with_{target}
+  effects:
+    - modify: { target: 'link.deal_{target}.capacity', add: 5 }
+    - relation: { between: [self, target], by: 10, untilLifted: true }
+    - setFlag: deal_with_{target}
+  failureEffects:
+    - relation: { between: [self, target], by: -5, days: 30 }
+  successHeadline: '{target} signs a trade deal with Aldoria'
+  failureHeadline: Trade talks with {target} collapse
+
+- id: end_deal
+  name: End the trade deal with {target}
+  description: Walk away from the deal. The extra route closes and {target} takes offence for a while.
+  targets: [veskar, orrin, thessa]
+  perTarget: true
+  requires:
+    flag: deal_with_{target}
+  unavailableText: No trade deal with {target} is in force.
+  effects:
+    - endEffectsOf: { decision: trade_deal }
+    - clearFlag: deal_with_{target}
+    - relation: { between: [self, target], by: -10, days: 120 }
+  successHeadline: Aldoria ends its trade deal with {target}
+
+# --- Sanctions ---------------------------------------------------------------
+
+# An embargo stops every route between the two countries, both ways, so
+# sanctions on a supplier hurt Aldoria's own prices too. Frozen assets cut the
+# target's revenue by a tenth, and the shock shakes its government.
+- id: sanction
+  name: Impose sanctions on {target}
+  description: Stop all trade with {target} and freeze its assets. Their treasury and stability suffer, but so may your prices if they supply you, and they will not forget. Ends any trade deal with them. Stays in force until you lift it.
+  targets: others
+  perTarget: true
+  requires:
+    noFlag: sanctions_on_{target}
+  unavailableText: Sanctions on {target} are already in force.
+  cooldownDays: 90
+  policyFlag: sanctions_on_{target}
+  effects:
+    - embargo: { by: self, against: target }
+    - endEffectsOf: { decision: trade_deal }
+    - clearFlag: deal_with_{target}
+    - modify: { target: country.target.revenue, pct: -1000 }
+    - modify: { target: country.target.stability, add: -5 }
+    - relation: { between: [self, target], by: -40 }
+    - setFlag: sanctions_on_{target}
+  successHeadline: Aldoria imposes sanctions on {target}
+
+- id: lift_sanctions
+  name: Lift sanctions on {target}
+  description: Let trade resume. {target} recovers some goodwill, but backing down looks weak at home for a month.
+  targets: others
+  perTarget: true
+  requires:
+    all:
+      - flag: sanctions_on_{target}
+      - stat: { target: country.aldoria.influence, above: 4 }
+  unavailableText: Needs sanctions on {target} in force, and at least 5 influence.
+  costs:
+    - adjust: { target: country.aldoria.influence, by: -5 }
+  effects:
+    - embargo: { by: self, against: target, active: false }
+    - endEffectsOf: { decision: sanction }
+    - clearFlag: sanctions_on_{target}
+    - relation: { between: [self, target], by: 15 }
+    - modify: { target: country.aldoria.stability, add: -2, days: 30 }
+  successHeadline: Aldoria lifts its sanctions on {target}
+
+# --- Aid ---------------------------------------------------------------------
+
+- id: emergency_aid
+  name: Send emergency aid to {target}
+  description: A one-off 25 bn to steady {target}'s government. Some goodwill for four months; mostly it keeps a shaky friend standing.
+  targets: others
+  perTarget: true
+  requires:
+    all:
+      - stat: { target: country.aldoria.treasury, above: 24 }
+      - noFlag: sanctions_on_{target}
+  unavailableText: Needs 25 bn in the treasury, and no sanctions on {target}.
+  costs:
+    - adjust: { target: country.aldoria.treasury, by: -25 }
+  cooldownDays: 180
+  effects:
+    - adjust: { target: country.target.treasury, by: 25 }
+    - modify: { target: country.target.stability, add: 6, days: 90 }
+    - relation: { between: [self, target], by: 8, days: 120 }
+  successHeadline: Aldorian aid arrives in {target}
+
+- id: aid_programme
+  name: Fund an aid programme in {target}
+  description: 2 bn a month for as long as it runs. Relations with {target} stay warm while it lasts, and stopping it gives offence. Stays in force until you end it.
+  targets: others
+  perTarget: true
+  requires:
+    all:
+      - noFlag: aid_to_{target}
+      - noFlag: sanctions_on_{target}
+  unavailableText: Aid to {target} is already flowing, or sanctions are in force.
+  cooldownDays: 90
+  policyFlag: aid_to_{target}
+  effects:
+    - modify: { target: country.aldoria.spending, add: 2000 }
+    - modify: { target: country.target.revenue, add: 2000 }
+    - relation: { between: [self, target], by: 20, untilLifted: true }
+    - setFlag: aid_to_{target}
+  successHeadline: Aldoria begins an aid programme in {target}
+
+- id: end_aid
+  name: End the aid programme in {target}
+  description: Stop the payments. {target} feels abandoned for a while.
+  targets: others
+  perTarget: true
+  requires:
+    flag: aid_to_{target}
+  unavailableText: No aid programme in {target} is running.
+  effects:
+    - endEffectsOf: { decision: aid_programme }
+    - clearFlag: aid_to_{target}
+    - relation: { between: [self, target], by: -10, days: 120 }
+  successHeadline: Aldoria ends its aid to {target}
+
+# --- Alliance ----------------------------------------------------------------
+
+# Thin on purpose: a lasting step closer, and a flag that makes a partner's
+# hostile moves against Aldoria less appealing (see actions.yaml). Real
+# alliances, with obligations, come later.
+- id: treaty
+  name: Offer a friendship treaty to {target}
+  description: A formal friendship. {target} will think twice before moving against you, and relations stay warm while it lasts. Needs close relations first. Takes about a month, and may be refused.
+  targets: others
+  perTarget: true
+  requires:
+    all:
+      - relation: { between: [self, target], above: 49 }
+      - stat: { target: country.aldoria.influence, above: 14 }
+      - noFlag: treaty_with_{target}
+      - noFlag: sanctions_on_{target}
+  unavailableText: Needs relations of at least 50 with {target}, 15 influence, and no treaty or sanctions in force.
+  costs:
+    - adjust: { target: country.aldoria.influence, by: -15 }
+  durationDays: 30
+  cooldownDays: 180
+  chance: 6500
+  policyFlag: treaty_with_{target}
+  effects:
+    - setFlag: treaty_with_{target}
+    - relation: { between: [self, target], by: 10, untilLifted: true }
+  failureEffects:
+    - relation: { between: [self, target], by: -5, days: 60 }
+  successHeadline: Aldoria and {target} sign a friendship treaty
+  failureHeadline: '{target} declines a treaty, for now'
+
+- id: renounce_treaty
+  name: Renounce the treaty with {target}
+  description: End the friendship. {target} will take it badly, for good.
+  targets: others
+  perTarget: true
+  requires:
+    flag: treaty_with_{target}
+  unavailableText: No treaty with {target} is in force.
+  effects:
+    - endEffectsOf: { decision: treaty }
+    - clearFlag: treaty_with_{target}
+    - relation: { between: [self, target], by: -25 }
+  successHeadline: Aldoria renounces its treaty with {target}
 
 - id: address_nation
   name: Address the nation
