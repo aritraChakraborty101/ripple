@@ -50,7 +50,7 @@ Balance over 200 games, standard profile, against the design note's targets:
 | Idle player ousted                                    | 75–90%           | 79%             | 87%                                                                          |
 | Earliest idle ousting                                 | day 150 or later | day 171         | day 161                                                                      |
 | Steady player ousted                                  | 5% or less       | 1%              | 2%                                                                           |
-| Distinct first-crisis causes, each 15%+ of idle games | 3 or more        | 1               | 3: the strait 49%, Kesh's coup 27%, Veskar's explosion 19% (the fab fire 7%) |
+| Distinct first-crisis causes, each 15%+ of idle games | 3 or more        | not measured    | 3: the strait 49%, Kesh's coup 27%, Veskar's explosion 19% (the fab fire 7%) |
 | Most-used order's share, steady player                | 25% or less      | 54%             | 19% (trade deals), then broadcasts and transit fees at 17% each              |
 
 Tuning on the way there:
