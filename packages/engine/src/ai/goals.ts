@@ -7,6 +7,8 @@
 
 import type { StatRef } from '../modifiers';
 import type { GameState } from '../state';
+import { effectiveStat } from '../modifiers';
+import { marketDemand, marketSupply } from '../systems';
 import { sortedIds } from '../world';
 import { FULL } from './curves';
 import { measureRef, readMeasure } from './measures';
@@ -14,6 +16,10 @@ import type { AmbitionDef, GoalDef, GoalKind, Personality } from './types';
 
 /** Relations this bad make grievance (and insecurity) a full need. */
 export const GRIEVANCE_FULL = 60;
+/** A monthly result this far below where a country wants it (millions) is a full need. */
+export const BALANCE_FULL = 5_000;
+/** A supply this many points below where a country wants it (percent of demand) is a full need. */
+export const SUPPLY_FULL = 50;
 
 export const GOAL_KINDS: readonly GoalKind[] = [
   'wealth',
@@ -22,11 +28,14 @@ export const GOAL_KINDS: readonly GoalKind[] = [
   'prices',
   'ties',
   'grievance',
+  'balance',
+  'supply',
 ];
 
 /** Goals that take an argument in brackets, and what kind of thing it names. */
 export const GOAL_ARGUMENT: Readonly<Partial<Record<GoalKind, 'country' | 'resource'>>> = {
   prices: 'resource',
+  supply: 'resource',
   ties: 'country',
   grievance: 'country',
 };
@@ -72,7 +81,24 @@ export function goalMeasure(state: GameState, country: string, goalId: string): 
       return readMeasure(state, { kind: 'relation', between: [country, goal.arg!] });
     case 'security':
       return worstRelationWithStronger(state, country);
+    case 'balance':
+      // This month's rate, revenue minus spending in millions a month, as the
+      // economy last kept it: at most a day old, and cheap to read.
+      return (
+        effectiveStat(state, { kind: 'country', id: country, stat: 'revenue' }) -
+        effectiveStat(state, { kind: 'country', id: country, stat: 'spending' })
+      );
+    case 'supply':
+      // How much of the world's demand for a resource is being met, in percent.
+      return supplyPercent(state, goal.arg!);
   }
+}
+
+/** Supply over demand for a resource, in percent; 100 when nobody wants any. */
+export function supplyPercent(state: GameState, resource: string): number {
+  const demand = marketDemand(state, resource);
+  if (demand <= 0) return 100;
+  return Math.trunc((marketSupply(state, resource) * 100) / demand);
 }
 
 /** Its worst relation with any country that has a bigger military; 0 if none is bigger. */
@@ -94,6 +120,14 @@ export function goalNeed(state: GameState, country: string, goal: GoalDef): numb
   if (parsed.kind === 'grievance' || parsed.kind === 'security') {
     // Grows as relations sour: none at 0 or better, full at -GRIEVANCE_FULL.
     return clampNeed(Math.trunc((-value * FULL) / GRIEVANCE_FULL));
+  }
+  if (parsed.kind === 'balance') {
+    // Grows as the budget falls short of where the country wants it (0 by default).
+    return clampNeed(Math.trunc((((goal.aspire ?? 0) - value) * FULL) / BALANCE_FULL));
+  }
+  if (parsed.kind === 'supply') {
+    // Grows as supply falls short of demand (or of what the country aspires to).
+    return clampNeed(Math.trunc((((goal.aspire ?? 100) - value) * FULL) / SUPPLY_FULL));
   }
   const aspire = goal.aspire ?? 0;
   if (aspire <= 0) return value < aspire ? FULL : 0;
@@ -123,7 +157,10 @@ export function goalRef(country: string, goalId: string): StatRef | null {
     case 'ties':
     case 'grievance':
       return measureRef({ kind: 'relation', between: [country, goal.arg!] });
+    case 'supply':
+      return measureRef({ kind: 'price', resource: goal.arg! });
     case 'security':
+    case 'balance':
       return null;
   }
 }

@@ -179,10 +179,10 @@ describe('session', () => {
   });
 
   it('pauses the clock and reports when the game ends', () => {
-    // Seed 3, left alone, is ousted on day 828.
-    let session = setPaused(newSession(scenario, 3), false);
+    // Seed 5, left alone, is ousted on day 230.
+    let session = setPaused(newSession(scenario, 5), false);
     while (!session.game.outcome) session = tickSession(session);
-    expect(session.game.outcome).toEqual({ result: 'ousted', tick: 828 });
+    expect(session.game.outcome).toEqual({ result: 'ousted', tick: 230 });
     expect(session.clock.paused).toBe(true);
     expect(session.dispatches[0]!.headline).toBe('The government falls after weeks of unrest');
     expect(session.tallies.crises).toBeGreaterThan(0);

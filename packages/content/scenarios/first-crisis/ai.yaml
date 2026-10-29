@@ -4,17 +4,18 @@
 # Goals:  wealth (treasury, bn)        standing (influence)
 #         ties(country) (relations)    grievance(country) (grows as relations sour)
 #         prices(resource) (% above normal)   security (relations with stronger countries)
+#         balance (this month's budget, millions; need grows as it falls below aspire, 0 by default)
+#         supply(resource) (% of world demand met; need grows below aspire, 100 by default)
 #
 # Ambitions are long projects: while unmet, their goal counts 1.5 times as much.
 # A country works on its first unmet ambition.
 #
-# Nothing here acts yet: computer countries start signing orders in the next
-# step. The clearing house can already score their options.
 
 personalities:
   corvan:
     goals:
-      wealth: { weight: 35, aspire: 250 }
+      wealth: { weight: 25, aspire: 250 }
+      balance: { weight: 10 }
       grievance(aldoria): { weight: 30 }
       ties(thessa): { weight: 20, aspire: 60 }
       standing: { weight: 15, aspire: 50 }
@@ -26,14 +27,16 @@ personalities:
       standing: { weight: 40, aspire: 60 }
       ties(corvan): { weight: 25, aspire: 50 }
       grievance(aldoria): { weight: 20 }
-      wealth: { weight: 15, aspire: 800 }
+      wealth: { weight: 10, aspire: 800 }
+      balance: { weight: 5 }
     ambitions:
       - { id: corvan_orbit, name: Bring Corvan into our orbit, goal: ties(corvan), target: 50 }
 
   veskar:
     goals:
       prices(oil): { weight: 45, aspire: 20 }
-      wealth: { weight: 30, aspire: 700 }
+      wealth: { weight: 20, aspire: 700 }
+      balance: { weight: 10 }
       ties(aldoria): { weight: 15, aspire: 40 }
       security: { weight: 10 }
     ambitions:
@@ -43,6 +46,45 @@ personalities:
     goals:
       security: { weight: 40 }
       ties(aldoria): { weight: 30, aspire: 50 }
-      wealth: { weight: 30, aspire: 250 }
+      wealth: { weight: 20, aspire: 250 }
+      balance: { weight: 10 }
     ambitions:
       - { id: breadbasket, name: "Be Aldoria's breadbasket", goal: ties(aldoria), target: 50 }
+
+  # The chip maker: small, rich, frightened of Thessa, friends with everyone else.
+  ilmar:
+    goals:
+      security: { weight: 35 }
+      ties(velmont): { weight: 20, aspire: 50 }
+      ties(aldoria): { weight: 15, aspire: 40 }
+      wealth: { weight: 15, aspire: 350 }
+      balance: { weight: 15 }
+    ambitions:
+      - {
+          id: friends_on_every_shore,
+          name: Friends on every shore,
+          goal: ties(velmont),
+          target: 50,
+        }
+
+  # Poor and shaky: money first, then anyone who might prop it up.
+  kesh:
+    goals:
+      wealth: { weight: 30, aspire: 200 }
+      balance: { weight: 25 }
+      ties(velmont): { weight: 15, aspire: 40 }
+      standing: { weight: 15, aspire: 30 }
+      security: { weight: 15 }
+    ambitions:
+      - { id: stay_afloat, name: Stay afloat, goal: wealth, target: 150 }
+
+  # A distant power that wants a say in the region, and Aldoria on its side.
+  velmont:
+    goals:
+      standing: { weight: 35, aspire: 80 }
+      ties(aldoria): { weight: 20, aspire: 50 }
+      grievance(thessa): { weight: 15 }
+      supply(chips): { weight: 15 }
+      ties(kesh): { weight: 15, aspire: 40 }
+    ambitions:
+      - { id: a_say_in_the_region, name: A say in the region, goal: ties(aldoria), target: 50 }

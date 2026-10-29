@@ -6,3 +6,11 @@
 - { between: [aldoria, orrin], value: 30 }
 - { between: [corvan, thessa], value: 25 }
 - { between: [thessa, veskar], value: 10 }
+- { between: [aldoria, ilmar], value: 20 }
+- { between: [aldoria, velmont], value: 15 }
+- { between: [ilmar, thessa], value: -15 }
+- { between: [ilmar, velmont], value: 30 }
+- { between: [thessa, velmont], value: -25 }
+- { between: [kesh, velmont], value: 10 }
+- { between: [kesh, orrin], value: 10 }
+- { between: [corvan, kesh], value: 5 }

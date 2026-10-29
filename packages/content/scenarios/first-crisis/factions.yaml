@@ -8,7 +8,7 @@
   name: Industry
   country: aldoria
   stats: { satisfaction: 55, power: 40 }
-  sensitivity: { oil: 6000, steel: 4000 }
+  sensitivity: { oil: 6000, steel: 2500, chips: 1500 }
 
 - id: aldoria_workers
   name: Workers
@@ -20,4 +20,4 @@
   name: Military
   country: aldoria
   stats: { satisfaction: 58, power: 25 }
-  sensitivity: { oil: 3000 }
+  sensitivity: { oil: 3000, chips: 4000 }

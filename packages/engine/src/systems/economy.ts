@@ -231,6 +231,38 @@ export function debtPenalty(debt: number, base: number, per: number, max: number
   return debt <= 0 ? 0 : -Math.min(max, base + Math.trunc(debt / per));
 }
 
+/** Influence a country regains each month while below where it started. */
+export const INFLUENCE_RECOVERY = 1;
+
+/**
+ * Standing recovers slowly: at each month's end, every country whose influence
+ * (its base value) is below where it started regains a point. Recorded as an
+ * adjustment from the system "recovery", so the why-trace can name it.
+ */
+function recoverInfluence(state: GameState): GameState {
+  let current = state;
+  for (const country of sortedIds(state.world.countries)) {
+    const stats = current.world.countries[country]!.stats;
+    if (stats.influence === undefined) continue;
+    const ref = statRef(country, 'influence');
+    const start = stats.influence - sumAdjustments(current, ref);
+    if (stats.influence >= start) continue;
+    const by = Math.min(INFLUENCE_RECOVERY, start - stats.influence);
+    current = {
+      ...current,
+      world: setBaseStat(current.world, 'country', country, 'influence', stats.influence + by),
+      trace: {
+        ...current.trace,
+        adjustments: [
+          ...current.trace.adjustments,
+          { target: ref, by, source: { kind: 'system', id: 'recovery', tick: current.tick } },
+        ],
+      },
+    };
+  }
+  return current;
+}
+
 /** A treasury as the scenario started it: no budget settled into it, no adjustments. */
 function startingTreasury(state: GameState, country: string): number {
   const base = state.world.countries[country]?.stats.treasury ?? 0;
@@ -318,6 +350,8 @@ export const economySystem: System = {
         debtPenalty(debt, DEBT_INFLUENCE_BASE, DEBT_BN_PER_INFLUENCE, DEBT_INFLUENCE_MAX),
       );
     }
+
+    if (monthEnd) current = recoverInfluence(current);
 
     return { state: current, events };
   },

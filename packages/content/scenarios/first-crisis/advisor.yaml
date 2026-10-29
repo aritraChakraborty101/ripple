@@ -33,6 +33,26 @@
     possible. Friends are worth having before the strait gets rough.
   suggest: [trade_deal>orrin]
 
+- id: kesh_courting
+  when:
+    relation: { between: [aldoria, kesh], above: 19 }
+  country: kesh
+  text: >-
+    Kesh wants your business. Its oil comes overland, so it keeps flowing when
+    the strait closes. A trade deal would be a hedge, though Kesh's government
+    is shaky and a coup would void it.
+  suggest: [trade_deal>kesh]
+
+- id: narrows_closed
+  when:
+    chokepointClosed: narrows
+  country: thessa
+  text: >-
+    The Narrows are closed, and no chips reach you. Industry and the army feel
+    it within weeks. If Thessa closed them, an envoy may help; a storm will
+    pass on its own.
+  suggest: [envoy>thessa]
+
 - id: strait_closed
   when:
     chokepointClosed: south_strait

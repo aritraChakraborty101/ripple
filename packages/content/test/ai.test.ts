@@ -89,11 +89,14 @@ function withChange(change: (r: Loose) => void): string[] {
 describe('first-crisis personalities', () => {
   const scenario = loadBuiltInScenario('first-crisis');
 
-  it('loads four computer countries and three tuning profiles', () => {
+  it('loads seven computer countries and three tuning profiles', () => {
     expect(Object.keys(scenario.ai!.personalities).sort()).toEqual([
       'corvan',
+      'ilmar',
+      'kesh',
       'orrin',
       'thessa',
+      'velmont',
       'veskar',
     ]);
     expect(Object.keys(scenario.ai!.profiles).sort()).toEqual([

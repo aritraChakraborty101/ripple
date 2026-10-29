@@ -114,7 +114,8 @@
   name: Close the South Strait
   description: Shut the strait to shipping.
   requires: { chokepointOpen: south_strait }
-  drives: { grievance(aldoria): 4, standing: 1, wealth: -2 }
+  # Closing costs Corvan its tolls: its budget argues against it.
+  drives: { grievance(aldoria): 4, standing: 1, wealth: -2, balance: -1 }
   consider:
     - relation: [aldoria, corvan]
       rises: [-40, -70]
@@ -142,7 +143,7 @@
   name: Reopen the South Strait
   description: Let shipping through again, and collect fees once more.
   requires: { chokepointClosed: south_strait }
-  drives: { wealth: 3, grievance(aldoria): -1, standing: 1 }
+  drives: { wealth: 3, balance: 1, grievance(aldoria): -1, standing: 1 }
   consider:
     - relation: [aldoria, corvan]
       rises: [-50, -10]
@@ -297,7 +298,7 @@
     all:
       - noFlag: sanctioned_by_thessa
       - relation: { between: [aldoria, thessa], below: -39 }
-  drives: { grievance(aldoria): 4, standing: 1, wealth: -2 }
+  drives: { grievance(aldoria): 4, standing: 1, wealth: -2, balance: -2 }
   consider:
     - relation: [aldoria, thessa]
       rises: [-40, -70]
@@ -324,7 +325,7 @@
   name: Lift sanctions on Aldoria
   description: Sell steel to Aldoria again, and be seen to be generous.
   requires: { flag: sanctioned_by_thessa }
-  drives: { wealth: 3, standing: 2, grievance(aldoria): -1 }
+  drives: { wealth: 3, balance: 2, standing: 2, grievance(aldoria): -1 }
   consider:
     # Once Aldoria has mended relations: an envoy, or lifting its tariffs.
     - relation: [aldoria, thessa]
@@ -338,6 +339,202 @@
   severity: info
   successHeadline: Thessa lifts its sanctions on Aldoria
   detail: Steel flows again.
+
+# --- The Narrows ---------------------------------------------------------------
+#
+# Thessa holds the Narrows, between it and Ilmar. Every chip bound for anyone
+# but Thessa passes through it, so it is Thessa's lever on Aldoria's industry
+# and military, as the strait is Corvan's on its oil.
+
+- id: thessa_inspect_narrows
+  for: [thessa]
+  name: Inspect shipping in the Narrows
+  description: Slow chip shipments bound for Aldoria with searches.
+  requires: { chokepointOpen: narrows }
+  drives: { grievance(aldoria): 2, standing: 1 }
+  consider:
+    - relation: [aldoria, thessa]
+      rises: [-15, -45]
+    - day: true
+      rises: [90, 200]
+    - flag: treaty_with_thessa
+      falls: [0, 2]
+      gate: true
+    - stat: country.thessa.stability
+      rises: [34, 64]
+      gate: true
+  cooldownDays: 150
+  effects:
+    - modify: { target: link.chips_ilmar_aldoria.capacity, pct: -5000, days: 60 }
+    - modify: { target: link.deal_ilmar.capacity, pct: -5000, days: 60 }
+    - relation: { between: [aldoria, thessa], by: -5, days: 90 }
+    - adjust: { target: country.thessa.influence, by: 1 }
+  severity: warning
+  successHeadline: Thessa searches chip shipments in the Narrows
+  detail: Chips bound for Aldoria arrive at half the rate for two months.
+
+# Only once Corvan is in Thessa's orbit and the grudge against Aldoria is deep.
+# It hurts Velmont and Kesh too, and Thessa loses its tolls. A backstop event
+# reopens it after three months.
+- id: thessa_close_narrows
+  for: [thessa]
+  name: Close the Narrows
+  description: Shut the Narrows to shipping.
+  requires: { chokepointOpen: narrows }
+  drives: { grievance(aldoria): 4, standing: 1, balance: -1 }
+  consider:
+    - relation: [aldoria, thessa]
+      rises: [-45, -75]
+    - relation: [corvan, thessa]
+      rises: [35, 55]
+    - day: true
+      rises: [180, 300]
+    - flag: treaty_with_thessa
+      falls: [0, 2]
+      gate: true
+    - stat: country.thessa.stability
+      rises: [34, 64]
+      gate: true
+  cooldownDays: 360
+  effects:
+    - setFlag: narrows_closed_by_thessa
+    - setChokepoint: { id: narrows, open: false }
+    - schedule: { event: narrows_reopen, inDays: 90 }
+    - relation: { between: [thessa, velmont], by: -15, days: 180 }
+    - relation: { between: [ilmar, thessa], by: -15, days: 180 }
+    - adjust: { target: country.thessa.influence, by: 4 }
+  severity: critical
+  successHeadline: Thessa closes the Narrows
+  detail: No chips reach Aldoria, Velmont or Kesh until it reopens.
+
+- id: thessa_reopen_narrows
+  for: [thessa]
+  name: Reopen the Narrows
+  description: Let shipping through again, and collect tolls once more.
+  requires: { flag: narrows_closed_by_thessa }
+  drives: { balance: 2, grievance(aldoria): -1, standing: 1 }
+  consider:
+    - relation: [aldoria, thessa]
+      rises: [-55, -15]
+  cooldownDays: 30
+  effects:
+    - setChokepoint: { id: narrows, open: true }
+    - clearFlag: narrows_closed_by_thessa
+    - adjust: { target: country.thessa.influence, by: 2 }
+    - relation: { between: [aldoria, thessa], by: 8, days: 120 }
+  severity: info
+  successHeadline: Thessa reopens the Narrows
+  detail: Chips flow again.
+
+# --- Ilmar: rich, small, and afraid of Thessa ----------------------------------
+
+- id: ilmar_restrict_chips
+  for: [ilmar]
+  name: Restrict chip exports
+  description: Ration chip sales to remind the world what Ilmar is worth.
+  drives: { standing: 2, wealth: 1, security: 1 }
+  consider:
+    - relation: [ilmar, thessa]
+      rises: [-15, -45]
+    - day: true
+      rises: [120, 300]
+  cooldownDays: 300
+  effects:
+    - modify: { target: resource.chips.price, pct: 2500, days: 90 }
+    - adjust: { target: country.ilmar.influence, by: 3 }
+    - adjust: { target: country.ilmar.treasury, by: 10 }
+  severity: warning
+  successHeadline: Ilmar restricts chip exports
+  detail: Chips cost a quarter more for three months.
+
+# --- Kesh: poor, shaky, and selling --------------------------------------------
+
+- id: kesh_offer_oil
+  for: [kesh]
+  targets: [aldoria, velmont]
+  name: Offer cheap oil to {target}
+  description: Court a big buyer with discounts.
+  drives: { ties(target): 2, balance: 1, standing: 1 }
+  consider:
+    - stat: country.kesh.treasury
+      falls: [120, 40]
+    - relation: [self, target]
+      falls: [10, 40]
+  cooldownDays: 240
+  effects:
+    # Lasting, so Kesh stops offering once it has the friend it wanted.
+    - relation: { between: [self, target], by: 12 }
+    - adjust: { target: country.kesh.influence, by: 1 }
+  severity: info
+  successHeadline: Kesh offers {target} cheap oil
+  detail: A trade deal with Kesh is within reach.
+
+# --- Velmont: a distant patron -------------------------------------------------
+
+- id: velmont_aid
+  for: [velmont]
+  targets: [corvan, kesh, orrin]
+  name: Send aid to {target}
+  description: Buy a foothold in the region.
+  requires:
+    stat: { target: country.velmont.treasury, above: 300 }
+  drives: { ties(target): 3, standing: 1 }
+  consider:
+    - relation: [self, target]
+      falls: [20, 60]
+    - day: true
+      rises: [90, 240]
+  costs:
+    - adjust: { target: country.velmont.treasury, by: -20 }
+  cooldownDays: 200
+  effects:
+    - relation: { between: [self, target], by: 8 }
+    - modify: { target: country.target.stability, add: 5, days: 120 }
+    - adjust: { target: country.target.treasury, by: 20 }
+    - adjust: { target: country.velmont.influence, by: 1 }
+  severity: info
+  successHeadline: Velmont sends aid to {target}
+  detail: Velmont buys a foothold in the region.
+
+- id: velmont_court_aldoria
+  for: [velmont]
+  name: Offer Aldoria its friendship
+  description: A state visit and generous words.
+  drives: { ties(aldoria): 3, standing: 1 }
+  consider:
+    - relation: [aldoria, velmont]
+      falls: [20, 55]
+    - day: true
+      rises: [45, 150]
+  costs:
+    - adjust: { target: country.velmont.influence, by: -4 }
+  cooldownDays: 240
+  effects:
+    - relation: { between: [aldoria, velmont], by: 10 }
+    - adjust: { target: country.velmont.influence, by: 5 }
+  severity: info
+  successHeadline: Velmont offers Aldoria its friendship
+  detail: With relations above 50, a friendship treaty with Velmont becomes possible.
+
+# The strings attached: Velmont resents an Aldoria that grows close to Thessa.
+- id: velmont_warn_aldoria
+  for: [velmont]
+  name: Warn Aldoria about Thessa
+  description: Make clear that friendship with Thessa has a price.
+  drives: { grievance(thessa): 2, standing: 1 }
+  consider:
+    - relation: [aldoria, thessa]
+      rises: [20, 45]
+    - relation: [aldoria, velmont]
+      rises: [10, 40]
+  cooldownDays: 240
+  effects:
+    - relation: { between: [aldoria, velmont], by: -10, days: 180 }
+    - relation: { between: [thessa, velmont], by: -5 }
+    - adjust: { target: country.velmont.influence, by: 2 }
+  severity: warning
+  successHeadline: Velmont warns Aldoria about its friendship with Thessa
+  detail: Relations with Velmont cool for six months.
 
 # --- Veskar: wants dearer oil, without losing its best customer --------------
 

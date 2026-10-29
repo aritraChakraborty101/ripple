@@ -6,8 +6,10 @@ sections:
   - heading: Your country
     text: >-
       Aldoria is an industrial nation. Its factories run on imported oil, its
-      people eat imported grain, and its builders depend on steel from Thessa.
-      When those prices rise, people feel it, and so does your government.
+      people eat imported grain, its builders depend on steel from Thessa, and
+      its industry and army on microchips from the island of Ilmar. When those
+      prices rise, people feel it, and so does your government. Your budget
+      feels it too: imports are paid for every month.
 
   - heading: How you win or lose
     text: >-
@@ -19,7 +21,10 @@ sections:
     text: >-
       Most of your oil sails through the South Strait, and Corvan controls it.
       Relations with Corvan are already cool. If they sour far enough, Corvan
-      can close the strait, and everything that follows starts there.
+      can close the strait, and everything that follows starts there. Thessa
+      holds a second gate, the Narrows, that your chips pass through. Kesh
+      sells oil that avoids the strait, but its government is shaky, and
+      distant Velmont would like to be your friend.
 
   - heading: How to act
     text: >-

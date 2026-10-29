@@ -9,7 +9,13 @@
 export type Stats = Readonly<Record<string, number>>;
 
 export type Archetype =
-  'industrial_importer' | 'resource_exporter' | 'transit_state' | 'rising_power';
+  | 'industrial_importer'
+  | 'resource_exporter'
+  | 'transit_state'
+  | 'rising_power'
+  | 'chip_maker'
+  | 'fragile_exporter'
+  | 'distant_power';
 
 export interface Country {
   readonly id: string;
@@ -118,9 +124,21 @@ const COLLECTION: Record<StatEntityKind, keyof World> = {
   relation: 'relations',
 };
 
-/** Keys of a record in a stable order. Never iterate entities any other way. */
-export function sortedIds(record: Readonly<Record<string, unknown>>): string[] {
-  return Object.keys(record).sort();
+// World records are immutable and replaced whenever they change, so a record's
+// sorted keys can be remembered for as long as the record itself lives.
+const sortedKeys = new WeakMap<object, readonly string[]>();
+
+/**
+ * Keys of a record in a stable order. Never iterate entities any other way.
+ * The array is shared: read it, never change it.
+ */
+export function sortedIds(record: Readonly<Record<string, unknown>>): readonly string[] {
+  let keys = sortedKeys.get(record);
+  if (!keys) {
+    keys = Object.keys(record).sort();
+    sortedKeys.set(record, keys);
+  }
+  return keys;
 }
 
 export function getStatEntity(

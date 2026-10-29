@@ -74,6 +74,119 @@
     - clearFlag: sanctioned_by_thessa
     - relation: { between: [aldoria, thessa], by: 5, days: 120 }
 
+# --- The Narrows, Ilmar and Kesh ----------------------------------------------
+
+# Scheduled by Thessa's closure (see actions.yaml): the backstop, if Thessa has
+# not reopened by choice.
+- id: narrows_reopen
+  tag: thessa
+  severity: info
+  headline: Under pressure from Velmont, Thessa reopens the Narrows
+  detail: Chips flow again.
+  requires: { flag: narrows_closed_by_thessa }
+  effects:
+    - setChokepoint: { id: narrows, open: true }
+    - clearFlag: narrows_closed_by_thessa
+    - relation: { between: [aldoria, thessa], by: 5, days: 120 }
+
+- id: narrows_typhoon
+  tag: world
+  severity: warning
+  headline: A typhoon closes the Narrows
+  detail: Chip shipments stop for about ten days.
+  cooldownDays: 300
+  trigger:
+    all:
+      - chokepointOpen: narrows
+      - afterDay: 90
+      - chance: 15
+  effects:
+    - setChokepoint: { id: narrows, open: false }
+    - schedule: { event: narrows_typhoon_passes, inDays: 10 }
+
+- id: narrows_typhoon_passes
+  tag: world
+  severity: info
+  headline: The typhoon passes and the Narrows reopen
+  # Not if Thessa has closed them in the meantime.
+  requires:
+    all:
+      - chokepointClosed: narrows
+      - noFlag: narrows_closed_by_thessa
+  effects:
+    - setChokepoint: { id: narrows, open: true }
+
+- id: ilmar_fab_fire
+  tag: ilmar
+  severity: critical
+  headline: Fire shuts Ilmar's largest chip plant
+  detail: Ilmar's chip exports are halved for about two months.
+  cooldownDays: 360
+  trigger:
+    all:
+      - afterDay: 150
+      - chance: 8
+  effects:
+    - modify: { target: link.chips_ilmar_aldoria.capacity, pct: -5000, days: 60 }
+    - modify: { target: link.chips_ilmar_thessa.capacity, pct: -5000, days: 60 }
+    - modify: { target: link.chips_ilmar_velmont.capacity, pct: -5000, days: 60 }
+    - modify: { target: link.chips_ilmar_kesh.capacity, pct: -5000, days: 60 }
+    - modify: { target: link.deal_ilmar.capacity, pct: -5000, days: 60 }
+
+# Kesh's government is shaky: protests come and go, and if its stability falls
+# far enough the army takes over. The coup stops Kesh's oil for months and
+# ends any deal with Aldoria. Aid from abroad (Aldoria's or Velmont's) props
+# it up.
+- id: kesh_protests
+  tag: kesh
+  severity: info
+  headline: Protests over prices spread in Kesh
+  detail: Kesh's government wobbles.
+  cooldownDays: 150
+  trigger:
+    all:
+      - afterDay: 60
+      - stat: { target: country.kesh.stability, below: 45 }
+      - chance: 80
+  effects:
+    - modify: { target: country.kesh.stability, add: -10, days: 120 }
+
+- id: kesh_coup
+  tag: kesh
+  severity: critical
+  headline: The army seizes power in Kesh
+  detail: Kesh's oil stops for about four months, and its deals are void.
+  cooldownDays: 540
+  trigger:
+    all:
+      - stat: { target: country.kesh.stability, below: 30 }
+      - chance: 80
+  effects:
+    - modify: { target: link.oil_kesh_velmont.capacity, pct: -10000, days: 120 }
+    - modify: { target: link.oil_kesh_thessa.capacity, pct: -10000, days: 120 }
+    - modify: { target: link.oil_kesh_ilmar.capacity, pct: -10000, days: 120 }
+    - modify: { target: link.deal_kesh.capacity, pct: -10000, days: 120 }
+    - endEffectsOf: { decision: trade_deal, target: kesh }
+    - clearFlag: deal_with_kesh
+    - adjust: { target: country.kesh.stability, by: 12 }
+    - relation: { between: [aldoria, kesh], by: -10, days: 180 }
+
+# --- Money ---------------------------------------------------------------------
+
+- id: budget_crisis
+  tag: home
+  severity: warning
+  headline: Lenders balk as Aldoria's debts mount
+  detail: The government looks weak while the debt lasts.
+  cooldownDays: 180
+  trigger:
+    all:
+      - stat: { target: country.aldoria.treasury, below: -20 }
+      - chance: 300
+  effects:
+    - modify: { target: country.aldoria.stability, add: -4, days: 60 }
+    - modify: { target: faction.aldoria_industry.satisfaction, add: -4, days: 60 }
+
 # --- Markets -----------------------------------------------------------------
 
 - id: veskar_terminal_explosion
@@ -85,10 +198,11 @@
   trigger:
     all:
       - afterDay: 120
-      - chance: 12
+      - chance: 18
   effects:
     - modify: { target: link.oil_veskar_aldoria.capacity, pct: -5000, days: 40 }
     - modify: { target: link.oil_veskar_thessa.capacity, pct: -5000, days: 40 }
+    - modify: { target: link.oil_veskar_velmont.capacity, pct: -5000, days: 40 }
 
 - id: orrin_drought
   tag: orrin

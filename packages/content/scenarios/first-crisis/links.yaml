@@ -2,7 +2,7 @@
 # equal to demand, so prices only move when something happens.
 # Routes through the South Strait carry nothing while it is closed.
 
-# Oil: 80 units of demand, all supplied by Veskar.
+# Oil: 100 units of demand: 80 from Veskar, 20 from Kesh.
 - id: oil_veskar_aldoria
   resource: oil
   from: veskar
@@ -21,7 +21,15 @@
   resource: oil
   from: veskar
   to: thessa
-  capacity: 30
+  capacity: 23
+
+# Velmont's crude comes partly from Veskar by sea, so the strait matters to it too.
+- id: oil_veskar_velmont
+  resource: oil
+  from: veskar
+  to: velmont
+  capacity: 7
+  via: [south_strait]
 
 - id: oil_veskar_corvan
   resource: oil
@@ -37,7 +45,7 @@
   to: aldoria
   capacity: 0
 
-# Grain: 35 units of demand, all supplied by Orrin.
+# Grain: 45 units of demand, all supplied by Orrin.
 - id: grain_orrin_aldoria
   resource: grain
   from: orrin
@@ -57,7 +65,7 @@
   to: corvan
   capacity: 5
 
-# Steel: 30 units of demand, all supplied by Thessa.
+# Steel: 35 units of demand: 30 from Thessa, 5 from Velmont.
 - id: steel_thessa_aldoria
   resource: steel
   from: thessa
@@ -69,6 +77,76 @@
   from: thessa
   to: veskar
   capacity: 5
+
+# Kesh's crude goes overland to Velmont and Thessa, and by sea to Ilmar
+# through both the strait and the Narrows. In all, 57 of the world's 100 units
+# of oil a day pass the strait.
+- id: oil_kesh_velmont
+  resource: oil
+  from: kesh
+  to: velmont
+  capacity: 8
+
+- id: oil_kesh_thessa
+  resource: oil
+  from: kesh
+  to: thessa
+  capacity: 7
+
+- id: oil_kesh_ilmar
+  resource: oil
+  from: kesh
+  to: ilmar
+  capacity: 5
+  via: [south_strait, narrows]
+
+- id: grain_orrin_ilmar
+  resource: grain
+  from: orrin
+  to: ilmar
+  capacity: 5
+  via: [narrows]
+
+- id: grain_orrin_kesh
+  resource: grain
+  from: orrin
+  to: kesh
+  capacity: 5
+
+- id: steel_velmont_kesh
+  resource: steel
+  from: velmont
+  to: kesh
+  capacity: 5
+
+# Chips: 28 units of demand, all made in Ilmar. Only Thessa's arrive without
+# passing the Narrows.
+- id: chips_ilmar_aldoria
+  resource: chips
+  from: ilmar
+  to: aldoria
+  capacity: 10
+  via: [narrows]
+
+- id: chips_ilmar_thessa
+  resource: chips
+  from: ilmar
+  to: thessa
+  capacity: 8
+
+- id: chips_ilmar_velmont
+  resource: chips
+  from: ilmar
+  to: velmont
+  capacity: 8
+  via: [narrows]
+
+- id: chips_ilmar_kesh
+  resource: chips
+  from: ilmar
+  to: kesh
+  capacity: 2
+  via: [narrows]
 
 # Routes a trade deal opens (decision: trade_deal). Each carries nothing until
 # Aldoria signs a deal with that country, and stops when the deal ends or
@@ -89,5 +167,26 @@
 - id: deal_thessa
   resource: steel
   from: thessa
+  to: aldoria
+  capacity: 0
+
+# Kesh's deal route runs overland: crude that avoids the strait, from a
+# supplier that may not last.
+- id: deal_kesh
+  resource: oil
+  from: kesh
+  to: aldoria
+  capacity: 0
+
+- id: deal_ilmar
+  resource: chips
+  from: ilmar
+  to: aldoria
+  capacity: 0
+  via: [narrows]
+
+- id: deal_velmont
+  resource: steel
+  from: velmont
   to: aldoria
   capacity: 0
