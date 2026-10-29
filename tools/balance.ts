@@ -74,6 +74,21 @@ const steady: Player = (state) => {
   if (stat('country', me, 'treasury') < 150 && monthlyBalance(state, me) < -3_000) {
     want('tariff', 'thessa');
   }
+  // No intelligence files: they change what a person sees and reads, which a
+  // script cannot use, so here they would only cost money.
+  // Ration fuel in a deep oil crisis, and stop once it passes.
+  const rationing = state.flags.includes('rationing');
+  if (!rationing && oilUp > 0.6) want('ration_fuel');
+  if (rationing && oilUp < 0.15) want('end_rationing');
+  // Spend on public works when the mood sours and money allows; stop when money runs low.
+  const works = state.flags.includes('public_works');
+  const treasury = stat('country', me, 'treasury');
+  if (!works && stat('country', me, 'stability') < 50 && treasury > 200) want('public_works');
+  if (works && treasury < 100) want('end_public_works');
+  // Tighten the belt when broke and bleeding.
+  const austerity = state.flags.includes('austerity');
+  if (!austerity && treasury < 60 && monthlyBalance(state, me) < 0) want('austerity');
+  if (austerity && treasury > 180) want('end_austerity');
   return wants.filter((w) => canIssue(state, w.decision, me, w.target).ok);
 };
 

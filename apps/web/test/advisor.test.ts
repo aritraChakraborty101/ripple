@@ -67,7 +67,9 @@ describe('advisor', () => {
 
   it('skips a tip while none of its orders can be signed', () => {
     const game = createGame(quiet, 1);
-    const onlyLift = guide.tips.filter((t) => t.id === 'thessa_angry');
+    const onlyLift = guide.tips
+      .filter((t) => t.id === 'thessa_angry')
+      .map((t) => ({ ...t, suggest: t.suggest.filter((s) => s.decision === 'lift_tariff') }));
     // Thessa is angry, but no tariff is in force, so there is nothing to lift.
     const angry = {
       ...game,

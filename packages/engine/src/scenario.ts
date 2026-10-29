@@ -9,6 +9,7 @@ import type { Personality } from './ai/types';
 import type { TuningOverrides } from './ai/tuning';
 import type { DecisionDef, EventDef } from './rules';
 import {
+  demandStat,
   relationId,
   sortedIds,
   type Archetype,
@@ -130,7 +131,13 @@ function buildRelations(
 }
 
 export function buildWorld(def: ScenarioDef): World {
-  const countries: Country[] = def.countries.map((c) => ({ ...c }));
+  // Demand lives in stats too (`demand_oil`), so modifiers can change it.
+  const countries: Country[] = def.countries.map((c) => {
+    const demandStats: Record<string, number> = {};
+    for (const [resource, units] of Object.entries(c.demand))
+      demandStats[demandStat(resource)] = units;
+    return { ...c, stats: { ...c.stats, ...demandStats } };
+  });
   const resources: Resource[] = def.resources.map((r) => ({
     id: r.id,
     name: r.name,

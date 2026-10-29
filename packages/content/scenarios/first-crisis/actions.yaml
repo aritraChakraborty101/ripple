@@ -97,6 +97,10 @@
     - flag: treaty_with_corvan
       falls: [0, 2]
       gate: true
+    # A shaken government has less appetite for adventures abroad.
+    - stat: country.corvan.stability
+      rises: [25, 55]
+      gate: true
   cooldownDays: 120
   effects:
     - relation: { between: [aldoria, corvan], by: -8, days: 90 }
@@ -118,6 +122,10 @@
       rises: [60, 150]
     - flag: treaty_with_corvan
       falls: [0, 2]
+      gate: true
+    # A shaken government has less appetite for adventures abroad.
+    - stat: country.corvan.stability
+      rises: [25, 55]
       gate: true
   cooldownDays: 150
   effects:
@@ -183,6 +191,9 @@
     - flag: treaty_with_thessa
       falls: [0, 2]
       gate: true
+    - stat: country.thessa.stability
+      rises: [34, 64]
+      gate: true
   cooldownDays: 180
   effects:
     - relation: { between: [aldoria, corvan], by: -10, days: 90 }
@@ -206,6 +217,45 @@
   severity: warning
   successHeadline: Thessa curbs steel exports in retaliation
   detail: Steel gets dearer for three months.
+
+# Covert: if it fails, Aldoria finds out (the news reports a computer order's
+# failure when it has a failure headline). Thessa is warier of a government
+# that keeps an intelligence file on it.
+- id: thessa_fund_agitators
+  for: [thessa]
+  name: Fund agitators in Aldoria
+  description: Pay for strikes and protests in Aldoria's cities.
+  drives: { grievance(aldoria): 3, standing: 1, wealth: -1 }
+  consider:
+    - relation: [aldoria, thessa]
+      rises: [-25, -55]
+    - day: true
+      rises: [120, 240]
+    - flag: treaty_with_thessa
+      falls: [0, 2]
+      gate: true
+    - stat: country.thessa.stability
+      rises: [34, 64]
+      gate: true
+    - stat: country.aldoria.intel_thessa
+      falls: [0, 2]
+      gate: true
+  costs:
+    - adjust: { target: country.thessa.treasury, by: -10 }
+  durationDays: 30
+  cooldownDays: 240
+  chance: 7000
+  effects:
+    - modify: { target: faction.aldoria_workers.satisfaction, add: -6, days: 90 }
+    - modify: { target: country.aldoria.stability, add: -3, days: 90 }
+    - adjust: { target: country.thessa.influence, by: 2 }
+  failureEffects:
+    - relation: { between: [aldoria, thessa], by: -10 }
+    - adjust: { target: country.thessa.influence, by: -3 }
+  severity: warning
+  successHeadline: Strikes spread in Aldoria, and officials suspect Thessan money
+  failureHeadline: Aldoria uncovers Thessan agents funding strikes
+  detail: Workers' mood sours for three months.
 
 - id: thessa_aid
   for: [thessa]
@@ -255,6 +305,9 @@
       rises: [120, 240]
     - flag: treaty_with_thessa
       falls: [0, 2]
+      gate: true
+    - stat: country.thessa.stability
+      rises: [34, 64]
       gate: true
   cooldownDays: 360
   effects:

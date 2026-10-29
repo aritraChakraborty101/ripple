@@ -51,6 +51,15 @@
     a discount.
   suggest: [fuel_subsidy, veskar_discount]
 
+- id: oil_doubled
+  when:
+    stat: { target: resource.oil.price, above: 14600 }
+  text: >-
+    Crude has doubled. Rationing fuel cuts what Aldoria buys by a fifth, which
+    shrinks your import bill and eases the price for everyone. Industry will
+    grumble while it lasts.
+  suggest: [ration_fuel]
+
 - id: stability_sliding
   when:
     stat: { target: country.aldoria.stability, below: 40 }
@@ -73,9 +82,10 @@
     relation: { between: [aldoria, thessa], below: -24 }
   country: thessa
   text: >-
-    Thessa is angry, and Thessa is courting Corvan. Lifting the steel tariffs
-    would win back some goodwill, at a cost to your own industry.
-  suggest: [lift_tariff>thessa]
+    Thessa is angry, and Thessa is courting Corvan. Lifting any tariffs on
+    Thessa would win back some goodwill. An intelligence file shows what
+    Thessa is weighing, sooner, and makes it warier of moves in secret.
+  suggest: [lift_tariff>thessa, intel_file>thessa]
 
 - id: treasury_low
   when:
@@ -84,8 +94,9 @@
     The treasury is running low, and dear imports drain it every month. Spend
     on what fixes causes rather than symptoms. A tariff raises money from what
     you already buy: on Veskar's oil it pays most, on Thessa's steel about
-    1.6 bn a month. Either way, expect them to answer.
-  suggest: [tariff>thessa, tariff>veskar]
+    1.6 bn a month. Either way, expect them to answer. Austerity saves about
+    3 bn a month, if the workers will stand for it.
+  suggest: [tariff>thessa, tariff>veskar, austerity]
 
 - id: sanctioned_by_thessa
   when:

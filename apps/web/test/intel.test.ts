@@ -1,7 +1,21 @@
 import { loadBuiltInScenario } from '@ripple/content/node';
 import { describe, expect, it } from 'vitest';
-import { ambitionOf, brewing, brewingKey, needWord, REWARN_DAYS, wantsOf } from '../src/game/intel';
-import { newSession, retuneSession, tickSession, type Session } from '../src/game/session';
+import {
+  ambitionOf,
+  brewing,
+  brewingKey,
+  hasFile,
+  needWord,
+  REWARN_DAYS,
+  wantsOf,
+} from '../src/game/intel';
+import {
+  issueDecision,
+  newSession,
+  retuneSession,
+  tickSession,
+  type Session,
+} from '../src/game/session';
 
 const scenario = loadBuiltInScenario('first-crisis');
 
@@ -90,5 +104,23 @@ describe('tuning from the browser', () => {
     const session = retuneSession(playTo(newSession(scenario, 1), 5), { hostility: 20_000 });
     expect(session.game.defs.ai!.tuning.hostility).toBe(20_000);
     expect(session.game.tuningChanges).toEqual([{ tick: 5, overrides: { hostility: 20_000 } }]);
+  });
+});
+
+describe('intelligence files', () => {
+  it('warn earlier about a watched country, and only while the file is open', () => {
+    // Look for a day when Corvan is weighing a harmful move too faintly to report,
+    // and check that the same day with a file open on Corvan reports it.
+    let session = newSession(scenario, 3);
+    let found = false;
+    for (let day = 0; day < 400 && !found; day += 1) {
+      const plain = tickSession(session);
+      const filed = tickSession(issueDecision(session, 'intel_file', 'corvan'));
+      const warns = (s: Session) => brewing(s.game).some((b) => b.country === 'corvan');
+      if (hasFile(filed.game, 'corvan') && !warns(plain) && warns(filed)) found = true;
+      session = plain;
+    }
+    expect(found).toBe(true);
+    expect(hasFile(session.game, 'corvan')).toBe(false);
   });
 });

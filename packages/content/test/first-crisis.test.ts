@@ -9,6 +9,8 @@ import {
   marketDemand,
   marketSupply,
   monthlyBalance,
+  explainStat,
+  score,
   run,
   setChokepointOpen,
   sortedIds,
@@ -287,6 +289,93 @@ describe('first-crisis full games', () => {
     }
     expect(sanctionedIn).toBeGreaterThan(0);
     expect(liftedIn).toBeGreaterThan(0);
+  });
+
+  it('rations fuel: less crude wanted, a cheaper price, a smaller bill, slower industry', () => {
+    const me = 'aldoria';
+    const ration = (state: GameState) =>
+      step(state, [{ kind: 'decide', decision: 'ration_fuel', by: me }]).state;
+    const closed = setChokepointOpen(createGame(quiet, 1), 'south_strait', false);
+    const plain = run(closed, 60);
+    const rationed = run(ration(closed), 60);
+    expect(marketDemand(rationed, 'oil')).toBe(72);
+    expect(price(rationed, 'oil')).toBeLessThan(price(plain, 'oil'));
+    const oilBill = (state: GameState) =>
+      tradeItems(state, me, 'imports').find((i) => i.resource === 'oil')!.amount;
+    expect(oilBill(rationed)).toBeLessThan(oilBill(plain));
+    // The why-trace finds the order behind the lower demand.
+    const why = explainStat(rationed, { kind: 'resource', id: 'oil', stat: 'price' });
+    const market = why.contributions.find((c) => c.cause.type === 'market')!.cause;
+    if (market.type !== 'market') throw new Error('expected a market');
+    expect(market.demands).toEqual([expect.objectContaining({ country: me, delta: -8 })]);
+    const ended = step(rationed, [{ kind: 'decide', decision: 'end_rationing', by: me }]).state;
+    expect(marketDemand(ended, 'oil')).toBe(80);
+  });
+
+  it('runs austerity and public works as monthly lines, never both at once', () => {
+    const me = 'aldoria';
+    const sign = (state: GameState, decision: string) =>
+      step(state, [{ kind: 'decide', decision, by: me }]).state;
+    const game = createGame(quiet, 1);
+    const base = monthlyBalance(game, me);
+    const cut = sign(game, 'austerity');
+    expect(monthlyBalance(cut, me)).toBeGreaterThan(base + 2_000);
+    expect(canIssue(cut, 'public_works', me).ok).toBe(false);
+    const spent = sign(game, 'public_works');
+    expect(monthlyBalance(spent, me)).toBeLessThan(base - 2_000);
+    const workers = { kind: 'faction' as const, id: 'aldoria_workers', stat: 'satisfaction' };
+    expect(effectiveStat(spent, workers)).toBeGreaterThan(effectiveStat(cut, workers));
+  });
+
+  it('lets the reserve be released again once refilled', () => {
+    const me = 'aldoria';
+    const sign = (state: GameState, decision: string) =>
+      step(state, [{ kind: 'decide', decision, by: me }]).state;
+    const released = sign(createGame(quiet, 1), 'release_reserves');
+    expect(canIssue(released, 'release_reserves', me).ok).toBe(false);
+    const refilling = sign(released, 'refill_reserve');
+    expect(canIssue(refilling, 'refill_reserve', me).ok).toBe(false);
+    expect(canIssue(run(refilling, 90), 'release_reserves', me).ok).toBe(true);
+  });
+
+  it('opens an intelligence file for four months, and Thessa grows warier of covert moves', () => {
+    const me = 'aldoria';
+    const file = (state: GameState) =>
+      effectiveStat(state, { kind: 'country', id: me, stat: 'intel_thessa' });
+    const opened = step(createGame(scenario, 1), [
+      { kind: 'decide', decision: 'intel_file', by: me, target: 'thessa' },
+    ]).state;
+    expect(file(opened)).toBe(1);
+    expect(canIssue(opened, 'intel_file', me, 'thessa').ok).toBe(false);
+    expect(file(run(opened, 120))).toBe(0);
+    // A gate on Thessa's agitators halves their appeal while the file is open.
+    const report = score(opened, { country: 'thessa', decision: 'thessa_fund_agitators' });
+    expect(report.appeal.find((a) => a.measure === 'country.aldoria.intel_thessa')).toMatchObject({
+      factor: 5_000,
+      gate: true,
+    });
+  });
+
+  it('weakens a government with unrest, which dulls its appetite for hostile moves', () => {
+    const me = 'aldoria';
+    const hostile = (state: GameState) =>
+      score(state, { country: 'corvan', decision: 'corvan_close_strait' }).appealTotal;
+    const game = run(createGame(scenario, 1), 200);
+    const shaken = {
+      ...game,
+      modifiers: [
+        ...game.modifiers,
+        {
+          id: 'test',
+          target: { kind: 'country' as const, id: 'corvan', stat: 'stability' },
+          op: 'add' as const,
+          amount: -15,
+          source: { kind: 'decision' as const, id: 'stir_unrest', tick: 0, by: me },
+          expiresAt: null,
+        },
+      ],
+    };
+    expect(hostile(shaken)).toBeLessThan(hostile(game));
   });
 
   it('gives Thessa a reason to answer a steel tariff in kind', () => {

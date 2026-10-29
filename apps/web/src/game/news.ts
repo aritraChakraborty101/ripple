@@ -136,10 +136,22 @@ function eventDraft(state: GameState, event: EngineEvent): DispatchDraft | null 
       const def = state.defs.decisions[event.decision];
       if (!def) return null;
       if (event.by !== state.rules.playerCountry) {
-        // A computer country acted: world news about that country, unless it failed quietly.
-        if (!event.success) return null;
+        // A computer country acted: world news about that country. A failure is news
+        // only when content gives it a headline (a covert move that was caught).
+        if (!event.success && !def.failureHeadline) return null;
         const fill = (text: string) =>
           fillNames(text, state.world.countries, event.by, event.target);
+        if (!event.success) {
+          return {
+            tick: event.tick,
+            tag: tagLabel(state, event.by),
+            severity: 'info',
+            headline: fill(def.failureHeadline!),
+            source: 'world',
+            country: event.by,
+            choice: { decision: def.id, country: event.by, tick: event.issuedTick },
+          };
+        }
         return {
           tick: event.tick,
           tag: tagLabel(state, event.by),

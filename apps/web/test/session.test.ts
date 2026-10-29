@@ -8,7 +8,7 @@ import {
 } from '@ripple/engine';
 import { describe, expect, it } from 'vitest';
 import { decisionsConcerning, describeCosts, durationLabel, oddsLabel } from '../src/game/describe';
-import { priceBand } from '../src/game/news';
+import { dispatchesFor, initialNews, priceBand } from '../src/game/news';
 import {
   advanceSession,
   dismissAlert,
@@ -55,6 +55,45 @@ describe('session', () => {
 
   it('stays quiet when nothing happens', () => {
     expect(days(newSession(quiet, 1), 60).dispatches).toEqual([]);
+  });
+
+  it('reports a covert move that was caught, but not other failures', () => {
+    const game = newSession(scenario, 1).game;
+    const caught = dispatchesFor(
+      initialNews,
+      [
+        {
+          kind: 'decision_resolved',
+          tick: 5,
+          decision: 'thessa_fund_agitators',
+          by: 'thessa',
+          issuedTick: 1,
+          success: false,
+        },
+      ],
+      game,
+      5,
+    );
+    expect(caught.dispatches.map((d) => d.headline)).toEqual([
+      'Aldoria uncovers Thessan agents funding strikes',
+    ]);
+    const quiet = dispatchesFor(
+      initialNews,
+      [
+        {
+          kind: 'decision_resolved',
+          tick: 5,
+          decision: 'court',
+          by: 'thessa',
+          target: 'corvan',
+          issuedTick: 1,
+          success: false,
+        },
+      ],
+      game,
+      5,
+    );
+    expect(quiet.dispatches).toEqual([]);
   });
 
   it('reports a month that ends in deficit, naming the dearest import', () => {
@@ -231,7 +270,16 @@ describe('orders concerning a country', () => {
     );
 
   it('finds the orders aimed at each country, or touching relations or routes with it', () => {
-    const aimed = ['aid_programme', 'emergency_aid', 'envoy', 'sanction'];
+    const aimed = [
+      'aid_programme',
+      'broadcast',
+      'emergency_aid',
+      'envoy',
+      'intel_file',
+      'rally_nation',
+      'sanction',
+      'stir_unrest',
+    ];
     const withTarget = (c: string, ids: string[]) =>
       ids.map((d) => (game.defs.decisions[d]?.targets ? `${d}>${c}` : d)).sort();
     expect(ids('corvan')).toEqual(withTarget('corvan', [...aimed, 'transit_fees', 'treaty']));
