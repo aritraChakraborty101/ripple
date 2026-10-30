@@ -175,6 +175,7 @@ function eventDraft(state: GameState, event: EngineEvent): DispatchDraft | null 
             : (def.failureHeadline ?? `${def.name}: it did not work`),
         ),
         source: 'order',
+        ...(event.target && state.world.countries[event.target] ? { country: event.target } : {}),
       };
     }
     case 'budget_settled': {

@@ -196,6 +196,7 @@ export function App() {
             selection={selection}
             onSelect={setSelection}
             alertCountry={alert?.country ?? null}
+            ripples={session.ripples}
             showLegend={!tip}
             highlightCountry={
               briefing && steps.visible && !steps.done.has('country') && steps.done.has('play')
