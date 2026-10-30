@@ -23,7 +23,10 @@ export function Dispatches({ dispatches, onSelectCountry }: Props) {
       {dispatches.map((d) => {
         const mine = d.source === 'order';
         return (
-          <li key={d.id} className="dispatch">
+          <li
+            key={d.id}
+            className={`dispatch paper ${d.severity === 'critical' && !mine ? 'critical' : ''}`}
+          >
             <div className="dispatch-meta">
               <span className={`dot ${mine ? 'mine' : d.severity}`} />
               <span

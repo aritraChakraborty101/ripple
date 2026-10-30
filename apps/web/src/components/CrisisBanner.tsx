@@ -2,6 +2,7 @@ import { formatShortDate } from '../game/format';
 import type { Dispatch } from '../game/news';
 import { actions } from '../game/store';
 import { whyOfDispatch } from '../game/why';
+import { Memo } from './Memo';
 import { useWhy } from './WhyContext';
 
 interface Props {
@@ -10,45 +11,34 @@ interface Props {
   readonly onRespond: () => void;
 }
 
-/** A crisis interrupts you over the map, so you never miss one at 5× speed. */
+/** A crisis lands as an urgent memo on top of the pile, so you never miss one at 5× speed. */
 export function CrisisBanner({ alert, paused, onRespond }: Props) {
   const why = useWhy();
   const cause = whyOfDispatch(alert);
   return (
-    <div className="crisis" role="alert">
-      <div className="crisis-text">
-        <span className="crisis-meta">
-          {alert.tag} · {formatShortDate(alert.tick)}
-          {paused ? ' · Game paused' : ''}
-        </span>
-        <strong>{alert.headline}</strong>
-        {alert.detail && <span className="crisis-detail">{alert.detail}</span>}
-      </div>
-      <div className="crisis-actions">
+    <Memo
+      kind="urgent"
+      label={`Urgent · ${alert.tag}`}
+      when={`${formatShortDate(alert.tick)}${paused ? ' · paused' : ''}`}
+      headingId="crisis-headline"
+      onDismiss={actions.dismissAlert}
+      dismissLabel="Dismiss"
+      role="alert"
+    >
+      <h2 id="crisis-headline" className="memo-headline">
+        {alert.headline}
+      </h2>
+      {alert.detail && <p className="memo-text">{alert.detail}</p>}
+      <div className="memo-actions">
         <button type="button" className="button primary" onClick={onRespond}>
-          See what you can do
+          Respond
         </button>
         {cause && (
           <button type="button" className="button" onClick={() => why(cause)}>
-            Why?
+            Why did this happen?
           </button>
         )}
-        <button
-          type="button"
-          className="icon-button"
-          aria-label="Dismiss"
-          onClick={actions.dismissAlert}
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-            <path
-              d="M4 4l8 8M12 4l-8 8"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-            />
-          </svg>
-        </button>
       </div>
-    </div>
+    </Memo>
   );
 }
