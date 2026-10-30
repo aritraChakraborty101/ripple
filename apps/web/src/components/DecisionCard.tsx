@@ -15,6 +15,8 @@ interface Props {
   /** Called after the order is signed, for example to close a dialog. */
   readonly onSigned?: () => void;
   readonly compact?: boolean;
+  /** For an order aimed at a country: pick the country on the map instead. */
+  readonly onAim?: () => void;
 }
 
 /**
@@ -22,7 +24,7 @@ interface Props {
  * button. An order aimed at a country shows whom it is aimed at; when no
  * target is given, the player picks one from the countries it can reach.
  */
-export function DecisionCard({ game, def, target, onSigned, compact = false }: Props) {
+export function DecisionCard({ game, def, target, onSigned, compact = false, onAim }: Props) {
   const me = game.rules.playerCountry;
   const all =
     def.targets === undefined || target !== undefined
@@ -83,6 +85,11 @@ export function DecisionCard({ game, def, target, onSigned, compact = false }: P
           )}
         </dl>
         {!availability.ok && <p className="decision-reason">{fill(availability.reason)}</p>}
+        {onAim && options.length > 1 && (
+          <button type="button" className="text-button inline" onClick={onAim}>
+            Choose on the map
+          </button>
+        )}
       </div>
       <button
         type="button"
