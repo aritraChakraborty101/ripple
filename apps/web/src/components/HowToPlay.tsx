@@ -5,10 +5,21 @@ interface Props {
   readonly onClose: () => void;
   readonly onShowBriefing: () => void;
   readonly onRestartSteps: () => void;
+  readonly autoPause: boolean;
+  readonly onAutoPause: (on: boolean) => void;
+  readonly onNewGame: () => void;
 }
 
 /** A one-page reference: the goal, the screen, how to act, and the shortcuts. */
-export function HowToPlay({ open, onClose, onShowBriefing, onRestartSteps }: Props) {
+export function HowToPlay({
+  open,
+  onClose,
+  onShowBriefing,
+  onRestartSteps,
+  autoPause,
+  onAutoPause,
+  onNewGame,
+}: Props) {
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -42,7 +53,7 @@ export function HowToPlay({ open, onClose, onShowBriefing, onRestartSteps }: Pro
           <h3>The goal</h3>
           <p>
             Stay in power for five years. You are ousted if stability stays below 20 for 30 days.
-            The top bar counts down when you are in danger.
+            The Stability meter counts down when you are in danger.
           </p>
         </section>
 
@@ -64,9 +75,9 @@ export function HowToPlay({ open, onClose, onShowBriefing, onRestartSteps }: Pro
             to act.
           </p>
           <p>
-            To trace any ripple back to its cause, click stability or a price in the top bar, a
-            faction on the Home tab, or "Why did this happen?" on a piece of news. For a neighbour's
-            move, the panel shows what drove it. The game pauses while you read.
+            To trace any ripple back to its cause, click a meter or a price, a faction on your own
+            country's page, or "Why did this happen?" on a memo or report. For a neighbour's move,
+            the panel shows what drove it. The game pauses while you read.
           </p>
         </section>
 
@@ -74,26 +85,30 @@ export function HowToPlay({ open, onClose, onShowBriefing, onRestartSteps }: Pro
           <h3>The screen</h3>
           <dl className="help-list">
             <div>
-              <dt>Top bar</dt>
+              <dt>Meters and markets</dt>
               <dd>
-                Treasury, influence, stability and prices. Hover any of them for details; click
-                stability or a price to see why it is where it is.
+                Stability, treasury and influence top right; prices bottom left. Hover any of them
+                for details; click one to see why it is where it is.
               </dd>
             </div>
             <div>
               <dt>Map</dt>
               <dd>
-                Each country shows its relations with you. Click a country or the strait to see its
-                trade and the orders that concern it.
+                Click a country or a strait to see its trade and the orders that concern it; click
+                your own country for the mood at home. Lenses under the map (keys 1 to 5) show
+                relations, trade, prices, unrest or intelligence.
               </dd>
             </div>
             <div>
               <dt>Unfolding</dt>
-              <dd>Under the map: policies in force and orders still under way.</dd>
+              <dd>Bottom left: policies in force and orders still under way.</dd>
             </div>
             <div>
-              <dt>Side panel</dt>
-              <dd>News as it happens, your factions at home, and relations with everyone.</dd>
+              <dt>Memos and reports</dt>
+              <dd>
+                On the right: urgent memos and your advisor on top, the pile of reports below, and
+                the cabinet, where every order is filed by ministry.
+              </dd>
             </div>
           </dl>
         </section>
@@ -132,7 +147,7 @@ export function HowToPlay({ open, onClose, onShowBriefing, onRestartSteps }: Pro
               <dt>
                 <kbd>D</kbd>
               </dt>
-              <dd>All orders</dd>
+              <dd>The cabinet: every order</dd>
             </div>
             <div>
               <dt>
@@ -150,7 +165,23 @@ export function HowToPlay({ open, onClose, onShowBriefing, onRestartSteps }: Pro
         </section>
       </div>
 
+      <section className="help-settings">
+        <h3>This game</h3>
+        <label className="toggle">
+          <input
+            id="auto-pause"
+            type="checkbox"
+            checked={autoPause}
+            onChange={(e) => onAutoPause(e.target.checked)}
+          />
+          <span>Pause when a crisis breaks (urgent memos)</span>
+        </label>
+      </section>
+
       <div className="sheet-actions">
+        <button type="button" className="button" onClick={onNewGame}>
+          New game
+        </button>
         <button type="button" className="button" onClick={onRestartSteps}>
           Show first steps again
         </button>

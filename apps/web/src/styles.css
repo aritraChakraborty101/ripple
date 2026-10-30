@@ -665,70 +665,13 @@ button {
   background: var(--accent);
 }
 
-/* ------------------------------------------------------------ Side panel */
-
-.side {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  padding: 16px 18px 12px;
-  border: 1px solid var(--glass-line);
-  border-radius: 10px;
-  background: var(--glass);
-  backdrop-filter: blur(6px);
-  box-shadow: 0 10px 30px rgb(0 0 0 / 0.28);
-}
-
-.tabs {
-  display: flex;
-  gap: 4px;
-  margin-top: 14px;
-  border-bottom: 1px solid var(--line);
-}
-
-.tab {
-  min-height: 44px;
-  padding: 0 14px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  background: transparent;
-  color: var(--ink-muted);
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.tab:hover {
-  color: var(--ink);
-}
-
-.tab[aria-selected='true'] {
-  color: var(--ink);
-  border-bottom-color: var(--accent);
-}
-
-.tab-panel {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding-top: 6px;
-}
+/* ------------------------------------------------------- Reports pile */
 
 .tab-section {
   display: flex;
   flex-direction: column;
   gap: 14px;
   padding-top: 10px;
-}
-
-.side-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding-top: 10px;
-  border-top: 1px solid var(--line);
 }
 
 .toggle {
@@ -946,25 +889,6 @@ button {
   font-size: 12px;
   color: var(--ink-muted);
   min-width: 56px;
-}
-
-.relation-row {
-  display: grid;
-  grid-template-columns: minmax(96px, 1.3fr) 1fr auto;
-  gap: 12px;
-}
-
-.relation-name {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.relation-ambition {
-  font-size: 11px;
-  line-height: 1.3;
-  color: var(--ink-muted);
 }
 
 .delta {
@@ -2352,4 +2276,201 @@ button.why-chain-step:hover {
   font-style: italic;
   color: var(--ink-quiet);
   text-shadow: 0 1px 6px var(--sea);
+}
+
+/* ------------------------------------------------------------ Reports */
+
+.reports {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.reports-title {
+  margin: 0 0 8px 2px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-quiet);
+}
+
+.reports-pile {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 2px 6px;
+  scrollbar-width: thin;
+}
+
+.dock-right .drawer {
+  margin-bottom: 0;
+}
+
+/* ------------------------------------------------------------ Cabinet */
+
+.cabinet-button {
+  flex: none;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  min-height: 60px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--paper-ink);
+  box-shadow: 0 12px 30px rgb(0 0 0 / 0.4);
+  cursor: pointer;
+  align-items: center;
+}
+
+.cabinet-button:hover:not(:disabled) {
+  background: #fff;
+}
+
+.cabinet-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cabinet-word {
+  font-family: var(--serif);
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.cabinet-count {
+  font-size: 13px;
+  font-weight: 500;
+  color: #8a5208;
+}
+
+.sheet.cabinet {
+  width: min(1180px, calc(100vw - 64px));
+  height: calc(100vh - 64px);
+  max-height: none;
+  padding: 0;
+  overflow: hidden;
+}
+
+.sheet.cabinet[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.cabinet-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 26px 32px 0;
+  border-bottom: 1px solid var(--paper-line);
+}
+
+.cabinet-head .sheet-note {
+  margin: 6px 0 18px;
+}
+
+.cabinet-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+}
+
+.ministries {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 18px 12px;
+  border-right: 1px solid var(--paper-line);
+  background: #eeebe5;
+  overflow-y: auto;
+}
+
+.ministries button {
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 0;
+  border-left: 3px solid transparent;
+  border-radius: 0 6px 6px 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ministries button:hover {
+  background: rgb(0 0 0 / 0.04);
+}
+
+.ministries button[aria-current='true'] {
+  border-left-color: #e3a43c;
+  background: var(--paper);
+}
+
+.ministry-name {
+  font-family: var(--serif);
+  font-size: 19px;
+  font-weight: 600;
+}
+
+.ministry-brief {
+  font-size: 12px;
+  color: var(--paper-quiet);
+}
+
+.ministry-count {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--you);
+}
+
+.cabinet-orders {
+  padding: 20px 28px 28px;
+  overflow-y: auto;
+}
+
+.cabinet-orders .decision-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  align-items: start;
+}
+
+/* --------------------------------------------------------------- Aiming */
+
+.aim-banner {
+  position: absolute;
+  top: 116px;
+  left: calc(434px + (100% - 434px - 404px) / 2);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 8px 8px 18px;
+  z-index: 5;
+  white-space: nowrap;
+}
+
+.aim-banner strong {
+  color: var(--you);
+  font-weight: 600;
+}
+
+.country-hit.aimable .country {
+  stroke: var(--you);
+  stroke-width: 2.5;
+  stroke-dasharray: 7 5;
+}
+
+.country-hit.aimable:hover .country {
+  fill: var(--you-fill);
+}
+
+.country-hit.unaimable {
+  opacity: 0.35;
+  cursor: not-allowed;
 }

@@ -208,6 +208,7 @@ export function toScenarioDef(s: RawScenario): ScenarioDef {
     ...(d.failureHeadline !== undefined ? { failureHeadline: d.failureHeadline } : {}),
     ...(d.policyFlag !== undefined ? { policyFlag: d.policyFlag } : {}),
     ...(d.perTarget !== undefined ? { perTarget: d.perTarget } : {}),
+    ...(d.ministry !== undefined ? { ministry: d.ministry } : {}),
     ...(d.severity !== undefined ? { severity: d.severity } : {}),
     ...(d.detail !== undefined ? { detail: d.detail } : {}),
     ...(d.for !== undefined ? { for: d.for } : {}),

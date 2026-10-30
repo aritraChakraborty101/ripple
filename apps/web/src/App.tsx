@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { AdvisorCard } from './components/AdvisorCard';
 import { BriefingDialog } from './components/BriefingDialog';
 import { DevPanel } from './components/DevPanel';
 import { CrisisBanner } from './components/CrisisBanner';
-import { DecisionsDialog } from './components/DecisionsDialog';
+import { Cabinet } from './components/Cabinet';
 import { FirstSteps, STEP_IDS, type StepId } from './components/FirstSteps';
 import { GameOver } from './components/GameOver';
 import { HowToPlay } from './components/HowToPlay';
@@ -12,11 +12,13 @@ import { MapDrawer } from './components/MapDrawer';
 import { Markets } from './components/Markets';
 import { Meters } from './components/Meters';
 import { Nameplate } from './components/Nameplate';
-import { SidePanel, type Tab } from './components/SidePanel';
+import { Reports } from './components/Reports';
 import { Unfolding } from './components/Unfolding';
 import { WhyContext } from './components/WhyContext';
 import { WhyDialog } from './components/WhyDialog';
 import { WorldMap } from './components/WorldMap';
+import { openTargets, readyCount } from './game/cabinet';
+import { fillNames } from './game/format';
 import { LENSES, type Lens } from './game/lenses';
 import { readPref, writePref } from './game/prefs';
 import { firstCrisisGuide, firstCrisisMap } from './game/scenario';
@@ -127,7 +129,7 @@ export function App() {
   const [briefingOpen, setBriefingOpen] = useState(
     () => firstCrisisGuide.briefing !== null && !readPref('briefing.seen', false),
   );
-  const [tab, setTab] = useState<Tab>('news');
+  const [aiming, setAiming] = useState<string | null>(null);
   const [lens, setLens] = useState<Lens>('relations');
   const [selection, setSelection] = useState<Selection>(null);
   const [whyTarget, setWhyTarget] = useState<WhyTarget | null>(null);
@@ -137,7 +139,10 @@ export function App() {
 
   const openOrders = useCallback(() => setOrdersOpen(true), []);
   const openHelp = useCallback(() => setHelpOpen(true), []);
-  const clearSelection = useCallback(() => setSelection(null), []);
+  const clearSelection = useCallback(() => {
+    setSelection(null);
+    setAiming(null);
+  }, []);
   // Asking why pauses the world, so the answer does not change while you read it.
   const openWhy = useCallback((target: WhyTarget) => {
     actions.pause();
@@ -168,8 +173,8 @@ export function App() {
     if (session.tallies.ordersSigned > 0) mark('order');
   }, [session.tallies.ordersSigned, mark]);
   useEffect(() => {
-    if (tab === 'home') mark('home');
-  }, [tab, mark]);
+    if (selection?.kind === 'country' && selection.id === game.rules.playerCountry) mark('home');
+  }, [selection, game.rules.playerCountry, mark]);
 
   const closeBriefing = () => {
     setBriefingOpen(false);
@@ -182,11 +187,40 @@ export function App() {
     actions.dismissAlert();
   };
 
+  // Aiming an order from the cabinet: the next click on an open country signs it.
+  const aimDef = aiming ? game.defs.decisions[aiming] : undefined;
+  const aimTargets = useMemo(
+    () => (aimDef ? new Set(openTargets(game, aimDef)) : null),
+    [game, aimDef],
+  );
+  const aim = (decision: string) => {
+    setOrdersOpen(false);
+    setSelection(null);
+    setAiming(decision);
+  };
+  const select = (next: Selection) => {
+    if (aiming && aimTargets) {
+      if (next?.kind === 'country' && aimTargets.has(next.id)) {
+        actions.issue(aiming, next.id);
+        setAiming(null);
+      }
+      return;
+    }
+    setSelection(next);
+  };
+
   const briefing = firstCrisisGuide.briefing;
   const focusName = briefing ? (game.world.countries[briefing.focusCountry]?.name ?? '') : '';
   let firstSteps: ReactNode = null;
   if (steps.visible && briefing) {
-    firstSteps = <FirstSteps done={steps.done} focusName={focusName} onHide={steps.hide} />;
+    firstSteps = (
+      <FirstSteps
+        done={steps.done}
+        focusName={focusName}
+        homeName={game.world.countries[game.rules.playerCountry]!.name}
+        onHide={steps.hide}
+      />
+    );
   }
 
   return (
@@ -198,7 +232,8 @@ export function App() {
             map={firstCrisisMap}
             paused={session.clock.paused}
             selection={selection}
-            onSelect={setSelection}
+            onSelect={select}
+            aimTargets={aimTargets}
             alertCountry={alert?.country ?? null}
             ripples={session.ripples}
             lens={lens}
@@ -218,6 +253,23 @@ export function App() {
         />
         <Meters game={game} history={session.history} />
         <LensBar lens={lens} onLens={setLens} />
+        {aimDef && (
+          <div className="aim-banner glass" role="status">
+            <span>
+              Choose a country on the map:{' '}
+              <strong>
+                {fillNames(
+                  aimDef.name.replace('{target}', '…'),
+                  game.world.countries,
+                  game.rules.playerCountry,
+                )}
+              </strong>
+            </span>
+            <button type="button" className="button" onClick={() => setAiming(null)}>
+              Cancel
+            </button>
+          </div>
+        )}
         <div className="dock-left">
           <Unfolding game={game} onOpenOrders={openOrders} />
           <Markets game={game} history={session.history} />
@@ -238,17 +290,22 @@ export function App() {
               onSelect={setSelection}
             />
           ) : (
-            <SidePanel
-              game={game}
+            <Reports
               dispatches={session.dispatches}
-              tab={tab}
-              onTab={setTab}
-              autoPause={session.autoPause}
-              onOpenOrders={openOrders}
               onSelectCountry={selectCountry}
               top={firstSteps}
             />
           )}
+          <button
+            type="button"
+            className="cabinet-button"
+            onClick={openOrders}
+            disabled={game.outcome !== null}
+            title="Every order you can give (D)"
+          >
+            <span className="cabinet-word">Cabinet</span>
+            <span className="cabinet-count">{readyCount(game)} orders to sign</span>
+          </button>
         </div>
         {devMode &&
           (devOpen ? (
@@ -258,7 +315,7 @@ export function App() {
               AI panel
             </button>
           ))}
-        <DecisionsDialog game={game} open={ordersOpen} onClose={() => setOrdersOpen(false)} />
+        <Cabinet game={game} open={ordersOpen} onClose={() => setOrdersOpen(false)} onAim={aim} />
         <HowToPlay
           open={helpOpen}
           onClose={() => setHelpOpen(false)}
@@ -269,6 +326,12 @@ export function App() {
           onRestartSteps={() => {
             steps.restart();
             setHelpOpen(false);
+          }}
+          autoPause={session.autoPause}
+          onAutoPause={actions.setAutoPause}
+          onNewGame={() => {
+            setHelpOpen(false);
+            actions.newGame();
           }}
         />
         {briefing && (
