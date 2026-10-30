@@ -211,16 +211,17 @@ export function App() {
           nudgePlay={session.clock.paused && game.tick === 0 && !steps.done.has('play')}
         />
         <Meters game={game} history={session.history} />
-        {alert && (
-          <CrisisBanner alert={alert} paused={session.clock.paused} onRespond={respondToAlert} />
-        )}
         <div className="dock-left">
           <Unfolding game={game} onOpenOrders={openOrders} />
           <Markets game={game} history={session.history} />
         </div>
         <div className="dock-right">
-          {tip && !game.outcome && !selection && (
-            <AdvisorCard game={game} tip={tip} onShowCountry={selectCountry} />
+          {alert ? (
+            <CrisisBanner alert={alert} paused={session.clock.paused} onRespond={respondToAlert} />
+          ) : (
+            tip &&
+            !game.outcome &&
+            !selection && <AdvisorCard game={game} tip={tip} onShowCountry={selectCountry} />
           )}
           {selection ? (
             <MapDrawer

@@ -763,17 +763,31 @@ button {
 
 /* News feed */
 .feed {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 4px 0 8px;
 }
 
 .dispatch {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--line-soft);
+  gap: 4px;
+  padding: 11px 14px 6px;
+  border-radius: 4px;
+  border-top: 3px solid #cfc9bf;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
+}
+
+.dispatch.critical {
+  border-top-color: var(--urgent);
+}
+
+/* Older reports sink into the pile: the newest three stay bright. */
+.dispatch:nth-child(n + 4) {
+  opacity: 0.86;
 }
 
 .dispatch-meta {
@@ -817,8 +831,8 @@ button {
 .dispatch h3 {
   margin: 0;
   font-family: var(--serif);
-  font-size: 16px;
-  font-weight: 500;
+  font-size: 17px;
+  font-weight: 600;
   line-height: 1.3;
 }
 
@@ -1104,15 +1118,14 @@ kbd {
 .sheet {
   width: min(640px, calc(100vw - 32px));
   max-height: min(86vh, 900px);
-  padding: 28px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: var(--panel);
-  color: var(--ink);
+  padding: 28px 32px;
+  border: 0;
+  border-radius: 6px;
+  box-shadow: 0 24px 60px rgb(0 0 0 / 0.5);
 }
 
 .sheet::backdrop {
-  background: rgb(10 9 8 / 0.7);
+  background: rgb(8 13 18 / 0.72);
 }
 
 .sheet-head {
@@ -1435,11 +1448,11 @@ kbd {
 
 /* First steps */
 .first-steps {
-  margin-top: 14px;
+  margin: 4px 0 8px;
   padding: 12px 14px 10px;
-  border: 1px solid var(--accent-tint);
-  border-radius: 12px;
-  background: var(--ground);
+  border-top: 3px solid #e3a43c;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
 }
 
 .first-steps-head {
@@ -1504,43 +1517,15 @@ kbd {
 }
 
 /* Advisor */
-.advisor {
-  flex: none;
-  max-height: 48%;
-  margin-bottom: 10px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 12px 14px 14px 16px;
-  border: 1px solid var(--glass-line);
-  border-top: 3px solid var(--you);
-  border-radius: 10px;
-  background: var(--glass);
-  backdrop-filter: blur(6px);
-  box-shadow: 0 12px 32px rgb(0 0 0 / 0.35);
-}
-
-.advisor-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: -6px;
-}
-
-.advisor-head .eyebrow {
-  margin: 0;
-  color: var(--accent-strong);
-}
 
 .advisor-text {
   margin: 0;
   font-family: var(--serif);
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1.4;
 }
 
-.advisor .decision-list {
+.memo-advice .decision-list {
   gap: 6px;
 }
 
@@ -2133,4 +2118,104 @@ button.why-chain-step:hover {
 }
 .dev-total td {
   border-top: 1px solid var(--line-soft);
+}
+
+/* ----------------------------------------------------------------- Memos */
+
+/* A briefing memo: paper with a banner, landing on the map. */
+.memo {
+  position: relative;
+  flex: none;
+  max-height: 58%;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 6px;
+  box-shadow: 0 18px 44px rgb(0 0 0 / 0.45);
+  overflow: hidden;
+}
+
+.memo-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 8px 7px 18px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.memo-banner.urgent {
+  background: var(--urgent);
+  color: #fff;
+}
+
+.memo-banner.advice {
+  background: #2b2416;
+  color: #f2b95a;
+}
+
+.memo-banner.advice .memo-when {
+  color: #c9b48d;
+}
+
+.memo-banner.urgent .memo-when {
+  color: #ffd9da;
+}
+
+.memo-banner .icon-button {
+  width: 32px;
+  height: 32px;
+  color: inherit;
+}
+
+.memo-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px 18px;
+  overflow-y: auto;
+}
+
+.memo-headline {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 23px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+.memo-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+.memo-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.memo-actions .button {
+  flex: 1 1 auto;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .memo {
+    animation: memo-land 360ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+}
+
+@keyframes memo-land {
+  from {
+    opacity: 0;
+    transform: translateY(-14px) rotate(-0.6deg);
+  }
 }

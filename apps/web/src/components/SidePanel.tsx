@@ -9,7 +9,7 @@ import { Relations } from './Relations';
 export type Tab = 'news' | 'home' | 'relations';
 
 const TABS: readonly { id: Tab; label: string }[] = [
-  { id: 'news', label: 'News' },
+  { id: 'news', label: 'Reports' },
   { id: 'home', label: 'Home' },
   { id: 'relations', label: 'Relations' },
 ];
@@ -22,7 +22,7 @@ interface Props {
   readonly autoPause: boolean;
   readonly onOpenOrders: () => void;
   readonly onSelectCountry: (id: string) => void;
-  /** Shown above the tabs, such as the first-steps checklist. */
+  /** Shown on top of the reports, such as the first-steps checklist. */
   readonly top?: ReactNode;
 }
 
@@ -54,8 +54,6 @@ export function SidePanel(props: Props) {
         Sign an order
       </button>
 
-      {props.top}
-
       <div className="tabs" role="tablist" aria-label="Briefing sections" onKeyDown={onKeyDown}>
         {TABS.map((t) => (
           <button
@@ -79,7 +77,10 @@ export function SidePanel(props: Props) {
 
       <div className="tab-panel" role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
         {tab === 'news' && (
-          <Dispatches dispatches={props.dispatches} onSelectCountry={props.onSelectCountry} />
+          <>
+            {props.top}
+            <Dispatches dispatches={props.dispatches} onSelectCountry={props.onSelectCountry} />
+          </>
         )}
         {tab === 'home' && <HomeFront game={game} />}
         {tab === 'relations' && <Relations game={game} onSelectCountry={props.onSelectCountry} />}
