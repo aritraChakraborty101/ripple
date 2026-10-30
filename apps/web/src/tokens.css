@@ -1,0 +1,74 @@
+/*
+ * Art direction D, the Briefing Room (interface pass design note, 30 October 2026).
+ * A modern atlas at night with briefing papers landing on it. Every colour means
+ * one thing; swapping the direction means editing this file only.
+ */
+:root {
+  /* The world */
+  --sea: #121c26;
+  --sea-depth-1: #15212c;
+  --sea-depth-2: #192836;
+  --sea-depth-3: #1e3040;
+  --land-d: #2f353b;
+  --coast: #7a838d;
+
+  /* Meaning */
+  --you: #f2b95a; /* Aldoria, and anything that is yours */
+  --you-fill: #3e3522;
+  --you-strong: #ffd58f;
+  --threat: #e5484d; /* hostile, broken or falling */
+  --threat-fill: #43262b;
+  --threat-ink: #ff8a8e;
+  --friend: #8cc3e8; /* warm relations */
+  --route-d: #c9d1da;
+
+  /* Words on the dark map */
+  --ink-d: #e9ecef;
+  --ink-quiet: #aeb6bf;
+  --ink-faint: #8b96a2;
+
+  /* Dark glass: things you glance at */
+  --glass: rgb(18 28 38 / 0.86);
+  --glass-solid: #16212c;
+  --glass-line: #2e3c4a;
+
+  /* Paper: things you read and decide on */
+  --paper: #f5f3ef;
+  --paper-ink: #1c2024;
+  --paper-quiet: #5b636c;
+  --paper-line: #d9d5ce;
+  --urgent: #c8363c;
+
+  --serif: 'Newsreader Variable', Georgia, serif;
+  --sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --mono: 'IBM Plex Sans', system-ui, sans-serif;
+
+  /*
+   * Older names, kept so every component speaks D before it is rebuilt.
+   * New code uses the names above.
+   */
+  --ground: var(--sea);
+  --panel: var(--glass-solid);
+  --panel-raised: #1c2935;
+  --map-sea: var(--sea);
+  --line: var(--glass-line);
+  --line-soft: #263340;
+  --ink: var(--ink-d);
+  --ink-muted: var(--ink-quiet);
+  --ink-soft: #cfd5db;
+  --route: var(--route-d);
+  --land: var(--land-d);
+  --land-alt: var(--land-d);
+  --land-edge: var(--coast);
+  --accent: var(--you);
+  --accent-strong: var(--you-strong);
+  --accent-tint: var(--you-fill);
+  --on-accent: #1c1606;
+  --warning: var(--you);
+  --warning-ink: var(--you);
+  --warning-tint: #33291a;
+  --critical: var(--threat);
+  --critical-tint: var(--threat-fill);
+
+  color-scheme: dark;
+}

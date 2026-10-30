@@ -1,39 +1,9 @@
 /*
- * Dark briefing theme, matching the design canvas.
- * Layout: one screen. Top bar across, map in the middle with a strip under it,
- * a tabbed briefing panel on the right. Nothing scrolls except inside panels.
- * Below 960px wide the panels stack and the page scrolls instead.
+ * Art direction D, the Briefing Room. Colours live in tokens.css.
+ * Layout: the map fills the screen and the interface floats over it, in its
+ * corners. Dark glass for things you glance at; paper for things you read.
+ * Desktop first, from 1280x720.
  */
-:root {
-  --ground: #141311;
-  --panel: #1b1a17;
-  --panel-raised: #211f1c;
-  --map-sea: #1f1e1b;
-  --line: #2e2c27;
-  --line-soft: #2a2824;
-  --ink: #ece8df;
-  --ink-muted: #a39e93;
-  --ink-soft: #cfc9bd;
-  --route: #7e796e;
-  --land: #2b2925;
-  --land-alt: #302e29;
-  --land-edge: #45423b;
-  --accent: #7aa6d6;
-  --accent-strong: #a9c8ea;
-  --accent-tint: #1e2a37;
-  --on-accent: #0f1620;
-  --warning: #d9a04a;
-  --warning-ink: #e6b566;
-  --warning-tint: #2e2416;
-  --critical: #e07a6c;
-  --critical-tint: #33201d;
-
-  --serif: 'Newsreader', Georgia, serif;
-  --sans: 'Geist', system-ui, sans-serif;
-  --mono: 'Geist Mono', ui-monospace, monospace;
-
-  color-scheme: dark;
-}
 
 * {
   box-sizing: border-box;
@@ -51,6 +21,7 @@ body {
   color: var(--ink);
   font-family: var(--sans);
   font-size: 14px;
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -84,284 +55,327 @@ button {
 /* ------------------------------------------------------------------ Frame */
 
 .app {
-  height: 100%;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  overflow: hidden;
-}
-
-.body {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
-  min-height: 0;
-}
-
-.stage {
-  display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  gap: 12px;
-  min-height: 0;
-  min-width: 0;
-  padding: 16px 20px;
-}
-
-.map-area {
   position: relative;
-  min-height: 0;
+  height: 100%;
+  min-height: 640px;
+  overflow: hidden;
+  background: var(--sea);
 }
 
-/* ---------------------------------------------------------------- Top bar */
-
-.topbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px 28px;
-  padding: 12px 20px;
-  border-bottom: 1px solid var(--line);
+/* The world, behind everything. The map keeps clear of the docks. */
+.world {
+  position: absolute;
+  inset: 0;
 }
 
-.identity {
+.glass {
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  border-radius: 10px;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.28);
+}
+
+.dock-left {
+  position: absolute;
+  left: 24px;
+  bottom: 20px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: calc(100% - 460px);
+  z-index: 3;
+  pointer-events: none;
 }
 
-.identity h1 {
+.dock-left > * {
+  pointer-events: auto;
+}
+
+.dock-right {
+  position: absolute;
+  top: 116px;
+  right: 24px;
+  bottom: 20px;
+  width: 380px;
+  display: flex;
+  flex-direction: column;
+  z-index: 3;
+}
+
+/* ------------------------------------------------------------- Nameplate */
+
+.nameplate {
+  position: absolute;
+  top: 20px;
+  left: 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 10px 10px 10px 16px;
+  z-index: 4;
+}
+
+.nameplate-id {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.you-mark {
+  width: 12px;
+  height: 12px;
+  margin-top: 8px;
+  border-radius: 2px;
+  background: var(--you);
+}
+
+.nameplate h1 {
   margin: 0;
   font-family: var(--serif);
-  font-size: 22px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
+  font-size: 26px;
+  font-weight: 600;
   line-height: 1.1;
+  letter-spacing: -0.01em;
 }
 
-.stats {
+.nameplate-sub {
   display: flex;
-  align-items: center;
-  gap: 22px;
+  gap: 6px;
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--ink-quiet);
 }
 
-.stat {
+.nameplate-sub .sep {
+  color: var(--ink-faint);
+}
+
+.clock-pill {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--glass-line);
+  border-radius: 999px;
+  background: rgb(10 16 22 / 0.5);
+}
+
+.clock-pill button {
+  min-width: 40px;
+  height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-quiet);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.clock-pill button:hover {
+  color: var(--ink-d);
+  background: rgb(255 255 255 / 0.06);
+}
+
+.clock-pill button[aria-pressed='true'] {
+  background: var(--you);
+  color: var(--on-accent);
+}
+
+.clock-pill .help-button {
+  margin-left: 4px;
+  border: 1px solid var(--glass-line);
+  font-family: var(--serif);
+  font-size: 16px;
+}
+
+/* ---------------------------------------------------------------- Meters */
+
+.meters {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  display: flex;
+  z-index: 4;
+}
+
+.meters .has-hint + .has-hint {
+  border-left: 1px solid var(--glass-line);
+}
+
+.meter-card {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-}
-
-.stat-label {
-  color: var(--ink-muted);
-  font-size: 12px;
-}
-
-.stat-value {
-  font-family: var(--mono);
-  font-size: 15px;
-  font-variant-numeric: tabular-nums;
-}
-
-.stat-button {
-  display: grid;
-  grid-template-columns: auto auto;
-  align-items: baseline;
-  column-gap: 10px;
-  row-gap: 4px;
-  min-height: 44px;
-  padding: 4px 10px;
-  margin: -4px -10px;
+  gap: 6px;
+  width: 168px;
+  padding: 10px 16px 11px;
   border: 0;
-  border-radius: 8px;
   background: transparent;
   text-align: left;
   cursor: pointer;
+  border-radius: 10px;
 }
 
-.stat-button:hover {
-  background: var(--line-soft);
+.meter-card:hover {
+  background: rgb(255 255 255 / 0.04);
 }
 
-/* The month's budget result under the treasury, with its recent trend. */
-.stat-sub {
-  font-family: var(--mono);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-.treasury .sparkline {
-  width: 48px;
-  height: 16px;
-  align-self: center;
+.meter-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
 }
 
-.gauge-mini .meter {
-  grid-column: 1 / -1;
-  width: 120px;
+.meter-name {
+  font-size: 13px;
+  color: var(--ink-quiet);
 }
 
-.gauge-mini.warning .stat-value {
-  color: var(--warning-ink);
-}
-.gauge-mini.critical .stat-value {
-  color: var(--critical);
-}
-
-.countdown {
-  grid-column: 1 / -1;
-  font-size: 11px;
-  color: var(--critical);
-  font-family: var(--mono);
+.meter-number {
+  font-family: var(--serif);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1;
 }
 
-.meter {
+.meter-card.warning .meter-number {
+  color: var(--you);
+}
+
+.meter-card.critical .meter-number {
+  color: var(--threat-ink);
+}
+
+.meter-bar {
   position: relative;
-  display: block;
-  height: 5px;
-  border-radius: 3px;
-  background: var(--line);
+  height: 4px;
+  border-radius: 2px;
+  background: #2a3846;
 }
 
-.meter > span:first-child {
-  display: block;
-  height: 100%;
-  border-radius: 3px;
-  background: var(--accent);
+.meter-bar > span:first-child {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 2px;
+  background: var(--ink-quiet);
 }
 
-.warning .meter > span:first-child {
-  background: var(--warning);
-}
-.critical .meter > span:first-child {
-  background: var(--critical);
+.meter-card.warning .meter-bar > span:first-child {
+  background: var(--you);
 }
 
-.meter-mark {
+.meter-card.critical .meter-bar > span:first-child {
+  background: var(--threat);
+}
+
+.meter-line {
   position: absolute;
   top: -3px;
-  width: 1.5px;
-  height: 11px;
-  background: var(--ink-soft);
+  width: 2px;
+  height: 10px;
+  background: var(--ink-d);
 }
 
-.tickers {
+.meter-card .sparkline {
+  width: 100%;
+  height: 14px;
+}
+
+.meter-note {
+  font-size: 12px;
+  color: var(--ink-quiet);
+}
+
+/* --------------------------------------------------------------- Markets */
+
+.markets {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.ticker {
-  display: grid;
-  grid-template-columns: auto auto;
-  grid-template-rows: auto auto;
-  column-gap: 10px;
-  align-items: center;
-  padding: 6px 10px;
-  border-radius: 10px;
-  border: 1px solid var(--line);
-  background: var(--panel);
+.markets > li + li {
+  border-left: 1px solid var(--glass-line);
 }
 
-.ticker.warning {
-  border-color: #4a3a20;
-  background: var(--warning-tint);
-}
-.ticker.critical {
-  border-color: #4d2b26;
-  background: var(--critical-tint);
-}
-
-.ticker-name {
-  font-size: 11px;
-  color: var(--ink-muted);
-}
-
-.ticker-price {
-  grid-row: 2;
-  font-family: var(--mono);
-  font-size: 14px;
-  font-variant-numeric: tabular-nums;
-}
-
-.ticker-change {
-  grid-column: 2;
-  grid-row: 1;
-  justify-self: end;
-  font-family: var(--mono);
-  font-size: 11px;
-}
-
-.ticker .sparkline {
-  grid-column: 2;
-  grid-row: 2;
-  width: 64px;
-  height: 20px;
-}
-
-.clock {
+.market {
   display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-left: auto;
-}
-
-.date {
-  font-family: var(--serif);
-  font-size: 17px;
-  white-space: nowrap;
-}
-
-.speed-group {
-  display: flex;
-  gap: 2px;
-  padding: 3px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--panel);
-}
-
-.speed-group button {
-  min-width: 44px;
-  height: 38px;
+  flex-direction: column;
+  gap: 3px;
+  padding: 9px 14px;
   border: 0;
-  border-radius: 7px;
   background: transparent;
-  color: var(--ink-muted);
-  font-family: var(--mono);
-  font-size: 13px;
+  text-align: left;
   cursor: pointer;
+  border-radius: 10px;
+}
+
+.market:hover {
+  background: rgb(255 255 255 / 0.04);
+}
+
+.market-name {
+  font-size: 12px;
+  color: var(--ink-quiet);
+}
+
+.market-price {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 16px;
+  font-weight: 600;
 }
 
-.speed-group button:hover {
-  color: var(--ink);
+.market-change {
+  font-size: 12px;
+  font-weight: 500;
 }
 
-.speed-group button[aria-pressed='true'] {
-  background: var(--accent-tint);
-  color: var(--accent-strong);
+.market.critical .market-change {
+  color: var(--threat-ink);
 }
 
-.speed-group .pause[aria-pressed='true'] {
-  background: var(--warning-tint);
-  color: var(--warning-ink);
+.market .sparkline {
+  width: 88px;
+  height: 14px;
 }
 
 /* -------------------------------------------------------------------- Map */
 
 .map {
   position: absolute;
-  inset: 0;
-  border-radius: 14px;
-  background: var(--map-sea);
-  overflow: hidden;
+  inset: 108px 420px 104px 40px;
 }
 
-.map svg {
+.map > svg {
   display: block;
   width: 100%;
   height: 100%;
+  overflow: visible;
+}
+
+.country-label,
+.relation-number {
+  paint-order: stroke;
+  stroke-width: 5px;
+  stroke-linejoin: round;
+}
+
+.country-label {
+  font-family: var(--serif);
+  font-weight: 600;
+  letter-spacing: 0.18em;
+}
+
+.relation-number {
+  font-family: var(--sans);
+  font-weight: 600;
 }
 
 .country-hit,
@@ -388,16 +402,13 @@ button {
 
 .legend {
   position: absolute;
-  left: 14px;
-  bottom: 14px;
+  right: 0;
+  bottom: -8px;
   display: flex;
   flex-wrap: wrap;
-  gap: 14px;
-  padding: 7px 12px;
-  border-radius: 8px;
-  background: var(--panel);
+  gap: 16px;
   font-size: 12px;
-  color: var(--ink-muted);
+  color: var(--ink-faint);
   pointer-events: none;
 }
 
@@ -407,43 +418,44 @@ button {
   gap: 6px;
 }
 
-.legend-badge {
-  padding: 0 6px;
-  border: 1px solid var(--land-edge);
-  border-radius: 9px;
-  font-family: var(--mono);
-  font-size: 10px;
-  line-height: 16px;
+.legend-number {
+  font-weight: 600;
+  color: var(--friend);
 }
 
 .paused-badge {
   position: absolute;
-  top: 14px;
-  left: 14px;
-  padding: 6px 12px;
-  border-radius: 8px;
+  top: -84px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 14px;
+  border: 1px solid #5b4a2a;
+  border-radius: 999px;
   background: var(--warning-tint);
-  color: var(--warning-ink);
+  color: var(--you);
   font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   pointer-events: none;
 }
 
 /* Crisis banner over the map */
 .crisis {
   position: absolute;
-  top: 14px;
-  left: 50%;
+  top: 116px;
+  left: calc(50% - 200px);
   transform: translateX(-50%);
-  width: min(560px, calc(100% - 28px));
+  width: min(560px, calc(100% - 520px));
   display: flex;
   align-items: center;
   gap: 14px;
   padding: 14px 14px 14px 18px;
-  border: 1px solid #5a3029;
-  border-radius: 12px;
+  border: 1px solid #6b2d33;
+  border-radius: 10px;
   background: var(--critical-tint);
   box-shadow: 0 12px 32px rgb(0 0 0 / 0.35);
-  z-index: 3;
+  z-index: 5;
 }
 
 .crisis-text {
@@ -479,18 +491,15 @@ button {
 
 /* Drawer: details for the selected country or strait */
 .drawer {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: min(360px, 100%);
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  border-left: 1px solid var(--line);
-  border-radius: 0 14px 14px 0;
-  background: var(--panel);
-  box-shadow: -16px 0 32px rgb(0 0 0 / 0.3);
-  z-index: 2;
+  border: 1px solid var(--glass-line);
+  border-radius: 10px;
+  background: var(--glass);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.28);
 }
 
 .drawer-head {
@@ -577,8 +586,14 @@ button {
   display: flex;
   align-items: center;
   gap: 14px;
-  min-height: 52px;
+  min-height: 44px;
   min-width: 0;
+  max-width: 100%;
+  padding: 6px 14px;
+  border: 1px solid var(--glass-line);
+  border-radius: 10px;
+  background: var(--glass);
+  backdrop-filter: blur(6px);
 }
 
 .strip-label {
@@ -653,12 +668,16 @@ button {
 /* ------------------------------------------------------------ Side panel */
 
 .side {
+  flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 16px 20px 12px;
-  border-left: 1px solid var(--line);
-  background: var(--panel);
+  padding: 16px 18px 12px;
+  border: 1px solid var(--glass-line);
+  border-radius: 10px;
+  background: var(--glass);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.28);
 }
 
 .tabs {
@@ -1303,32 +1322,6 @@ kbd {
 
 /* --------------------------------------------------- Narrow screens */
 
-@media (max-width: 960px) {
-  .app {
-    height: auto;
-    min-height: 100%;
-    overflow: visible;
-  }
-
-  .body {
-    grid-template-columns: 1fr;
-  }
-
-  .map-area {
-    height: min(70vh, 560px);
-  }
-
-  .side {
-    border-left: 0;
-    border-top: 1px solid var(--line);
-    max-height: 80vh;
-  }
-
-  .clock {
-    margin-left: 0;
-  }
-}
-
 @media (max-width: 560px) {
   .topbar,
   .stage {
@@ -1512,21 +1505,19 @@ kbd {
 
 /* Advisor */
 .advisor {
-  position: absolute;
-  left: 14px;
-  bottom: 14px;
-  z-index: 1;
-  width: min(380px, calc(100% - 28px));
-  max-height: calc(100% - 28px);
+  flex: none;
+  max-height: 48%;
+  margin-bottom: 10px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 12px 14px 14px 16px;
-  border: 1px solid var(--accent-tint);
-  border-left: 3px solid var(--accent);
-  border-radius: 12px;
-  background: var(--panel);
+  border: 1px solid var(--glass-line);
+  border-top: 3px solid var(--you);
+  border-radius: 10px;
+  background: var(--glass);
+  backdrop-filter: blur(6px);
   box-shadow: 0 12px 32px rgb(0 0 0 / 0.35);
 }
 
@@ -1977,7 +1968,7 @@ button.why-chain-step:hover {
 }
 
 .dev-toggle {
-  top: 12px;
+  top: 76px;
   left: 50%;
   transform: translateX(-50%);
   padding: 6px 12px;

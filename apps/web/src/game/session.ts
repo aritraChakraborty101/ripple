@@ -20,7 +20,7 @@ import {
 } from '@ripple/engine';
 import type { AdvisorTip } from '@ripple/content';
 import { afterSigning, dismissTip, newAdvisor, updateAdvisor, type AdvisorState } from './advisor';
-import { advanceClock, initialClock, type ClockState, type Speed } from './clock';
+import { advanceClock, initialClock, stepSpeed, type ClockState, type Speed } from './clock';
 import { brewing, brewingKey, REWARN_DAYS, type Brewing } from './intel';
 import { dispatchesFor, initialNews, isAlert, type Dispatch, type NewsState } from './news';
 
@@ -236,6 +236,13 @@ export function setPaused(session: Session, paused: boolean): Session {
 export function setSpeed(session: Session, speed: Speed): Session {
   if (session.game.outcome) return session;
   return { ...session, clock: { ...session.clock, speed, paused: false } };
+}
+
+/** Changes speed without starting or stopping the clock. */
+export function nudgeSpeed(session: Session, direction: 1 | -1): Session {
+  const speed = stepSpeed(session.clock.speed, direction);
+  if (speed === session.clock.speed) return session;
+  return { ...session, clock: { ...session.clock, speed } };
 }
 
 export function dismissAlert(session: Session): Session {
