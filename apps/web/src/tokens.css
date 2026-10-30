@@ -20,6 +20,9 @@
   --threat-fill: #43262b;
   --threat-ink: #ff8a8e;
   --friend: #8cc3e8; /* warm relations */
+  --shaky: #b5653f; /* uneasy: not yet hostile or falling */
+  --shaky-fill: #3a2a22;
+  --shaky-ink: #e39a72;
   --route-d: #c9d1da;
 
   /* Words on the dark map */
