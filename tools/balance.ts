@@ -113,6 +113,8 @@ interface GameSummary {
   readonly firstCrisis: string | null;
   /** Computer countries' choices, as "country:decision". */
   readonly choices: readonly string[];
+  /** Harmful moves that went through (warning or critical news), by country. */
+  readonly harm: Readonly<Record<string, number>>;
 }
 
 function play(scenarioName: string, seed: number, player: Player, aiProfile?: string): GameSummary {
@@ -125,6 +127,7 @@ function play(scenarioName: string, seed: number, player: Player, aiProfile?: st
   let decisions = 0;
   const orders: Record<string, number> = {};
   let firstCrisis: string | null = null;
+  const harm: Record<string, number> = {};
   while (!state.outcome) {
     const signed: Order[] = player(state).map((w) => ({ kind: 'decide', ...w, by: me }));
     const before = state;
@@ -157,6 +160,12 @@ function play(scenarioName: string, seed: number, player: Player, aiProfile?: st
           firstCrisis = event.decision;
         }
       }
+      if (event.kind === 'decision_resolved' && event.success && event.by !== me) {
+        const severity = state.defs.decisions[event.decision]?.severity;
+        if (severity === 'warning' || severity === 'critical') {
+          harm[event.by] = (harm[event.by] ?? 0) + 1;
+        }
+      }
       if (event.kind === 'decision_issued' && event.by === me) {
         decisions += 1;
         orders[event.decision] = (orders[event.decision] ?? 0) + 1;
@@ -175,6 +184,7 @@ function play(scenarioName: string, seed: number, player: Player, aiProfile?: st
     orders,
     firstCrisis,
     choices: state.trace.choices.map((c) => `${c.country}:${c.decision}`),
+    harm,
   };
 }
 
@@ -246,6 +256,24 @@ function report(label: string, games: GameSummary[]): void {
     const top = [...mine.entries()].sort((a, b) => b[1] - a[1]);
     const share = (n: number) => `${Math.round((n * 100) / all)}%`;
     console.log(`  your orders by share:  ${top.map(([d, n]) => `${d} ${share(n)}`).join(', ')}`);
+  }
+
+  // Who makes the trouble: no one country should be the whole game.
+  const harm = new Map<string, number>();
+  for (const g of games) {
+    for (const [c, n] of Object.entries(g.harm)) harm.set(c, (harm.get(c) ?? 0) + n);
+  }
+  const harmful = [...harm.values()].reduce((a, b) => a + b, 0);
+  if (harmful > 0) {
+    const share = (n: number) => `${Math.round((n * 100) / harmful)}%`;
+    console.log(
+      `  harmful moves by country: ${[...harm.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .map(([c, n]) => `${c} ${share(n)}`)
+        .join(
+          ', ',
+        )} (${avg(games.map((g) => Object.values(g.harm).reduce((a, b) => a + b, 0)))} a game)`,
+    );
   }
 
   // What the computer countries chose, per game on average.
