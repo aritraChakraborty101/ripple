@@ -24,13 +24,28 @@ function freshSeed(): number {
   return Math.floor(Math.random() * 2 ** 31);
 }
 
-/** Options read from the address: `?dev` opens the AI dev panel, `?ai=aggressive` picks a profile. */
-function readParams(): { dev: boolean; profile: string | null } {
-  if (typeof window === 'undefined') return { dev: false, profile: null };
+/** The seed from the address for the first game, then fresh ones. */
+function takeSeed(): number {
+  const seed = firstSeed ?? freshSeed();
+  firstSeed = null;
+  return seed;
+}
+
+/**
+ * Options read from the address: `?dev` opens the AI dev panel, `?ai=aggressive`
+ * picks a profile, `?seed=5` replays one world (the first game only).
+ */
+function readParams(): { dev: boolean; profile: string | null; seed: number | null } {
+  if (typeof window === 'undefined') return { dev: false, profile: null, seed: null };
   const params = new URLSearchParams(window.location.search);
   const profile = params.get('ai');
   const known = profile !== null && firstCrisis.ai?.profiles[profile] !== undefined;
-  return { dev: params.has('dev'), profile: known ? profile : null };
+  const seed = Number(params.get('seed'));
+  return {
+    dev: params.has('dev'),
+    profile: known ? profile : null,
+    seed: params.has('seed') && Number.isInteger(seed) && seed >= 0 ? seed : null,
+  };
 }
 
 const params = readParams();
@@ -40,6 +55,7 @@ export const devMode = params.dev;
 /** The tuning profiles the scenario offers. */
 export const aiProfiles: readonly string[] = Object.keys(firstCrisis.ai?.profiles ?? {}).sort();
 let profile: string | null = params.profile;
+let firstSeed: number | null = params.seed;
 /** The profile the current game uses: the one chosen, or the scenario's default. */
 export function currentProfile(): string {
   return profile ?? firstCrisis.ai?.defaultProfile ?? 'standard';
@@ -48,7 +64,7 @@ export function currentProfile(): string {
 const start = (autoPause = true) =>
   newSession(
     firstCrisis,
-    freshSeed(),
+    takeSeed(),
     autoPause,
     firstCrisisGuide.tips,
     profile ? { aiProfile: profile } : {},

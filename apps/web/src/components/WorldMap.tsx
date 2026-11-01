@@ -11,7 +11,9 @@ import type { KeyboardEvent } from 'react';
 import { relationLabel, relationTone, type Tone } from '../game/describe';
 import type { Selection } from '../game/selection';
 import type { ScenarioMap } from '@ripple/content';
+import type { Ripple } from '../game/ripples';
 import { curve, outlinePoints, throughPath, type Point } from '../map/layout';
+import { RippleLayer } from './RippleLayer';
 
 interface Props {
   readonly game: GameState;
@@ -25,6 +27,8 @@ interface Props {
   readonly showLegend: boolean;
   /** A country to draw the eye to, such as the next first step. */
   readonly highlightCountry: string | null;
+  /** Where something just happened, to spread rings from. */
+  readonly ripples: readonly Ripple[];
 }
 
 /** Coastal halos, outermost first: the sea gets shallower toward land. */
@@ -89,6 +93,7 @@ export function WorldMap({
   alertCountry,
   showLegend,
   highlightCountry,
+  ripples,
 }: Props) {
   const player = game.rules.playerCountry;
   const relationOf = (id: string) =>
@@ -273,6 +278,13 @@ export function WorldMap({
             </g>
           );
         })}
+
+        <RippleLayer
+          key={game.seed}
+          ripples={ripples}
+          map={map}
+          routes={routes.flatMap((r) => (r.d ? [{ key: r.key, d: r.d, via: r.link.via }] : []))}
+        />
 
         {/* Labels and relation badges sit on top but let clicks through to the land. */}
         <g pointerEvents="none">
