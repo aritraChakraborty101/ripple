@@ -84,7 +84,7 @@ button {
   flex-direction: column;
   align-items: flex-start;
   gap: 10px;
-  max-width: calc(100% - 460px);
+  width: 410px;
   z-index: 3;
   pointer-events: none;
 }
@@ -307,7 +307,7 @@ button {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  padding: 9px 14px;
+  padding: 9px 12px;
   border: 0;
   background: transparent;
   text-align: left;
@@ -342,7 +342,7 @@ button {
 }
 
 .market .sparkline {
-  width: 88px;
+  width: 76px;
   height: 14px;
 }
 
@@ -1421,29 +1421,25 @@ kbd {
 }
 
 /* Play button nudge before the first game starts */
-.speed-group .pause.nudge {
+.clock-pill .pause.nudge {
   background: var(--accent);
   color: var(--on-accent);
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .speed-group .pause.nudge {
+  .clock-pill .pause.nudge {
     animation: nudge 1.6s ease-in-out infinite;
   }
 
   @keyframes nudge {
     0%,
     100% {
-      box-shadow: 0 0 0 0 rgb(122 166 214 / 0.55);
+      box-shadow: 0 0 0 0 rgb(242 185 90 / 0.55);
     }
     50% {
-      box-shadow: 0 0 0 6px rgb(122 166 214 / 0);
+      box-shadow: 0 0 0 6px rgb(242 185 90 / 0);
     }
   }
-}
-
-.help-button {
-  margin-left: -6px;
 }
 
 /* First steps */
@@ -2302,4 +2298,58 @@ button.why-chain-step:hover {
     animation-delay: 650ms;
     animation-fill-mode: both;
   }
+}
+
+/* ---------------------------------------------------------------- Lenses */
+
+.lens-bar {
+  position: absolute;
+  /* Centred in the gap between the left dock (434px) and the right column. */
+  left: calc(434px + (100% - 434px - 404px) / 2);
+  bottom: 20px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  z-index: 4;
+}
+
+.lens-pills {
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 999px;
+}
+
+.lens-pills button {
+  height: 36px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-quiet);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.lens-pills button:hover {
+  color: var(--ink-d);
+  background: rgb(255 255 255 / 0.06);
+}
+
+.lens-pills button[aria-checked='true'] {
+  background: var(--ink-d);
+  color: var(--sea);
+}
+
+.lens-question {
+  order: -1;
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 15px;
+  font-style: italic;
+  color: var(--ink-quiet);
+  text-shadow: 0 1px 6px var(--sea);
 }

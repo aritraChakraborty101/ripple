@@ -118,9 +118,15 @@ export function HowToPlay({ open, onClose, onShowBriefing, onRestartSteps }: Pro
             </div>
             <div>
               <dt>
-                <kbd>1</kbd>–<kbd>4</kbd>
+                <kbd>+</kbd> <kbd>−</kbd>
               </dt>
-              <dd>Game speed</dd>
+              <dd>Faster or slower</dd>
+            </div>
+            <div>
+              <dt>
+                <kbd>1</kbd>–<kbd>5</kbd>
+              </dt>
+              <dd>Map lens: relations, trade, prices, unrest, intelligence</dd>
             </div>
             <div>
               <dt>

@@ -7,6 +7,7 @@ import { DecisionsDialog } from './components/DecisionsDialog';
 import { FirstSteps, STEP_IDS, type StepId } from './components/FirstSteps';
 import { GameOver } from './components/GameOver';
 import { HowToPlay } from './components/HowToPlay';
+import { LensBar } from './components/LensBar';
 import { MapDrawer } from './components/MapDrawer';
 import { Markets } from './components/Markets';
 import { Meters } from './components/Meters';
@@ -16,7 +17,7 @@ import { Unfolding } from './components/Unfolding';
 import { WhyContext } from './components/WhyContext';
 import { WhyDialog } from './components/WhyDialog';
 import { WorldMap } from './components/WorldMap';
-import { SPEEDS } from './game/clock';
+import { LENSES, type Lens } from './game/lenses';
 import { readPref, writePref } from './game/prefs';
 import { firstCrisisGuide, firstCrisisMap } from './game/scenario';
 import type { Selection } from './game/selection';
@@ -24,6 +25,7 @@ import { actions, devMode, startLoop, useSession } from './game/store';
 import type { WhyTarget } from './game/why';
 
 interface Shortcuts {
+  readonly setLens: (lens: Lens) => void;
   readonly openOrders: () => void;
   readonly openHelp: () => void;
   readonly clearSelection: () => void;
@@ -31,6 +33,7 @@ interface Shortcuts {
 }
 
 function useKeyboardShortcuts({
+  setLens,
   openOrders,
   openHelp,
   clearSelection,
@@ -71,12 +74,12 @@ function useKeyboardShortcuts({
         toggleDev();
         return;
       }
-      const speed = SPEEDS[Number(event.key) - 1];
-      if (speed !== undefined) actions.setSpeed(speed);
+      const lens = LENSES[Number(event.key) - 1];
+      if (lens !== undefined && event.key !== '0') setLens(lens.id);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [openOrders, openHelp, clearSelection, toggleDev]);
+  }, [setLens, openOrders, openHelp, clearSelection, toggleDev]);
 }
 
 /** Tracks the first-steps checklist and remembers it across visits. */
@@ -125,6 +128,7 @@ export function App() {
     () => firstCrisisGuide.briefing !== null && !readPref('briefing.seen', false),
   );
   const [tab, setTab] = useState<Tab>('news');
+  const [lens, setLens] = useState<Lens>('relations');
   const [selection, setSelection] = useState<Selection>(null);
   const [whyTarget, setWhyTarget] = useState<WhyTarget | null>(null);
   const [devOpen, setDevOpen] = useState(devMode);
@@ -140,7 +144,7 @@ export function App() {
     setWhyTarget(target);
   }, []);
   const toggleDev = useCallback(() => setDevOpen((open) => !open), []);
-  useKeyboardShortcuts({ openOrders, openHelp, clearSelection, toggleDev });
+  useKeyboardShortcuts({ setLens, openOrders, openHelp, clearSelection, toggleDev });
 
   const { game, alert } = session;
   const tip = session.advisor.current;
@@ -197,6 +201,7 @@ export function App() {
             onSelect={setSelection}
             alertCountry={alert?.country ?? null}
             ripples={session.ripples}
+            lens={lens}
             showLegend={!tip}
             highlightCountry={
               briefing && steps.visible && !steps.done.has('country') && steps.done.has('play')
@@ -212,6 +217,7 @@ export function App() {
           nudgePlay={session.clock.paused && game.tick === 0 && !steps.done.has('play')}
         />
         <Meters game={game} history={session.history} />
+        <LensBar lens={lens} onLens={setLens} />
         <div className="dock-left">
           <Unfolding game={game} onOpenOrders={openOrders} />
           <Markets game={game} history={session.history} />
