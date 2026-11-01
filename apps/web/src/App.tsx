@@ -6,9 +6,11 @@ import { CrisisBanner } from './components/CrisisBanner';
 import { DecisionsDialog } from './components/DecisionsDialog';
 import { FirstSteps, STEP_IDS, type StepId } from './components/FirstSteps';
 import { GameOver } from './components/GameOver';
-import { Header } from './components/Header';
 import { HowToPlay } from './components/HowToPlay';
 import { MapDrawer } from './components/MapDrawer';
+import { Markets } from './components/Markets';
+import { Meters } from './components/Meters';
+import { Nameplate } from './components/Nameplate';
 import { SidePanel, type Tab } from './components/SidePanel';
 import { Unfolding } from './components/Unfolding';
 import { WhyContext } from './components/WhyContext';
@@ -55,6 +57,14 @@ function useKeyboardShortcuts({
       }
       if (event.key === '?') {
         openHelp();
+        return;
+      }
+      if (event.key === '+' || event.key === '=') {
+        actions.faster();
+        return;
+      }
+      if (event.key === '-' || event.key === '_') {
+        actions.slower();
         return;
       }
       if (event.key === '`' && devMode) {
@@ -178,70 +188,68 @@ export function App() {
   return (
     <WhyContext.Provider value={openWhy}>
       <div className="app">
-        <Header
+        <main className="world">
+          <WorldMap
+            game={game}
+            map={firstCrisisMap}
+            paused={session.clock.paused}
+            selection={selection}
+            onSelect={setSelection}
+            alertCountry={alert?.country ?? null}
+            showLegend={!tip}
+            highlightCountry={
+              briefing && steps.visible && !steps.done.has('country') && steps.done.has('play')
+                ? briefing.focusCountry
+                : null
+            }
+          />
+        </main>
+        <Nameplate
           game={game}
           clock={session.clock}
-          history={session.history}
           onOpenHelp={openHelp}
           nudgePlay={session.clock.paused && game.tick === 0 && !steps.done.has('play')}
         />
-        <div className="body">
-          <main className="stage">
-            <div className="map-area">
-              <WorldMap
-                game={game}
-                map={firstCrisisMap}
-                paused={session.clock.paused}
-                selection={selection}
-                onSelect={setSelection}
-                alertCountry={alert?.country ?? null}
-                showLegend={!tip}
-                highlightCountry={
-                  briefing && steps.visible && !steps.done.has('country') && steps.done.has('play')
-                    ? briefing.focusCountry
-                    : null
-                }
-              />
-              {alert && (
-                <CrisisBanner
-                  alert={alert}
-                  paused={session.clock.paused}
-                  onRespond={respondToAlert}
-                />
-              )}
-              {tip && !game.outcome && (
-                <AdvisorCard game={game} tip={tip} onShowCountry={selectCountry} />
-              )}
-              {devMode &&
-                (devOpen ? (
-                  <DevPanel game={game} onClose={() => setDevOpen(false)} />
-                ) : (
-                  <button type="button" className="dev-toggle" onClick={() => setDevOpen(true)}>
-                    AI panel
-                  </button>
-                ))}
-              {selection && (
-                <MapDrawer
-                  game={game}
-                  selection={selection}
-                  dispatches={session.dispatches}
-                  onSelect={setSelection}
-                />
-              )}
-            </div>
-            <Unfolding game={game} onOpenOrders={openOrders} />
-          </main>
-          <SidePanel
-            game={game}
-            dispatches={session.dispatches}
-            tab={tab}
-            onTab={setTab}
-            autoPause={session.autoPause}
-            onOpenOrders={openOrders}
-            onSelectCountry={selectCountry}
-            top={firstSteps}
-          />
+        <Meters game={game} history={session.history} />
+        {alert && (
+          <CrisisBanner alert={alert} paused={session.clock.paused} onRespond={respondToAlert} />
+        )}
+        <div className="dock-left">
+          <Unfolding game={game} onOpenOrders={openOrders} />
+          <Markets game={game} history={session.history} />
         </div>
+        <div className="dock-right">
+          {tip && !game.outcome && !selection && (
+            <AdvisorCard game={game} tip={tip} onShowCountry={selectCountry} />
+          )}
+          {selection ? (
+            <MapDrawer
+              game={game}
+              selection={selection}
+              dispatches={session.dispatches}
+              onSelect={setSelection}
+            />
+          ) : (
+            <SidePanel
+              game={game}
+              dispatches={session.dispatches}
+              tab={tab}
+              onTab={setTab}
+              autoPause={session.autoPause}
+              onOpenOrders={openOrders}
+              onSelectCountry={selectCountry}
+              top={firstSteps}
+            />
+          )}
+        </div>
+        {devMode &&
+          (devOpen ? (
+            <DevPanel game={game} onClose={() => setDevOpen(false)} />
+          ) : (
+            <button type="button" className="dev-toggle" onClick={() => setDevOpen(true)}>
+              AI panel
+            </button>
+          ))}
         <DecisionsDialog game={game} open={ordersOpen} onClose={() => setOrdersOpen(false)} />
         <HowToPlay
           open={helpOpen}

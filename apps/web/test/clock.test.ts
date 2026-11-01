@@ -4,6 +4,7 @@ import {
   MS_PER_DAY_AT_1X,
   advanceClock,
   initialClock,
+  stepSpeed,
   type ClockState,
 } from '../src/game/clock';
 
@@ -40,5 +41,15 @@ describe('clock', () => {
     const { ticks } = advanceClock({ ...running, speed: 5 }, 60_000);
     expect(ticks).toBeLessThanOrEqual(MAX_TICKS_PER_FRAME);
     expect(ticks).toBe(2); // capped at 1 s of real time
+  });
+});
+
+describe('stepSpeed', () => {
+  it('moves one speed at a time and stops at either end', () => {
+    expect(stepSpeed(1, 1)).toBe(2);
+    expect(stepSpeed(3, 1)).toBe(5);
+    expect(stepSpeed(5, 1)).toBe(5);
+    expect(stepSpeed(2, -1)).toBe(1);
+    expect(stepSpeed(1, -1)).toBe(1);
   });
 });

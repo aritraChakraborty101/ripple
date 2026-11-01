@@ -7,6 +7,7 @@ import {
   dismissAdvice,
   dismissAlert,
   issueDecision,
+  nudgeSpeed,
   newSession,
   retuneSession,
   setAutoPause,
@@ -70,6 +71,8 @@ export const actions = {
     update(resuming ? dismissAlert(next) : next);
   },
   setSpeed: (speed: Speed) => update(dismissAlert(setSpeed(session, speed))),
+  faster: () => update(nudgeSpeed(session, 1)),
+  slower: () => update(nudgeSpeed(session, -1)),
   pause: () => update(setPaused(session, true)),
   issue: (decision: string, target?: string) => update(issueDecision(session, decision, target)),
   dismissAlert: () => update(dismissAlert(session)),

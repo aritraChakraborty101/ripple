@@ -21,6 +21,12 @@ export interface ClockState {
   readonly carryMs: number;
 }
 
+/** The next speed up (+1) or down (−1), stopping at either end. */
+export function stepSpeed(speed: Speed, direction: 1 | -1): Speed {
+  const index = SPEEDS.indexOf(speed) + direction;
+  return SPEEDS[Math.max(0, Math.min(SPEEDS.length - 1, index))]!;
+}
+
 export const initialClock: ClockState = { paused: true, speed: 1, carryMs: 0 };
 
 export function msPerDay(speed: Speed): number {

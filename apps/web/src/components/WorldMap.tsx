@@ -27,11 +27,19 @@ interface Props {
   readonly highlightCountry: string | null;
 }
 
-const TONE_COLOR: Record<Tone, string> = {
-  calm: 'var(--land-edge)',
-  warning: 'var(--warning)',
-  critical: 'var(--critical)',
-};
+/** Coastal halos, outermost first: the sea gets shallower toward land. */
+const HALOS = [
+  { width: 54, color: 'var(--sea-depth-1)' },
+  { width: 30, color: 'var(--sea-depth-2)' },
+  { width: 12, color: 'var(--sea-depth-3)' },
+] as const;
+
+/** Relation numbers: warm in blue, souring in amber, hostile in red. */
+function relationInk(value: number, tone: Tone): string {
+  if (tone === 'critical') return 'var(--threat-ink)';
+  if (tone === 'warning') return 'var(--you)';
+  return value >= 15 ? 'var(--friend)' : 'var(--ink-faint)';
+}
 
 function routePath(map: ScenarioMap, link: Link, bend: number): string | null {
   const from = map.countries[link.from]?.anchor;
@@ -86,17 +94,35 @@ export function WorldMap({
   const relationOf = (id: string) =>
     effectiveStat(game, { kind: 'relation', id: relationId(player, id), stat: 'value' });
 
-  // Routes between the same two countries get different bends so they don't overlap.
-  const pairCounts = new Map<string, number>();
-  const routes = sortedIds(game.world.links).map((id) => {
+  // Links that share a path and a state are drawn as one line; routes between
+  // the same two countries get different bends so they don't overlap.
+  const groups = new Map<
+    string,
+    { link: Link; open: boolean; planned: boolean; titles: string[] }
+  >();
+  for (const id of sortedIds(game.world.links)) {
     const link = game.world.links[id]!;
-    const pair = [link.from, link.to].sort().join('|');
-    const index = pairCounts.get(pair) ?? 0;
-    pairCounts.set(pair, index + 1);
     const open = isLinkOpen(game.world, link);
     const capacity = effectiveStat(game, { kind: 'link', id, stat: 'capacity' });
-    return { link, open, capacity, d: routePath(map, link, 22 + index * 18) };
+    const planned = capacity <= 0;
+    const key = `${link.from}>${link.to}>${link.via.join(',')}>${open}>${planned}`;
+    const group = groups.get(key) ?? { link, open, planned, titles: [] };
+    group.titles.push(routeTitle(game, link, open, capacity));
+    groups.set(key, group);
+  }
+  const pairCounts = new Map<string, number>();
+  const routes = [...groups.entries()].map(([key, group]) => {
+    const pair = [group.link.from, group.link.to].sort().join('|');
+    const index = pairCounts.get(pair) ?? 0;
+    pairCounts.set(pair, index + 1);
+    return { key, ...group, d: routePath(map, group.link, 22 + index * 18) };
   });
+
+  // Labels are haloed in their land's colour, so routes pass under them.
+  const landOf = (id: string) => {
+    if (id === player) return 'var(--you-fill)';
+    return relationTone(relationOf(id)) === 'critical' ? 'var(--threat-fill)' : 'var(--land-d)';
+  };
 
   const isSelected = (kind: 'country' | 'chokepoint', id: string) =>
     selection?.kind === kind && selection.id === id;
@@ -109,6 +135,18 @@ export function WorldMap({
         role="group"
         aria-label="Map. Select a country or the strait for details."
       >
+        {/* Depth around every coast, drawn under the land */}
+        <g aria-hidden="true" strokeLinejoin="round">
+          {HALOS.map((halo) => (
+            <g key={halo.width} fill={halo.color} stroke={halo.color} strokeWidth={halo.width}>
+              {sortedIds(game.world.countries).map((id) => {
+                const shape = map.countries[id];
+                return shape ? <polygon key={id} points={outlinePoints(shape)} /> : null;
+              })}
+            </g>
+          ))}
+        </g>
+
         {/* Clickable land */}
         {sortedIds(game.world.countries).map((id) => {
           const shape = map.countries[id];
@@ -139,34 +177,37 @@ export function WorldMap({
                 points={outlinePoints(shape)}
                 fill={
                   isPlayer
-                    ? 'var(--accent-tint)'
-                    : id === 'corvan'
-                      ? 'var(--land-alt)'
-                      : 'var(--land)'
+                    ? 'var(--you-fill)'
+                    : tone === 'critical'
+                      ? 'var(--threat-fill)'
+                      : 'var(--land-d)'
                 }
-                stroke={isPlayer ? 'var(--accent)' : TONE_COLOR[tone]}
-                strokeWidth={isPlayer ? 2 : tone === 'calm' ? 1 : 1.5}
+                stroke={
+                  isPlayer ? 'var(--you)' : tone === 'critical' ? 'var(--threat)' : 'var(--coast)'
+                }
+                strokeWidth={isPlayer ? 2 : tone === 'critical' ? 1.75 : 1}
+                strokeLinejoin="round"
               />
             </g>
           );
         })}
 
         {/* Trade routes */}
-        {routes.map(({ link, open, capacity, d }) => {
+        {routes.map(({ key, open, planned, titles, d }) => {
           if (!d) return null;
-          const planned = capacity <= 0;
           return (
             <path
-              key={link.id}
+              key={key}
               className="route"
               d={d}
               fill="none"
-              stroke={!open ? 'var(--critical)' : planned ? 'var(--land-edge)' : 'var(--route)'}
-              strokeWidth={open ? 1.5 : 1.75}
+              stroke={!open ? 'var(--threat)' : planned ? 'var(--coast)' : 'var(--route-d)'}
+              strokeWidth={open ? 1.3 : 1.75}
+              strokeLinecap="round"
               strokeDasharray={!open ? '6 6' : planned ? '2 5' : undefined}
-              opacity={open ? 0.75 : 1}
+              opacity={open ? (planned ? 0.45 : 0.6) : 1}
             >
-              <title>{routeTitle(game, link, open, capacity)}</title>
+              <title>{titles.join('\n')}</title>
             </path>
           );
         })}
@@ -248,8 +289,7 @@ export function WorldMap({
                 : value < 0
                   ? `−${-value}`
                   : '0';
-            const badgeWidth = 12 + badge.length * 7.5;
-            const by = shape.label.y + 10;
+            const name = game.world.countries[id]!.name;
             return (
               <g key={id}>
                 {alertCountry === id && (
@@ -259,7 +299,7 @@ export function WorldMap({
                     cy={shape.label.y - 6}
                     r={26}
                     fill="none"
-                    stroke="var(--critical)"
+                    stroke="var(--threat)"
                   />
                 )}
                 {highlightCountry === id && alertCountry !== id && (
@@ -269,54 +309,36 @@ export function WorldMap({
                     cy={shape.label.y - 6}
                     r={26}
                     fill="none"
-                    stroke="var(--accent)"
+                    stroke="var(--you)"
                   />
                 )}
                 <text
+                  className="country-label"
+                  stroke={landOf(id)}
                   x={shape.label.x}
                   y={shape.label.y}
                   textAnchor="middle"
-                  fontFamily="var(--serif)"
-                  fontSize={shape.labelSize}
-                  fill={isPlayer ? 'var(--accent-strong)' : 'var(--ink-soft)'}
+                  fontSize={Math.round(shape.labelSize * 0.72)}
+                  fill={
+                    isPlayer
+                      ? 'var(--you-strong)'
+                      : tone === 'critical'
+                        ? 'var(--threat-ink)'
+                        : 'var(--ink-quiet)'
+                  }
                 >
-                  {game.world.countries[id]!.name}
+                  {name.toUpperCase()}
                 </text>
-                <rect
-                  x={shape.label.x - badgeWidth / 2}
-                  y={by}
-                  width={badgeWidth}
-                  height={18}
-                  rx={9}
-                  fill={
-                    isPlayer
-                      ? 'var(--accent-tint)'
-                      : tone === 'critical'
-                        ? 'var(--critical-tint)'
-                        : tone === 'warning'
-                          ? 'var(--warning-tint)'
-                          : 'var(--panel)'
-                  }
-                  stroke={isPlayer ? 'var(--accent)' : TONE_COLOR[tone]}
-                  strokeWidth={1}
-                />
                 <text
+                  className="relation-number"
+                  stroke={landOf(id)}
                   x={shape.label.x}
-                  y={by + 13}
+                  y={shape.label.y + 20}
                   textAnchor="middle"
-                  fontFamily="var(--mono)"
-                  fontSize={11}
-                  fill={
-                    isPlayer
-                      ? 'var(--accent-strong)'
-                      : tone === 'critical'
-                        ? 'var(--critical)'
-                        : tone === 'warning'
-                          ? 'var(--warning-ink)'
-                          : 'var(--ink-muted)'
-                  }
+                  fontSize={isPlayer ? 11 : 13}
+                  fill={isPlayer ? 'var(--you)' : relationInk(value, tone)}
                 >
-                  {badge}
+                  {isPlayer ? badge.toUpperCase() : badge}
                 </text>
               </g>
             );
@@ -328,7 +350,7 @@ export function WorldMap({
         <div className="legend" aria-hidden="true">
           <span>
             <svg width="22" height="6">
-              <line x1="0" y1="3" x2="22" y2="3" stroke="var(--route)" strokeWidth="1.5" />
+              <line x1="0" y1="3" x2="22" y2="3" stroke="var(--route-d)" strokeWidth="1.5" />
             </svg>
             Trade route
           </span>
@@ -347,7 +369,7 @@ export function WorldMap({
             Route cut
           </span>
           <span>
-            <span className="legend-badge">+10</span>
+            <span className="legend-number">+10</span>
             Relations with you
           </span>
         </div>
