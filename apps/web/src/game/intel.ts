@@ -73,7 +73,16 @@ export function hasFile(game: GameState, country: string): boolean {
   return effectiveStat(game, { kind: 'country', id: me, stat: `intel_${country}` }) > 0;
 }
 
-/** Each computer country's most tempting harmful move, if it is close to tipping over. Strongest first. */
+const SEVERITY_RANK = { info: 0, warning: 1, critical: 2 } as const;
+
+function severityRank(game: GameState, decision: string): number {
+  return SEVERITY_RANK[game.defs.decisions[decision]?.severity ?? 'info'];
+}
+
+/**
+ * Each computer country's most severe harmful move that is close to tipping
+ * over (the highest-scoring among equals). Strongest first.
+ */
 export function brewing(game: GameState): Brewing[] {
   if (!game.defs.ai || game.outcome) return [];
   const { inertia } = game.defs.ai.tuning;
@@ -81,8 +90,17 @@ export function brewing(game: GameState): Brewing[] {
   for (const country of computerCountries(game)) {
     const share = hasFile(game, country) ? WARN_AT_FILE : WARN_AT;
     const threshold = Math.trunc((inertia * share) / FULL);
-    const top = rank(game, country).find(
+    // Of the harmful moves close to tipping over, warn about the most severe:
+    // a strait about to close matters more than a denunciation that scores higher.
+    const near = rank(game, country).filter(
       (r) => r.available && isHarmful(game, r.decision) && r.score >= threshold,
+    );
+    const top = near.reduce<(typeof near)[number] | undefined>(
+      (best, r) =>
+        best === undefined || severityRank(game, r.decision) > severityRank(game, best.decision)
+          ? r
+          : best,
+      undefined,
     );
     if (top) out.push(toBrewing(game, top));
   }

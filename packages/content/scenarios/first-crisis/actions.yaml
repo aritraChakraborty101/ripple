@@ -74,8 +74,11 @@
   consider:
     # Corvan starts squeezing once the year is under way.
     - day: true
-      rises: [20, 90]
-  cooldownDays: 120
+      rises: [45, 150]
+    # It squeezes a friend less: goodwill (transit fees, aid, talks) buys calm.
+    - relation: [aldoria, corvan]
+      rises: [25, -25]
+  cooldownDays: 180
   effects:
     - adjust: { target: country.corvan.treasury, by: 25 }
     - relation: { between: [aldoria, corvan], by: -4, days: 90 }
@@ -354,7 +357,7 @@
   drives: { grievance(aldoria): 2, standing: 1 }
   consider:
     - relation: [aldoria, thessa]
-      rises: [-15, -45]
+      rises: [5, -35]
     - day: true
       rises: [90, 200]
     - flag: treaty_with_thessa
@@ -432,13 +435,15 @@
   for: [ilmar]
   name: Restrict chip exports
   description: Ration chip sales to remind the world what Ilmar is worth.
-  drives: { standing: 2, wealth: 1, security: 1 }
+  # Ilmar weighs security and money, not standing: rationing earns both.
+  drives: { wealth: 4, security: 3 }
   consider:
-    - relation: [ilmar, thessa]
-      rises: [-15, -45]
+    # Ilmar plays its card when chips are in demand, which is most of the time.
+    - price: chips
+      rises: [-20, 10]
     - day: true
-      rises: [120, 300]
-  cooldownDays: 300
+      rises: [90, 240]
+  cooldownDays: 240
   effects:
     - modify: { target: resource.chips.price, pct: 2500, days: 90 }
     - adjust: { target: country.ilmar.influence, by: 3 }
@@ -468,6 +473,25 @@
   severity: info
   successHeadline: Kesh offers {target} cheap oil
   detail: A trade deal with Kesh is within reach.
+
+# Broke, Kesh squeezes the oil market. Not aimed at Aldoria, but Aldoria pays.
+- id: kesh_raise_crude
+  for: [kesh]
+  name: Raise the price of Keshi crude
+  description: Charge more for every barrel, whoever buys it.
+  drives: { wealth: 2, balance: 2 }
+  consider:
+    - stat: country.kesh.treasury
+      falls: [90, 30]
+    - day: true
+      rises: [30, 120]
+  cooldownDays: 200
+  effects:
+    - modify: { target: resource.oil.price, pct: 600, days: 60 }
+    - adjust: { target: country.kesh.treasury, by: 15 }
+  severity: warning
+  successHeadline: Kesh raises the price of its crude
+  detail: Oil costs 6% more for two months.
 
 # --- Velmont: a distant patron -------------------------------------------------
 
