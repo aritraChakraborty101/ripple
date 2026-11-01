@@ -281,6 +281,9 @@ export interface EventDef {
   readonly effects: readonly Effect[];
 }
 
+/** The cabinet's departments, for filing the player's orders. */
+export type Ministry = 'foreign' | 'trade' | 'treasury' | 'interior' | 'intelligence';
+
 /** An order the player can issue. */
 export interface DecisionDef {
   readonly id: string;
@@ -316,6 +319,8 @@ export interface DecisionDef {
    * envoy to Corvan does not hold up one to Orrin. Off by default.
    */
   readonly perTarget?: boolean;
+  /** Player orders: where the cabinet files it. Presentation only; the rules ignore it. */
+  readonly ministry?: Ministry;
 
   // --- For computer countries (see ai/). Player decisions leave these out.
 

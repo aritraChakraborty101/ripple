@@ -32,6 +32,8 @@ interface Props {
   readonly ripples: readonly Ripple[];
   /** Which question the map answers: who's with you, trade, prices, unrest or intelligence. */
   readonly lens: Lens;
+  /** While aiming an order: the countries it can be aimed at. Others fade. */
+  readonly aimTargets?: ReadonlySet<string> | null;
 }
 
 /** Coastal halos, outermost first: the sea gets shallower toward land. */
@@ -108,6 +110,7 @@ export function WorldMap({
   highlightCountry,
   ripples,
   lens,
+  aimTargets = null,
 }: Props) {
   const player = game.rules.playerCountry;
   const view = useMemo(() => lensView(game, lens), [game, lens]);
@@ -188,11 +191,12 @@ export function WorldMap({
           const look = lookOf(id);
           const land = LAND[look.land];
           const selected = isSelected('country', id);
-          const select = () => onSelect(selected ? null : { kind: 'country', id });
+          const aimable = aimTargets?.has(id) ?? false;
+          const select = () => onSelect(selected && !aimTargets ? null : { kind: 'country', id });
           return (
             <g
               key={id}
-              className={`country-hit ${selected ? 'selected' : ''}`}
+              className={`country-hit ${selected ? 'selected' : ''} ${aimable ? 'aimable' : ''} ${aimTargets && !aimable ? 'unaimable' : ''}`}
               role="button"
               tabIndex={0}
               aria-pressed={selected}
