@@ -15,6 +15,10 @@ PR 2 of the interface pass. In art direction D (record 0015), dark glass is for 
 - **Every dialog is paper**: the why panel, briefing, help, orders and game over. The why panel's short chain is now headed "How it came to this".
 - Memos land with a short drop (360 ms), not at all when the player prefers reduced motion.
 
+## Amended, 1 November 2026
+
+After playing, Aritra found the large white sheets harsh at night. Paper is now kept for short things (memos, report slips, the cabinet button) and softened from #F5F3EF to a warm #E6E0D5, with order cards a shade darker than the page instead of brighter. The big sheets (cabinet, why panel, briefing, help, game over) are a dark **dossier** instead: a warm slate one step above the sea, with cards recessed into it.
+
 ## Consequences
 
 - The centred crisis banner is gone, so the map's middle is never covered.

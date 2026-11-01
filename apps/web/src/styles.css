@@ -1043,8 +1043,8 @@ kbd {
   width: min(640px, calc(100vw - 32px));
   max-height: min(86vh, 900px);
   padding: 28px 32px;
-  border: 0;
-  border-radius: 6px;
+  border: 1px solid var(--glass-line);
+  border-radius: 8px;
   box-shadow: 0 24px 60px rgb(0 0 0 / 0.5);
 }
 
@@ -2329,7 +2329,7 @@ button.why-chain-step:hover {
 }
 
 .cabinet-button:hover:not(:disabled) {
-  background: #fff;
+  background: #efeae1;
 }
 
 .cabinet-button:disabled {
@@ -2367,7 +2367,7 @@ button.why-chain-step:hover {
   justify-content: space-between;
   gap: 16px;
   padding: 26px 32px 0;
-  border-bottom: 1px solid var(--paper-line);
+  border-bottom: 1px solid var(--glass-line);
 }
 
 .cabinet-head .sheet-note {
@@ -2386,8 +2386,8 @@ button.why-chain-step:hover {
   flex-direction: column;
   gap: 2px;
   padding: 18px 12px;
-  border-right: 1px solid var(--paper-line);
-  background: #eeebe5;
+  border-right: 1px solid var(--glass-line);
+  background: var(--dossier-side);
   overflow-y: auto;
 }
 
@@ -2404,12 +2404,12 @@ button.why-chain-step:hover {
 }
 
 .ministries button:hover {
-  background: rgb(0 0 0 / 0.04);
+  background: rgb(255 255 255 / 0.04);
 }
 
 .ministries button[aria-current='true'] {
-  border-left-color: #e3a43c;
-  background: var(--paper);
+  border-left-color: var(--you);
+  background: var(--dossier-raised);
 }
 
 .ministry-name {
@@ -2420,7 +2420,7 @@ button.why-chain-step:hover {
 
 .ministry-brief {
   font-size: 12px;
-  color: var(--paper-quiet);
+  color: var(--ink-quiet);
 }
 
 .ministry-count {
