@@ -20,7 +20,7 @@ export function FirstSteps({ done, focusName, onHide }: Props) {
   const finished = steps.every((s) => done.has(s.id));
 
   return (
-    <section className="first-steps" aria-labelledby="first-steps-title">
+    <section className="first-steps paper" aria-labelledby="first-steps-title">
       <div className="first-steps-head">
         <h2 id="first-steps-title">First steps</h2>
         <button type="button" className="text-button inline" onClick={onHide}>

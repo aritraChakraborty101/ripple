@@ -72,3 +72,42 @@
 
   color-scheme: dark;
 }
+
+/*
+ * Paper: anything you read and decide on. Inside it, the same token names
+ * resolve to ink on paper, so components work on either surface unchanged.
+ */
+.paper,
+.sheet {
+  --ink: var(--paper-ink);
+  --ink-d: var(--paper-ink);
+  --ink-muted: var(--paper-quiet);
+  --ink-quiet: var(--paper-quiet);
+  --ink-soft: #3a4048;
+  --ink-faint: #7d858e;
+  --ground: #fcfbf8;
+  --panel: #ebe7e0;
+  --panel-raised: #e4dfd6;
+  --line: var(--paper-line);
+  --line-soft: #e2ded7;
+  --glass-line: var(--paper-line);
+  --land-edge: #b9b3a9;
+  --accent: #e3a43c;
+  --accent-strong: #f2b95a;
+  --accent-tint: #f6e7c8;
+  --you: #a8670f;
+  --you-strong: #8a5208;
+  --on-accent: #1c1606;
+  --warning: #a8670f;
+  --warning-ink: #8a5208;
+  --warning-tint: #f6e7c8;
+  --critical: var(--urgent);
+  --threat: var(--urgent);
+  --threat-ink: var(--urgent);
+  --critical-tint: #f7dfdf;
+  --friend: #2a6d9c;
+
+  background: var(--paper);
+  color: var(--paper-ink);
+  color-scheme: light;
+}
