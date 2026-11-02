@@ -6,7 +6,7 @@ import { seedRng, type RngState } from './rng';
 import type { DecisionDef, EventDef, ScheduledEvent } from './rules';
 import { buildWorld, byId, type ScenarioDef, type ScenarioRules } from './scenario';
 import { emptyTrace, type Trace } from './why';
-import type { World } from './world';
+import { sortedIds, type World } from './world';
 
 /** A decision the player has signed whose outcome is not yet known. */
 export interface PendingDecision {
@@ -31,6 +31,14 @@ export interface Budget {
   readonly lastMonth: number | null;
 }
 
+/** Goods on their way along a route (stocked resources only). */
+export interface Shipment {
+  readonly link: string;
+  readonly units: number;
+  /** The tick it is added to the receiver's stock. */
+  readonly arrives: number;
+}
+
 export interface GameOutcome {
   /** "ousted": stability collapsed. "survived": the leader saw out the full term. */
   readonly result: 'ousted' | 'survived';
@@ -43,7 +51,7 @@ export interface GameOutcome {
  * and compared in tests.
  */
 export interface GameState {
-  readonly version: 8;
+  readonly version: 9;
   readonly scenarioId: string;
   readonly rules: ScenarioRules;
   /** Event and decision definitions from the scenario, by ID. */
@@ -82,6 +90,8 @@ export interface GameState {
   readonly attention: Readonly<Record<string, AttentionState>>;
   /** Knob changes made during the game (see `retune`), in order. */
   readonly tuningChanges: readonly TuningChange[];
+  /** Goods at sea or on the road, in the order they were sent. */
+  readonly shipments: readonly Shipment[];
 }
 
 export interface GameOptions {
@@ -112,7 +122,7 @@ export function createGame(
     throw new Error(`Player country "${scenario.rules.playerCountry}" is not in the scenario`);
   }
   return {
-    version: 8,
+    version: 9,
     scenarioId: scenario.id,
     rules: scenario.rules,
     defs: {
@@ -138,7 +148,21 @@ export function createGame(
     budgets: {},
     attention: {},
     tuningChanges: [],
+    shipments: fullPipeline(world),
   };
+}
+
+/** At the start every route of a stocked resource is already full: one day's capacity for each day at sea. */
+function fullPipeline(world: World): Shipment[] {
+  const shipments: Shipment[] = [];
+  for (const id of sortedIds(world.links)) {
+    const link = world.links[id]!;
+    if (!world.resources[link.resource]?.stocked) continue;
+    const units = link.stats.capacity ?? 0;
+    if (units <= 0) continue;
+    for (let day = 0; day < link.days; day += 1) shipments.push({ link: id, units, arrives: day });
+  }
+  return shipments;
 }
 
 /** Open or close a chokepoint directly. Mainly for tests and tools. */

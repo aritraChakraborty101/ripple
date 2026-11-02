@@ -58,6 +58,11 @@ export const resourceSchema = z.strictObject({
   id,
   name: z.string().min(1),
   basePrice: z.int().positive(),
+  /**
+   * Makes it a stocked resource: countries hold stocks of it (coverDays of
+   * their own use), routes take days, and plants make it.
+   */
+  stocked: z.strictObject({ coverDays: z.int().positive() }).optional(),
 });
 
 export const linkSchema = z.strictObject({
@@ -67,6 +72,18 @@ export const linkSchema = z.strictObject({
   to: id,
   capacity: nonNegativeInt,
   via: z.array(id).default([]),
+  /** Days in transit, for stocked resources. */
+  days: nonNegativeInt.optional(),
+});
+
+/** A well (no input) or a refinery (input in, output out, one for one), in a country. */
+export const plantSchema = z.strictObject({
+  id,
+  name: z.string().min(1),
+  country: id,
+  input: id.optional(),
+  output: id,
+  capacity: nonNegativeInt,
 });
 
 export const chokepointSchema = z.strictObject({
@@ -102,6 +119,7 @@ export const scenarioSchema = z
     factions: z.array(factionSchema).default([]),
     resources: z.array(resourceSchema).default([]),
     links: z.array(linkSchema).default([]),
+    plants: z.array(plantSchema).default([]),
     chokepoints: z.array(chokepointSchema).default([]),
     relations: z.array(relationSchema).default([]),
     events: z.array(eventSchema).default([]),
@@ -128,6 +146,7 @@ export const scenarioSchema = z
       faction: idsOf('factions', s.factions),
       resource: idsOf('resources', s.resources),
       link: idsOf('links', s.links),
+      plant: idsOf('plants', s.plants),
       chokepoint: idsOf('chokepoints', s.chokepoints),
       event: idsOf('events', s.events),
       decision: idsOf('decisions', s.decisions),
@@ -249,6 +268,30 @@ export const scenarioSchema = z
       need('country', ['links', i, 'to'], l.to);
       if (l.from === l.to) issue(['links', i, 'to'], 'A link must connect two different countries');
       l.via.forEach((v, j) => need('chokepoint', ['links', i, 'via', j], v));
+      const stocked = s.resources.find((r) => r.id === l.resource)?.stocked !== undefined;
+      if (l.days !== undefined && !stocked) {
+        issue(
+          ['links', i, 'days'],
+          `Only routes of stocked resources take days ("${l.resource}" is not stocked)`,
+        );
+      }
+    });
+    s.plants.forEach((p, i) => {
+      need('country', ['plants', i, 'country'], p.country);
+      need('resource', ['plants', i, 'output'], p.output);
+      if (p.input !== undefined) need('resource', ['plants', i, 'input'], p.input);
+      for (const [key, r] of [
+        ['output', p.output],
+        ['input', p.input],
+      ] as const) {
+        if (r === undefined) continue;
+        if (s.resources.find((x) => x.id === r)?.stocked === undefined) {
+          issue(
+            ['plants', i, key],
+            `Plants make and use only stocked resources ("${r}" is not stocked)`,
+          );
+        }
+      }
     });
 
     s.chokepoints.forEach((c, i) =>

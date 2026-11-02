@@ -1,7 +1,8 @@
 import type { EngineEvent } from '../events';
 import { effectiveStat } from '../modifiers';
 import type { GameState } from '../state';
-import { demandStat, isLinkOpen, setBaseStat, sortedIds } from '../world';
+import { demandStat, isLinkOpen, setBaseStat, sortedIds, stockStat } from '../world';
+import { plantCapacity, usableSupply } from './supply';
 import type { MarketWhy, WhyNode } from '../why';
 import type { System } from './types';
 
@@ -13,8 +14,19 @@ export const PRICE_CEILING_MULTIPLIER = 4;
 /** A daily move of at least this many basis points emits a price_moved event. */
 export const PRICE_EVENT_THRESHOLD_BP = 200;
 
-/** Units per day reaching the world market: open routes only. */
+/**
+ * Units per day reaching the world market: open routes only. For a stocked
+ * resource, the world's usable holdings against normal, scaled to a day's
+ * use: holdings at 80% of normal read as supply at 80% of demand.
+ */
 export function marketSupply(state: GameState, resource: string): number {
+  const stocked = state.world.resources[resource]?.stocked;
+  if (stocked) {
+    if (stocked.normalSupply <= 0) return marketDemand(state, resource);
+    return Math.trunc(
+      (marketDemand(state, resource) * usableSupply(state, resource)) / stocked.normalSupply,
+    );
+  }
   let supply = 0;
   for (const id of sortedIds(state.world.links)) {
     const link = state.world.links[id]!;
@@ -24,12 +36,24 @@ export function marketSupply(state: GameState, resource: string): number {
   return supply;
 }
 
-/** Units a day a country wants of a resource: its `demand_<resource>` stat, never below zero. */
+/**
+ * Units a day a country wants of a resource: its `demand_<resource>` stat,
+ * never below zero, plus what its plants use up (a refinery's crude).
+ */
 export function demandOf(state: GameState, country: string, resource: string): number {
-  return Math.max(
+  let units = Math.max(
     0,
     effectiveStat(state, { kind: 'country', id: country, stat: demandStat(resource) }),
   );
+  if (state.world.resources[resource]?.stocked) {
+    for (const id of sortedIds(state.world.plants)) {
+      const plant = state.world.plants[id]!;
+      if (plant.country === country && plant.input === resource) {
+        units += plantCapacity(state, id);
+      }
+    }
+  }
+  return units;
 }
 
 export function marketDemand(state: GameState, resource: string): number {
@@ -118,6 +142,20 @@ export const marketSystem: System = {
       if (delta !== 0) demands.push({ country: id, delta, cause: context.explainStat(ref) });
     }
     demands.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+    // Stocked: who holds less than normal.
+    const stocks: { country: string; delta: number; cause: WhyNode }[] = [];
+    if (state.world.resources[resource]?.stocked) {
+      for (const id of sortedIds(state.world.countries)) {
+        const normal = state.world.countries[id]!.normalStock[resource] ?? 0;
+        const ref = { kind: 'country' as const, id, stat: stockStat(resource) };
+        const delta = Math.min(
+          0,
+          (state.world.countries[id]!.stats[stockStat(resource)] ?? 0) - normal,
+        );
+        if (delta !== 0) stocks.push({ country: id, delta, cause: context.explainStat(ref) });
+      }
+      stocks.sort((a, b) => a.delta - b.delta);
+    }
     return {
       type: 'market',
       resource,
@@ -125,6 +163,7 @@ export const marketSystem: System = {
       demand: marketDemand(state, resource),
       routes,
       demands,
+      ...(stocks.length > 0 ? { stocks } : {}),
     };
   },
 };

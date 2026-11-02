@@ -13,6 +13,7 @@ export const SCENARIO_SECTIONS = [
   'factions',
   'resources',
   'links',
+  'plants',
   'chokepoints',
   'relations',
   'events',

@@ -7,6 +7,7 @@ export {
   factionSchema,
   resourceSchema,
   linkSchema,
+  plantSchema,
   chokepointSchema,
   rulesSchema,
   conditionSchema,

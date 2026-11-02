@@ -81,6 +81,8 @@ export interface PressureWhy {
     /** Percent above (or below) its normal price. */
     readonly percent: number;
     readonly cause: WhyNode;
+    /** For stocked resources: percent of the faction's country's use that went unmet, and why. */
+    readonly shortage?: { readonly percent: number; readonly cause: WhyNode };
   }[];
 }
 
@@ -99,6 +101,39 @@ export interface MarketWhy {
   /** Countries wanting more or less than normal, units per day, largest change first. */
   readonly demands: readonly {
     readonly country: string;
+    readonly delta: number;
+    readonly cause: WhyNode;
+  }[];
+  /**
+   * For stocked resources: countries holding less than their normal stock,
+   * largest shortfall first. Supply and demand are then the world's holdings
+   * against normal, scaled to a day's use.
+   */
+  readonly stocks?: readonly {
+    readonly country: string;
+    readonly delta: number;
+    readonly cause: WhyNode;
+  }[];
+}
+
+/** A country's stock of a stocked resource away from normal: what arrives less, and plants working less. */
+export interface StockWhy {
+  readonly type: 'stock';
+  readonly country: string;
+  readonly resource: string;
+  readonly stock: number;
+  readonly normal: number;
+  /** Routes into the country carrying more or less than normal, units a day, largest first. */
+  readonly routes: readonly {
+    readonly link: string;
+    readonly delta: number;
+    /** Days in transit, so the reader knows how late the change arrives. */
+    readonly days: number;
+    readonly cause: WhyNode;
+  }[];
+  /** The country's own plants making more or less than normal, or starved of their input. */
+  readonly plants: readonly {
+    readonly plant: string;
     readonly delta: number;
     readonly cause: WhyNode;
   }[];
@@ -184,6 +219,7 @@ export type WhyNode =
   | MoodWhy
   | PressureWhy
   | MarketWhy
+  | StockWhy
   | BudgetWhy
   | TradeWhy
   | ActivityWhy

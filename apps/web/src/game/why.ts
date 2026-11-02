@@ -85,6 +85,18 @@ export function statLabel(game: GameState, ref: StatRef): string {
           ? `Your ${lowerFirst(resource)} demand`
           : `${possessive(countryName(game, ref.id))} ${lowerFirst(resource)} demand`;
       }
+      if (ref.stat.startsWith('stock_')) {
+        const resource = game.world.resources[ref.stat.slice('stock_'.length)]?.name ?? ref.stat;
+        return ref.id === me
+          ? `Your ${lowerFirst(resource)} stock`
+          : `${possessive(countryName(game, ref.id))} ${lowerFirst(resource)} stock`;
+      }
+      if (ref.stat.startsWith('shortage_')) {
+        const resource = game.world.resources[ref.stat.slice('shortage_'.length)]?.name ?? ref.stat;
+        return ref.id === me
+          ? `${resource} you could not get`
+          : `${resource} ${countryName(game, ref.id)} could not get`;
+      }
       if (ref.stat.startsWith('intel_')) {
         return `Your intelligence file on ${countryName(game, ref.stat.slice('intel_'.length))}`;
       }
@@ -116,6 +128,11 @@ export function statLabel(game: GameState, ref: StatRef): string {
       if (!link) return ref.id;
       const resource = game.world.resources[link.resource]?.name ?? link.resource;
       return `${resource} from ${countryName(game, link.from)} to ${countryName(game, link.to)}`;
+    }
+    case 'plant': {
+      const plant = game.world.plants[ref.id];
+      if (!plant) return ref.id;
+      return `${plant.name} (${countryName(game, plant.country)}) ${ref.stat}`;
     }
   }
 }
@@ -188,7 +205,19 @@ export function describeNode(game: GameState, node: WhyNode): NodeText {
     }
     case 'market': {
       const name = game.world.resources[node.resource]?.name ?? node.resource;
+      if (game.world.resources[node.resource]?.stocked) {
+        const pct = node.demand > 0 ? Math.round((node.supply * 100) / node.demand) : 100;
+        return { title: `${name} on hand: ${pct}% of normal, worldwide` };
+      }
       return { title: `${name} supply ${node.supply} a day, against demand of ${node.demand}` };
+    }
+    case 'stock': {
+      const name = lowerFirst(game.world.resources[node.resource]?.name ?? node.resource);
+      const whose =
+        node.country === game.rules.playerCountry
+          ? `Your ${name} stock`
+          : `${possessive(countryName(game, node.country))} ${name} stock`;
+      return { title: `${whose}: ${node.stock} units`, note: `normally ${node.normal}` };
     }
     case 'budget': {
       const whose =
@@ -336,6 +365,7 @@ export function childrenOf(game: GameState, node: WhyNode): WhyItem[] {
           'mood',
           'pressure',
           'market',
+          'stock',
           'system',
           'budget',
           'trade',
@@ -361,10 +391,17 @@ export function childrenOf(game: GameState, node: WhyNode): WhyItem[] {
         effect: `${signed(f.effect)} stability`,
       }));
     case 'pressure':
-      return node.prices.map((p) => ({
-        node: p.cause,
-        note: `weighs ${Math.round(p.weightBp / 100)}% on them`,
-      }));
+      return node.prices.flatMap((p) => [
+        { node: p.cause, note: `weighs ${Math.round(p.weightBp / 100)}% on them` },
+        ...(p.shortage
+          ? [
+              {
+                node: p.shortage.cause,
+                note: `${p.shortage.percent}% of what they need is missing`,
+              },
+            ]
+          : []),
+      ]);
     case 'market':
       // Supply and demand side by side, the largest change first.
       return [
@@ -378,9 +415,31 @@ export function childrenOf(game: GameState, node: WhyNode): WhyItem[] {
           effect: `${signed(d.delta)} a day wanted`,
           size: d.delta,
         })),
+        ...(node.stocks ?? []).map((s) => ({
+          node: s.cause,
+          effect: `${signed(s.delta)} in stock`,
+          size: s.delta,
+        })),
       ]
         .sort((a, b) => Math.abs(b.size) - Math.abs(a.size))
         .map(({ node: n, effect }) => ({ node: n, effect }));
+    case 'stock':
+      return [
+        ...node.routes.map((r) => ({
+          node: r.cause,
+          effect: `${signed(r.delta)} a day`,
+          note: r.days > 0 ? `${r.days} days at sea` : undefined,
+          size: r.delta,
+        })),
+        ...node.plants.map((p) => ({
+          node: p.cause,
+          effect: `${signed(p.delta)} a day made`,
+          note: undefined,
+          size: p.delta,
+        })),
+      ]
+        .sort((a, b) => Math.abs(b.size) - Math.abs(a.size))
+        .map(({ node: n, effect, note }) => ({ node: n, effect, ...(note ? { note } : {}) }));
     case 'budget': {
       // Whichever side moved more from its starting level leads.
       const moved = (s: typeof node.revenue) => Math.abs(s.value - s.normal);

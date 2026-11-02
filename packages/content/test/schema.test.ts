@@ -54,6 +54,47 @@ describe('scenario schema', () => {
     ]);
   });
 
+  it('accepts a stocked chain: plants, and routes that take days', () => {
+    const chain = {
+      ...valid,
+      resources: [
+        { id: 'crude', name: 'Crude', basePrice: 7000, stocked: { coverDays: 20 } },
+        { id: 'fuel', name: 'Fuel', basePrice: 9000, stocked: { coverDays: 20 } },
+      ],
+      countries: [valid.countries[0]!, valid.countries[1]!].map((c) => ({ ...c, demand: {} })),
+      plants: [
+        { id: 'wells', name: 'Wells', country: 'b', output: 'crude', capacity: 10 },
+        {
+          id: 'refinery',
+          name: 'Refinery',
+          country: 'a',
+          input: 'crude',
+          output: 'fuel',
+          capacity: 10,
+        },
+      ],
+      links: [
+        { id: 'crude_b_a', resource: 'crude', from: 'b', to: 'a', capacity: 10, via: [], days: 6 },
+      ],
+    };
+    const scenario = parseScenario(chain);
+    expect(scenario.plants).toHaveLength(2);
+    expect(scenario.links[0]!.days).toBe(6);
+    expect(scenario.resources[0]!.stocked).toEqual({ coverDays: 20 });
+  });
+
+  it('keeps plants and transit days to stocked resources', () => {
+    const broken = {
+      ...valid,
+      plants: [{ id: 'wells', name: 'Wells', country: 'b', output: 'oil', capacity: 10 }],
+      links: [{ ...valid.links[0]!, days: 4 }],
+    };
+    expect(problemsOf(broken)).toEqual([
+      'links[0].days: Only routes of stocked resources take days ("oil" is not stocked)',
+      'plants[0].output: Plants make and use only stocked resources ("oil" is not stocked)',
+    ]);
+  });
+
   it('reports duplicate ids', () => {
     const broken = { ...valid, resources: [...valid.resources, ...valid.resources] };
     expect(problemsOf(broken)).toContain('resources[1].id: Duplicate id "oil"');

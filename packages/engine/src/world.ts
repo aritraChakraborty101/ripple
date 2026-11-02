@@ -28,11 +28,26 @@ export interface Country {
    * which orders such as rationing can modify.
    */
   readonly demand: Readonly<Record<string, number>>;
+  /**
+   * For stocked resources: the stock this country holds when all is well, set
+   * at the start from its daily use. Prices compare stocks against it.
+   */
+  readonly normalStock: Readonly<Record<string, number>>;
 }
 
 /** The country stat that holds its daily demand for a resource. */
 export function demandStat(resource: string): string {
   return `demand_${resource}`;
+}
+
+/** The country stat that holds its stock of a stocked resource, in whole units. */
+export function stockStat(resource: string): string {
+  return `stock_${resource}`;
+}
+
+/** The country stat that holds yesterday's unmet demand for a stocked resource: queues. */
+export function shortageStat(resource: string): string {
+  return `shortage_${resource}`;
 }
 
 /**
@@ -75,9 +90,25 @@ export interface Resource {
   /** Price in cents when supply equals demand. */
   readonly basePrice: number;
   readonly stats: Stats;
+  /**
+   * Stocked resources move as goods: countries hold stocks, routes ship them
+   * with a delay, plants make them, and the price follows how much is on hand
+   * (see the supply system). Others trade instantly by route capacity.
+   */
+  readonly stocked?: StockedRules;
 }
 
-/** A trade route carrying one resource. `stats.capacity` is units per day. */
+export interface StockedRules {
+  /** Days of its own use each country holds when all is well. */
+  readonly coverDays: number;
+  /** The world's normal holdings: every country's normal stock plus a full pipeline at sea. */
+  readonly normalSupply: number;
+}
+
+/**
+ * A trade route carrying one resource. `stats.capacity` is units per day.
+ * For stocked resources, goods take `days` to arrive.
+ */
 export interface Link {
   readonly id: string;
   readonly resource: string;
@@ -85,6 +116,23 @@ export interface Link {
   readonly to: string;
   /** Chokepoints this route passes through; if any is closed, the route carries nothing. */
   readonly via: readonly string[];
+  /** Days at sea or on the road, for stocked resources. 0 for instant trade. */
+  readonly days: number;
+  readonly stats: Stats;
+}
+
+/**
+ * Something that makes a stocked resource: a well (no input) or a refinery
+ * (crude in, fuel out), one unit for one. `stats.capacity` is units per day,
+ * so a fire is a capacity modifier like any other.
+ */
+export interface Plant {
+  readonly id: string;
+  readonly name: string;
+  readonly country: string;
+  /** The resource it uses up, if any. */
+  readonly input?: string;
+  readonly output: string;
   readonly stats: Stats;
 }
 
@@ -103,6 +151,7 @@ export interface World {
   readonly factions: Readonly<Record<string, Faction>>;
   readonly resources: Readonly<Record<string, Resource>>;
   readonly links: Readonly<Record<string, Link>>;
+  readonly plants: Readonly<Record<string, Plant>>;
   readonly chokepoints: Readonly<Record<string, Chokepoint>>;
   readonly relations: Readonly<Record<string, Relation>>;
   /**
@@ -114,7 +163,7 @@ export interface World {
 }
 
 /** Entity kinds that carry stats, and so can be targeted by modifiers. */
-export type StatEntityKind = 'country' | 'faction' | 'resource' | 'link' | 'relation';
+export type StatEntityKind = 'country' | 'faction' | 'resource' | 'link' | 'relation' | 'plant';
 
 const COLLECTION: Record<StatEntityKind, keyof World> = {
   country: 'countries',
@@ -122,6 +171,7 @@ const COLLECTION: Record<StatEntityKind, keyof World> = {
   resource: 'resources',
   link: 'links',
   relation: 'relations',
+  plant: 'plants',
 };
 
 // World records are immutable and replaced whenever they change, so a record's

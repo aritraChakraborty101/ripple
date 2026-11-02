@@ -1,6 +1,6 @@
 import { effectiveStat, setSystemModifier } from '../modifiers';
 import type { GameState } from '../state';
-import { sortedIds } from '../world';
+import { demandStat, shortageStat, sortedIds } from '../world';
 import type { MoodWhy, PressureWhy, WhyNode } from '../why';
 import type { System } from './types';
 
@@ -12,7 +12,21 @@ export const MAX_RELIEF = 5;
 export const MOOD_DIVISOR = 50;
 
 /**
- * How much prices weigh on a faction: each resource's percent above its normal
+ * For a stocked resource: the share of a country's use that went unmet
+ * yesterday, in percent. Running out weighs on people like a price rise of
+ * the same size, on top of the price.
+ */
+export function shortagePercent(state: GameState, country: string, resource: string): number {
+  if (!state.world.resources[resource]?.stocked) return 0;
+  const short = state.world.countries[country]?.stats[shortageStat(resource)] ?? 0;
+  if (short <= 0) return 0;
+  const wanted = effectiveStat(state, { kind: 'country', id: country, stat: demandStat(resource) });
+  if (wanted <= 0) return 0;
+  return Math.min(100, Math.trunc((short * 100) / wanted));
+}
+
+/**
+ * How much prices and shortages weigh on a faction: each resource's percent above its normal
  * price, weighted by the faction's sensitivity (basis points).
  */
 export function pricePressure(state: GameState, factionId: string): number {
@@ -27,7 +41,9 @@ export function pricePressure(state: GameState, factionId: string): number {
       -50,
       Math.trunc(((price - resource.basePrice) * 100) / resource.basePrice),
     );
-    weighted += pct * (faction.sensitivity[resourceId] ?? 0);
+    weighted +=
+      (pct + shortagePercent(state, faction.country, resourceId)) *
+      (faction.sensitivity[resourceId] ?? 0);
   }
   return Math.trunc(weighted / 10_000);
 }
@@ -91,15 +107,26 @@ export const societySystem: System = {
         const priceRef = { kind: 'resource' as const, id: resource, stat: 'price' };
         const price = effectiveStat(state, priceRef);
         const percent = Math.trunc(((price - def.basePrice) * 100) / def.basePrice);
-        if (percent === 0) continue;
+        const short = shortagePercent(state, faction.country, resource);
+        if (percent === 0 && short === 0) continue;
+        const shortageRef = {
+          kind: 'country' as const,
+          id: faction.country,
+          stat: shortageStat(resource),
+        };
         prices.push({
           resource,
           weightBp: faction.sensitivity[resource] ?? 0,
           percent,
           cause: context.explainStat(priceRef),
+          ...(short > 0
+            ? { shortage: { percent: short, cause: context.explainStat(shortageRef) } }
+            : {}),
         });
       }
-      prices.sort((a, b) => Math.abs(b.percent * b.weightBp) - Math.abs(a.percent * a.weightBp));
+      const weight = (p: PressureWhy['prices'][number]) =>
+        Math.abs((p.percent + (p.shortage?.percent ?? 0)) * p.weightBp);
+      prices.sort((a, b) => weight(b) - weight(a));
       return { type: 'pressure', faction: ref.id, prices };
     }
 
