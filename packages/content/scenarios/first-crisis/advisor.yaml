@@ -84,8 +84,8 @@
   when:
     stat: { target: country.aldoria.stability, below: 40 }
   text: >-
-    Stability is sliding. Open the Home tab to see which faction is unhappy
-    and why, then deal with the cause. Addressing the nation buys a little
+    Stability is sliding. Click Aldoria on the map to see which faction is
+    unhappy and why, then deal with the cause. Addressing the nation buys a little
     time.
   suggest: [address_nation, fuel_subsidy]
 

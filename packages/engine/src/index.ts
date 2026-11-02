@@ -49,6 +49,7 @@ export {
   type Condition,
   type PolicyInForce,
   type DecisionDef,
+  type Ministry,
   type Effect,
   type Evaluation,
   type EventDef,

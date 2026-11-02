@@ -171,7 +171,7 @@ export function WhyDialog({ game, target, onClose, onAsk }: Props) {
           </div>
 
           <section aria-labelledby="why-short" className="why-section">
-            <h3 id="why-short">The chain in short</h3>
+            <h3 id="why-short">How it came to this</h3>
             {chain.length <= 1 ? (
               <p className="muted">Nothing has changed this yet. It is where it started.</p>
             ) : (

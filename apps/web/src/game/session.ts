@@ -21,6 +21,7 @@ import {
 import type { AdvisorTip } from '@ripple/content';
 import { afterSigning, dismissTip, newAdvisor, updateAdvisor, type AdvisorState } from './advisor';
 import { advanceClock, initialClock, stepSpeed, type ClockState, type Speed } from './clock';
+import { addRipples, ripplesFor, type Ripple } from './ripples';
 import { brewing, brewingKey, REWARN_DAYS, type Brewing } from './intel';
 import { dispatchesFor, initialNews, isAlert, type Dispatch, type NewsState } from './news';
 
@@ -57,6 +58,8 @@ export interface Session {
   readonly advisor: AdvisorState;
   /** The day each intelligence warning was last given, so warnings are not repeated too often. */
   readonly warned: Readonly<Record<string, number>>;
+  /** Where something just happened, newest last, for the map to spread rings from. */
+  readonly ripples: readonly Ripple[];
 }
 
 function priceOf(game: GameState, resource: string): number {
@@ -106,6 +109,7 @@ function absorb(
   tick?: number,
 ): Session {
   const { news, dispatches } = dispatchesFor(session.news, events, game, tick);
+  const ripples = addRipples(session.ripples, ripplesFor(session.game, game, dispatches));
   const alert = [...dispatches].reverse().find(isAlert) ?? null;
   // The clock stops when the game ends, and on a crisis if the player asked for that.
   const stop = game.outcome !== null || (alert !== null && session.autoPause);
@@ -116,6 +120,7 @@ function absorb(
     dispatches: [...dispatches.reverse(), ...session.dispatches].slice(0, MAX_DISPATCHES),
     tallies: tally(session.tallies, game, events),
     alert: alert ?? session.alert,
+    ripples,
     clock: stop && !session.clock.paused ? { ...session.clock, paused: true } : session.clock,
   };
 }
@@ -133,6 +138,7 @@ export function newSession(
     autoPause,
     advisor: newAdvisor(tips),
     warned: {},
+    ripples: [],
     game,
     clock: initialClock,
     news: initialNews,
