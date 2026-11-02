@@ -118,6 +118,8 @@ interface GameSummary {
   readonly choices: readonly string[];
   /** Harmful moves that went through (warning or critical news), by country. */
   readonly harm: Readonly<Record<string, number>>;
+  /** Days the player's country could not get all the fuel it wanted. */
+  readonly shortDays: number;
 }
 
 function play(scenarioName: string, seed: number, player: Player, aiProfile?: string): GameSummary {
@@ -131,11 +133,13 @@ function play(scenarioName: string, seed: number, player: Player, aiProfile?: st
   const orders: Record<string, number> = {};
   let firstCrisis: string | null = null;
   const harm: Record<string, number> = {};
+  let shortDays = 0;
   while (!state.outcome) {
     const signed: Order[] = player(state).map((w) => ({ kind: 'decide', ...w, by: me }));
     const before = state;
     const result = step(state, signed);
     state = result.state;
+    if ((state.world.countries[me]!.stats.shortage_fuel ?? 0) > 0) shortDays += 1;
     for (const id of Object.keys(state.world.chokepoints)) {
       if (before.world.chokepoints[id]!.open && !state.world.chokepoints[id]!.open) {
         closures[id] = (closures[id] ?? 0) + 1;
@@ -188,6 +192,7 @@ function play(scenarioName: string, seed: number, player: Player, aiProfile?: st
     firstCrisis,
     choices: state.trace.choices.map((c) => `${c.country}:${c.decision}`),
     harm,
+    shortDays,
   };
 }
 
@@ -237,6 +242,17 @@ function report(label: string, games: GameSummary[]): void {
     );
   }
   console.log(`  your orders per game:  ${avg(games.map((g) => g.decisions))}`);
+  const ranOut = games.filter((g) => g.shortDays > 0);
+  console.log(
+    `  ran out of fuel:       ${pct(ranOut.length)} of games${
+      ranOut.length > 0
+        ? `, median ${percentile(
+            ranOut.map((g) => g.shortDays),
+            50,
+          )} days short`
+        : ''
+    }`,
+  );
   // What starts the trouble: the cause of each game's first critical crisis.
   const causes = new Map<string, number>();
   for (const g of games) {
