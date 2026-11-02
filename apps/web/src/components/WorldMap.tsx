@@ -7,11 +7,14 @@ import {
   type GameState,
   type Link,
 } from '@ripple/engine';
-import type { KeyboardEvent } from 'react';
-import { relationLabel, relationTone, type Tone } from '../game/describe';
+import { useMemo, type KeyboardEvent } from 'react';
+import { relationLabel } from '../game/describe';
+import { lensView, type CountryLook, type Ink, type Lens, type RouteLook } from '../game/lenses';
 import type { Selection } from '../game/selection';
 import type { ScenarioMap } from '@ripple/content';
+import type { Ripple } from '../game/ripples';
 import { curve, outlinePoints, throughPath, type Point } from '../map/layout';
+import { RippleLayer } from './RippleLayer';
 
 interface Props {
   readonly game: GameState;
@@ -25,6 +28,12 @@ interface Props {
   readonly showLegend: boolean;
   /** A country to draw the eye to, such as the next first step. */
   readonly highlightCountry: string | null;
+  /** Where something just happened, to spread rings from. */
+  readonly ripples: readonly Ripple[];
+  /** Which question the map answers: who's with you, trade, prices, unrest or intelligence. */
+  readonly lens: Lens;
+  /** While aiming an order: the countries it can be aimed at. Others fade. */
+  readonly aimTargets?: ReadonlySet<string> | null;
 }
 
 /** Coastal halos, outermost first: the sea gets shallower toward land. */
@@ -34,12 +43,22 @@ const HALOS = [
   { width: 12, color: 'var(--sea-depth-3)' },
 ] as const;
 
-/** Relation numbers: warm in blue, souring in amber, hostile in red. */
-function relationInk(value: number, tone: Tone): string {
-  if (tone === 'critical') return 'var(--threat-ink)';
-  if (tone === 'warning') return 'var(--you)';
-  return value >= 15 ? 'var(--friend)' : 'var(--ink-faint)';
-}
+const INK: Record<Ink | 'route', string> = {
+  you: 'var(--you)',
+  threat: 'var(--threat-ink)',
+  warning: 'var(--shaky-ink)',
+  friend: 'var(--friend)',
+  quiet: 'var(--ink-quiet)',
+  faint: 'var(--ink-faint)',
+  route: 'var(--route-d)',
+};
+
+const LAND: Record<CountryLook['land'], { fill: string; stroke: string; width: number }> = {
+  you: { fill: 'var(--you-fill)', stroke: 'var(--you)', width: 2 },
+  threat: { fill: 'var(--threat-fill)', stroke: 'var(--threat)', width: 1.75 },
+  warning: { fill: 'var(--shaky-fill)', stroke: 'var(--shaky)', width: 1.5 },
+  plain: { fill: 'var(--land-d)', stroke: 'var(--coast)', width: 1 },
+};
 
 function routePath(map: ScenarioMap, link: Link, bend: number): string | null {
   const from = map.countries[link.from]?.anchor;
@@ -89,26 +108,42 @@ export function WorldMap({
   alertCountry,
   showLegend,
   highlightCountry,
+  ripples,
+  lens,
+  aimTargets = null,
 }: Props) {
   const player = game.rules.playerCountry;
+  const view = useMemo(() => lensView(game, lens), [game, lens]);
   const relationOf = (id: string) =>
     effectiveStat(game, { kind: 'relation', id: relationId(player, id), stat: 'value' });
 
   // Links that share a path and a state are drawn as one line; routes between
   // the same two countries get different bends so they don't overlap.
+  // The lens decides each link's look; a group keeps its strongest.
   const groups = new Map<
     string,
-    { link: Link; open: boolean; planned: boolean; titles: string[] }
+    { link: Link; open: boolean; planned: boolean; titles: string[]; look: RouteLook }
   >();
   for (const id of sortedIds(game.world.links)) {
     const link = game.world.links[id]!;
     const open = isLinkOpen(game.world, link);
     const capacity = effectiveStat(game, { kind: 'link', id, stat: 'capacity' });
     const planned = capacity <= 0;
-    const key = `${link.from}>${link.to}>${link.via.join(',')}>${open}>${planned}`;
-    const group = groups.get(key) ?? { link, open, planned, titles: [] };
-    group.titles.push(routeTitle(game, link, open, capacity));
-    groups.set(key, group);
+    const look = view.routes[id] ?? { width: 1.3, ink: 'route' as const, opacity: 0.6 };
+    const key = `${link.from}>${link.to}>${link.via.join(',')}>${open}>${planned}>${look.ink}`;
+    const group = groups.get(key);
+    if (group) {
+      group.titles.push(routeTitle(game, link, open, capacity));
+      if (look.width > group.look.width) group.look = look;
+    } else {
+      groups.set(key, {
+        link,
+        open,
+        planned,
+        titles: [routeTitle(game, link, open, capacity)],
+        look,
+      });
+    }
   }
   const pairCounts = new Map<string, number>();
   const routes = [...groups.entries()].map(([key, group]) => {
@@ -118,11 +153,10 @@ export function WorldMap({
     return { key, ...group, d: routePath(map, group.link, 22 + index * 18) };
   });
 
+  const lookOf = (id: string): CountryLook =>
+    view.countries[id] ?? { land: 'plain', note: '', noteInk: 'faint', dim: false };
   // Labels are haloed in their land's colour, so routes pass under them.
-  const landOf = (id: string) => {
-    if (id === player) return 'var(--you-fill)';
-    return relationTone(relationOf(id)) === 'critical' ? 'var(--threat-fill)' : 'var(--land-d)';
-  };
+  const landOf = (id: string) => LAND[lookOf(id).land].fill;
 
   const isSelected = (kind: 'country' | 'chokepoint', id: string) =>
     selection?.kind === kind && selection.id === id;
@@ -154,20 +188,22 @@ export function WorldMap({
           const isPlayer = id === player;
           const name = game.world.countries[id]!.name;
           const value = isPlayer ? 0 : relationOf(id);
-          const tone: Tone = isPlayer ? 'calm' : relationTone(value);
+          const look = lookOf(id);
+          const land = LAND[look.land];
           const selected = isSelected('country', id);
-          const select = () => onSelect(selected ? null : { kind: 'country', id });
+          const aimable = aimTargets?.has(id) ?? false;
+          const select = () => onSelect(selected && !aimTargets ? null : { kind: 'country', id });
           return (
             <g
               key={id}
-              className={`country-hit ${selected ? 'selected' : ''}`}
+              className={`country-hit ${selected ? 'selected' : ''} ${aimable ? 'aimable' : ''} ${aimTargets && !aimable ? 'unaimable' : ''}`}
               role="button"
               tabIndex={0}
               aria-pressed={selected}
               aria-label={
                 isPlayer
-                  ? `${name}, your country. Show details.`
-                  : `${name}, relations ${value}, ${relationLabel(value)}. Show details.`
+                  ? `${name}, your country.${look.note && lens !== 'relations' ? ` ${look.note}.` : ''} Show details.`
+                  : `${name}, relations ${value}, ${relationLabel(value)}.${lens !== 'relations' && look.note ? ` ${look.note}.` : ''} Show details.`
               }
               onClick={select}
               onKeyDown={activateOnKey(select)}
@@ -175,25 +211,18 @@ export function WorldMap({
               <polygon
                 className="country"
                 points={outlinePoints(shape)}
-                fill={
-                  isPlayer
-                    ? 'var(--you-fill)'
-                    : tone === 'critical'
-                      ? 'var(--threat-fill)'
-                      : 'var(--land-d)'
-                }
-                stroke={
-                  isPlayer ? 'var(--you)' : tone === 'critical' ? 'var(--threat)' : 'var(--coast)'
-                }
-                strokeWidth={isPlayer ? 2 : tone === 'critical' ? 1.75 : 1}
+                fill={land.fill}
+                stroke={land.stroke}
+                strokeWidth={land.width}
                 strokeLinejoin="round"
+                opacity={look.dim ? 0.45 : 1}
               />
             </g>
           );
         })}
 
         {/* Trade routes */}
-        {routes.map(({ key, open, planned, titles, d }) => {
+        {routes.map(({ key, open, planned, titles, d, look }) => {
           if (!d) return null;
           return (
             <path
@@ -201,11 +230,11 @@ export function WorldMap({
               className="route"
               d={d}
               fill="none"
-              stroke={!open ? 'var(--threat)' : planned ? 'var(--coast)' : 'var(--route-d)'}
-              strokeWidth={open ? 1.3 : 1.75}
+              stroke={!open ? 'var(--threat)' : planned ? 'var(--coast)' : INK[look.ink]}
+              strokeWidth={open ? look.width : 1.75}
               strokeLinecap="round"
               strokeDasharray={!open ? '6 6' : planned ? '2 5' : undefined}
-              opacity={open ? (planned ? 0.45 : 0.6) : 1}
+              opacity={open ? (planned ? Math.min(0.45, look.opacity) : look.opacity) : 1}
             >
               <title>{titles.join('\n')}</title>
             </path>
@@ -274,21 +303,20 @@ export function WorldMap({
           );
         })}
 
+        <RippleLayer
+          key={game.seed}
+          ripples={ripples}
+          map={map}
+          routes={routes.flatMap((r) => (r.d ? [{ key: r.key, d: r.d, via: r.link.via }] : []))}
+        />
+
         {/* Labels and relation badges sit on top but let clicks through to the land. */}
         <g pointerEvents="none">
           {sortedIds(game.world.countries).map((id) => {
             const shape = map.countries[id];
             if (!shape) return null;
             const isPlayer = id === player;
-            const value = isPlayer ? 0 : relationOf(id);
-            const tone: Tone = isPlayer ? 'calm' : relationTone(value);
-            const badge = isPlayer
-              ? 'You'
-              : value > 0
-                ? `+${value}`
-                : value < 0
-                  ? `−${-value}`
-                  : '0';
+            const look = lookOf(id);
             const name = game.world.countries[id]!.name;
             return (
               <g key={id}>
@@ -322,24 +350,27 @@ export function WorldMap({
                   fill={
                     isPlayer
                       ? 'var(--you-strong)'
-                      : tone === 'critical'
+                      : look.land === 'threat'
                         ? 'var(--threat-ink)'
                         : 'var(--ink-quiet)'
                   }
+                  opacity={look.dim ? 0.55 : 1}
                 >
                   {name.toUpperCase()}
                 </text>
-                <text
-                  className="relation-number"
-                  stroke={landOf(id)}
-                  x={shape.label.x}
-                  y={shape.label.y + 20}
-                  textAnchor="middle"
-                  fontSize={isPlayer ? 11 : 13}
-                  fill={isPlayer ? 'var(--you)' : relationInk(value, tone)}
-                >
-                  {isPlayer ? badge.toUpperCase() : badge}
-                </text>
+                {look.note && (
+                  <text
+                    className="relation-number"
+                    stroke={landOf(id)}
+                    x={shape.label.x}
+                    y={shape.label.y + 20}
+                    textAnchor="middle"
+                    fontSize={lens === 'relations' && !isPlayer ? 13 : 11}
+                    fill={INK[look.noteInk]}
+                  >
+                    {isPlayer && lens === 'relations' ? 'YOU' : look.note}
+                  </text>
+                )}
               </g>
             );
           })}

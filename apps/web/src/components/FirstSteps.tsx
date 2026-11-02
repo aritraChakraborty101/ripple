@@ -6,21 +6,23 @@ interface Props {
   readonly done: ReadonlySet<StepId>;
   /** The name of the country the briefing points at, such as "Corvan". */
   readonly focusName: string;
+  /** Your own country's name, for the step that opens its home front. */
+  readonly homeName: string;
   readonly onHide: () => void;
 }
 
 /** A short checklist that ticks itself off as the player does each thing. */
-export function FirstSteps({ done, focusName, onHide }: Props) {
+export function FirstSteps({ done, focusName, homeName, onHide }: Props) {
   const steps: { id: StepId; text: string }[] = [
     { id: 'play', text: 'Press play (or Space) to start the clock' },
     { id: 'country', text: `Click ${focusName} on the map to see your options` },
     { id: 'order', text: 'Sign your first order' },
-    { id: 'home', text: 'Open the Home tab to see who is unhappy, and why' },
+    { id: 'home', text: `Click ${homeName} to see who is unhappy at home, and why` },
   ];
   const finished = steps.every((s) => done.has(s.id));
 
   return (
-    <section className="first-steps" aria-labelledby="first-steps-title">
+    <section className="first-steps paper" aria-labelledby="first-steps-title">
       <div className="first-steps-head">
         <h2 id="first-steps-title">First steps</h2>
         <button type="button" className="text-button inline" onClick={onHide}>

@@ -206,6 +206,8 @@ export const decisionSchema = z.strictObject({
   policyFlag: flagId.optional(),
   /** For templates: cooldowns and "under way" are kept per target. */
   perTarget: z.boolean().optional(),
+  /** Player orders: where the cabinet files it. */
+  ministry: z.enum(['foreign', 'trade', 'treasury', 'interior', 'intelligence']).optional(),
   // --- Computer orders only
   /** How the news reports it. Default info. */
   severity: z.enum(['critical', 'warning', 'info']).optional(),
