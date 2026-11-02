@@ -25,7 +25,7 @@ export const SYSTEMS: readonly System[] = [
 ];
 
 export type { System, SystemResult } from './types';
-export { demandOf, marketSupply, marketDemand, targetPrice } from './market';
+export { demandOf, isqrt, marketSupply, marketDemand, targetPrice } from './market';
 export { pricePressure, shortagePercent } from './society';
 export {
   inTransit,

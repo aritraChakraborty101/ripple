@@ -14,18 +14,30 @@ export const PRICE_CEILING_MULTIPLIER = 4;
 /** A daily move of at least this many basis points emits a price_moved event. */
 export const PRICE_EVENT_THRESHOLD_BP = 200;
 
+/** The integer square root: the largest n with n * n <= value. Exact, so prices stay deterministic. */
+export function isqrt(value: number): number {
+  if (value < 2) return Math.max(0, value);
+  let x = Math.trunc(Math.sqrt(value));
+  while (x * x > value) x -= 1;
+  while ((x + 1) * (x + 1) <= value) x += 1;
+  return x;
+}
+
 /**
  * Units per day reaching the world market: open routes only. For a stocked
- * resource, the world's usable holdings against normal, scaled to a day's
- * use: holdings at 80% of normal read as supply at 80% of demand.
+ * resource, the world's usable holdings against normal, softened by a square
+ * root and scaled to a day's demand: holdings at a quarter of normal read as
+ * supply at half of demand, so the price doubles rather than quadruples.
+ * Stocks are a buffer, and traders know more is on the way.
  */
 export function marketSupply(state: GameState, resource: string): number {
   const stocked = state.world.resources[resource]?.stocked;
   if (stocked) {
-    if (stocked.normalSupply <= 0) return marketDemand(state, resource);
-    return Math.trunc(
-      (marketDemand(state, resource) * usableSupply(state, resource)) / stocked.normalSupply,
-    );
+    const demand = marketDemand(state, resource);
+    if (stocked.normalSupply <= 0) return demand;
+    // demand * sqrt(usable / normal), in integers.
+    const ratio = Math.trunc((usableSupply(state, resource) * 1_000_000) / stocked.normalSupply);
+    return Math.trunc((demand * isqrt(ratio)) / 1_000);
   }
   let supply = 0;
   for (const id of sortedIds(state.world.links)) {

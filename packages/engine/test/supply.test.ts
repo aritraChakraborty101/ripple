@@ -5,6 +5,7 @@ import {
   effectiveStat,
   explainStat,
   inTransit,
+  isqrt,
   marketSupply,
   run,
   setChokepointOpen,
@@ -45,6 +46,14 @@ function nodes(node: WhyNode): WhyNode[] {
   for (const c of children) out.push(...nodes(c));
   return out;
 }
+
+describe('isqrt', () => {
+  it('is the exact integer square root', () => {
+    expect([0, 1, 2, 3, 4, 15, 16, 17, 1_000_000, 999_999].map(isqrt)).toEqual([
+      0, 1, 1, 1, 2, 3, 4, 4, 1_000, 999,
+    ]);
+  });
+});
 
 describe('supply chain', () => {
   it('starts with 20 days of stock and a full pipeline', () => {

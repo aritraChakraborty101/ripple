@@ -98,6 +98,7 @@ export {
   demandOf,
   marketDemand,
   marketSupply,
+  isqrt,
   monthlyBalance,
   pricePressure,
   shortagePercent,
