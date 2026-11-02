@@ -34,13 +34,13 @@ personalities:
 
   veskar:
     goals:
-      prices(oil): { weight: 45, aspire: 20 }
+      prices(crude): { weight: 45, aspire: 20 }
       wealth: { weight: 20, aspire: 700 }
       balance: { weight: 10 }
       ties(aldoria): { weight: 15, aspire: 40 }
       security: { weight: 10 }
     ambitions:
-      - { id: crude_dear, name: Keep crude dear, goal: prices(oil), target: 20 }
+      - { id: crude_dear, name: Keep crude dear, goal: prices(crude), target: 20 }
 
   orrin:
     goals:

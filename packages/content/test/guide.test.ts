@@ -16,7 +16,7 @@ function problemsOf(raw: { briefing?: unknown; advisor?: unknown }): string[] {
 
 const tip = {
   id: 'oil_hurting',
-  when: { stat: { target: 'resource.oil.price', above: 8760 } },
+  when: { stat: { target: 'resource.fuel.price', above: 11400 } },
   text: 'Fuel is dear.',
   suggest: ['fuel_subsidy'],
 };
@@ -51,8 +51,8 @@ describe('guide validation', () => {
     const guide = parseGuide({ advisor: [tip] }, scenario);
     expect(guide.tips[0]!.when).toEqual({
       type: 'stat',
-      target: { kind: 'resource', id: 'oil', stat: 'price' },
-      above: 8760,
+      target: { kind: 'resource', id: 'fuel', stat: 'price' },
+      above: 11400,
     });
     expect(guide.briefing).toBeNull();
   });

@@ -8,7 +8,7 @@
     relation: { between: [aldoria, corvan], below: -12 }
   country: corvan
   text: >-
-    Relations with Corvan are slipping. Your oil sails through their strait.
+    Relations with Corvan are slipping. Your crude sails through their strait.
     An envoy now costs far less than a closed strait later.
   suggest: [envoy>corvan, transit_fees]
 
@@ -38,7 +38,7 @@
     relation: { between: [aldoria, kesh], above: 19 }
   country: kesh
   text: >-
-    Kesh wants your business. Its oil comes overland, so it keeps flowing when
+    Kesh wants your business. Its crude comes overland, so it keeps flowing when
     the strait closes. A trade deal would be a hedge, though Kesh's government
     is shaky and a coup would void it.
   suggest: [trade_deal>kesh]
@@ -57,25 +57,26 @@
   when:
     chokepointClosed: south_strait
   text: >-
-    The strait is closed, and oil will climb for weeks. Release the reserves
-    to soften the blow. For the long run, a pipeline from Veskar would avoid
-    the strait altogether.
+    The strait is closed. Tankers already past it will still arrive, and we
+    hold about three weeks of fuel, so the pain comes later and lasts longer.
+    Keep the fuel reserve for when tanks run low. For the long run, a pipeline
+    from Veskar would avoid the strait altogether.
   suggest: [release_reserves, overland_pipeline]
 
 - id: oil_hurting
   when:
-    stat: { target: resource.oil.price, above: 8760 }
+    stat: { target: resource.fuel.price, above: 11400 }
   text: >-
-    Crude is 20% above normal, and workers and industry feel it at once.
+    Fuel is 20% above normal, and workers and industry feel it at once.
     A fuel subsidy shields them for three months; Veskar might also agree to
     a discount.
   suggest: [fuel_subsidy, veskar_discount]
 
 - id: oil_doubled
   when:
-    stat: { target: resource.oil.price, above: 14600 }
+    stat: { target: resource.fuel.price, above: 19000 }
   text: >-
-    Crude has doubled. Rationing fuel cuts what Aldoria buys by a fifth, which
+    Fuel has doubled. Rationing fuel cuts what Aldoria buys by a fifth, which
     shrinks your import bill and eases the price for everyone. Industry will
     grumble while it lasts.
   suggest: [ration_fuel]
@@ -113,7 +114,7 @@
   text: >-
     The treasury is running low, and dear imports drain it every month. Spend
     on what fixes causes rather than symptoms. A tariff raises money from what
-    you already buy: on Veskar's oil it pays most, on Thessa's steel about
+    you already buy: on Veskar's crude it pays most, on Thessa's steel about
     1.6 bn a month. Either way, expect them to answer. Austerity saves about
     3 bn a month, if the workers will stand for it.
   suggest: [tariff>thessa, tariff>veskar, austerity]

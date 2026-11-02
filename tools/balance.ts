@@ -47,8 +47,12 @@ const steady: Player = (state) => {
     effectiveStat(state, { kind, id, stat: name });
   const relation = (other: string) =>
     effectiveStat(state, { kind: 'relation', id: relationId(me, other), stat: 'value' });
-  const oil = state.world.resources.oil!;
-  const oilUp = (stat('resource', 'oil', 'price') - oil.basePrice) / oil.basePrice;
+  const fuel = state.world.resources.fuel!;
+  const fuelUp = (stat('resource', 'fuel', 'price') - fuel.basePrice) / fuel.basePrice;
+  // Days of fuel left at home, against normal use.
+  const fuelDays = Math.trunc(
+    stat('country', me, 'stock_fuel') / Math.max(1, stat('country', me, 'demand_fuel')),
+  );
 
   const wants: Want[] = [];
   const want = (decision: string, target?: string) =>
@@ -58,10 +62,9 @@ const steady: Player = (state) => {
   if (relation('corvan') < -25) want('envoy', 'corvan');
   if (relation('corvan') < -32) want('transit_fees');
   if (stat('country', me, 'stability') < 45) want('fuel_subsidy');
-  if (oilUp > 0.4) {
-    want('release_reserves');
-    want('veskar_discount');
-  }
+  if (fuelUp > 0.4) want('veskar_discount');
+  // The reserve goes in when the tanks run low, not when prices first move.
+  if (fuelDays < 6) want('release_reserves');
   if (stat('country', me, 'stability') < 30) want('address_nation');
   if (state.tick > 60 && stat('country', me, 'treasury') > 200) want('overland_pipeline');
   // Friends first: deals and a treaty with whoever is friendly enough.
@@ -79,10 +82,10 @@ const steady: Player = (state) => {
   }
   // No intelligence files: they change what a person sees and reads, which a
   // script cannot use, so here they would only cost money.
-  // Ration fuel in a deep oil crisis, and stop once it passes.
+  // Ration fuel when the tanks run low or fuel is dear, and stop once it passes.
   const rationing = state.flags.includes('rationing');
-  if (!rationing && oilUp > 0.6) want('ration_fuel');
-  if (rationing && oilUp < 0.15) want('end_rationing');
+  if (!rationing && (fuelUp > 0.6 || fuelDays < 10)) want('ration_fuel');
+  if (rationing && fuelUp < 0.15 && fuelDays >= 18) want('end_rationing');
   // Spend on public works when the mood sours and money allows; stop when money runs low.
   const works = state.flags.includes('public_works');
   const treasury = stat('country', me, 'treasury');

@@ -96,6 +96,7 @@ export interface TradeItem {
 /**
  * One trade line for a country, resource by resource:
  *   - imports: everything it consumes, at the market price (shortages are bought dear elsewhere);
+ *     for stocked goods, what was sent to it today;
  *   - exports: what its open routes carry out, at the market price;
  *   - transit: a toll on what passes through chokepoints it holds;
  *   - tariffs: its duty on what its open routes bring in, partner by partner.
@@ -106,7 +107,10 @@ export function tradeItems(state: GameState, country: string, line: TradeLine): 
   const tollAmount: Record<string, number> = {};
   if (line === 'imports') {
     for (const resource of sortedIds(state.world.resources)) {
-      units[resource] = demandOf(state, country, resource);
+      // Stocked goods are paid for as they are bought: what was sent to this country today.
+      units[resource] = state.world.resources[resource]!.stocked
+        ? inboundShipped(state, country, resource)
+        : demandOf(state, country, resource);
     }
   } else {
     for (const id of sortedIds(state.world.links)) {
@@ -145,6 +149,17 @@ export function tradeItems(state: GameState, country: string, line: TradeLine): 
   return items;
 }
 
+/** Units of a stocked resource sent to a country today, over every route. */
+function inboundShipped(state: GameState, country: string, resource: string): number {
+  let units = 0;
+  for (const id of sortedIds(state.world.links)) {
+    const link = state.world.links[id]!;
+    if (link.to === country && link.resource === resource)
+      units += Math.max(0, link.stats.shipped ?? 0);
+  }
+  return units;
+}
+
 function tariffItems(state: GameState, country: string): TradeItem[] {
   const byKey = new Map<
     string,
@@ -155,7 +170,9 @@ function tariffItems(state: GameState, country: string): TradeItem[] {
     if (link.to !== country || !isLinkOpen(state.world, link)) continue;
     const rate = effectiveStat(state, statRef(country, tariffStat(link.from)));
     if (rate <= 0) continue;
-    const carried = Math.max(0, effectiveStat(state, { kind: 'link', id, stat: 'capacity' }));
+    const carried = state.world.resources[link.resource]?.stocked
+      ? Math.max(0, link.stats.shipped ?? 0)
+      : Math.max(0, effectiveStat(state, { kind: 'link', id, stat: 'capacity' }));
     if (carried === 0) continue;
     const key = `${link.from}|${link.resource}`;
     const item = byKey.get(key) ?? {

@@ -162,10 +162,7 @@
       - stat: { target: country.kesh.stability, below: 30 }
       - chance: 80
   effects:
-    - modify: { target: link.oil_kesh_velmont.capacity, pct: -10000, days: 120 }
-    - modify: { target: link.oil_kesh_thessa.capacity, pct: -10000, days: 120 }
-    - modify: { target: link.oil_kesh_ilmar.capacity, pct: -10000, days: 120 }
-    - modify: { target: link.deal_kesh.capacity, pct: -10000, days: 120 }
+    - modify: { target: plant.kesh_wells.capacity, pct: -10000, days: 120 }
     - endEffectsOf: { decision: trade_deal, target: kesh }
     - clearFlag: deal_with_kesh
     - adjust: { target: country.kesh.stability, by: 12 }
@@ -193,16 +190,14 @@
   tag: veskar
   severity: critical
   headline: Explosion shuts a major Veskari oil terminal
-  detail: Veskar's seaborne exports are halved for about six weeks.
+  detail: Veskar can pump only half its crude for about six weeks.
   cooldownDays: 300
   trigger:
     all:
       - afterDay: 120
       - chance: 18
   effects:
-    - modify: { target: link.oil_veskar_aldoria.capacity, pct: -5000, days: 40 }
-    - modify: { target: link.oil_veskar_thessa.capacity, pct: -5000, days: 40 }
-    - modify: { target: link.oil_veskar_velmont.capacity, pct: -5000, days: 40 }
+    - modify: { target: plant.veskar_wells.capacity, pct: -5000, days: 40 }
 
 - id: orrin_drought
   tag: orrin

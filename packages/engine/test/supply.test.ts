@@ -65,7 +65,8 @@ describe('supply chain', () => {
     expect(inTransit(later, 'crude')).toBe(250);
     expect(shortage(later, 'importer')).toBe(0);
     expect(price(later, 'fuel')).toBe(9_000);
-    expect(price(later, 'crude')).toBe(7_000);
+    // Crude backs up in full tanks: a glut, not a shortage.
+    expect(price(later, 'crude')).toBeLessThanOrEqual(7_000);
   });
 
   it("counts a refinery's crude as demand", () => {
@@ -124,12 +125,12 @@ describe('supply chain', () => {
     expect(stock(later, 'refiner', 'crude')).toBeGreaterThan(1_000);
     expect(stock(later, 'importer', 'fuel')).toBeLessThan(800);
     expect(price(later, 'fuel')).toBeGreaterThan(9_000);
-    expect(price(later, 'crude')).toBe(7_000);
+    // Crude backs up in full tanks: a glut, not a shortage.
+    expect(price(later, 'crude')).toBeLessThanOrEqual(7_000);
   });
 
-  it('stops pumping when crude has nowhere to go', () => {
-    const later = run(closed(), 200);
-    expect(stock(later, 'producer', 'crude')).toBe(1_000);
+  it('pumps only what can be sent: with the strait shut, crude stays in the ground', () => {
+    expect(stock(run(closed(), 200), 'producer', 'crude')).toBe(0);
   });
 
   it('explains a shortage back to the closed strait', () => {

@@ -97,11 +97,12 @@ describe('session', () => {
   });
 
   it('reports a month that ends in deficit, naming the dearest import', () => {
-    const later = days(closeStrait(newSession(quiet, 1)), 30);
+    // Stocks hold for the first weeks; by the third month fuel is bought dear.
+    const later = days(closeStrait(newSession(quiet, 1)), 90);
     const deficit = later.dispatches.find((d) => d.headline.startsWith('The month ends'));
-    expect(deficit).toMatchObject({ tag: 'Home', tick: 29 });
+    expect(deficit).toMatchObject({ tag: 'Home', tick: 89 });
     expect(deficit!.headline).toMatch(/^The month ends [\d.]+ bn in deficit$/);
-    expect(deficit!.detail).toMatch(/crude oil the most\.$/);
+    expect(deficit!.detail).toMatch(/fuel the most\.$/);
   });
 
   it('reports price rises after a closure, one dispatch per band crossed', () => {
@@ -109,7 +110,9 @@ describe('session', () => {
     const oil = later.dispatches.filter((d) => d.headline.startsWith('Crude oil'));
     expect(oil.length).toBeGreaterThan(1);
     expect(oil.length).toBeLessThanOrEqual(12);
-    expect(oil[0]!.headline).toMatch(/^Crude oil now 12\d% above normal$/);
+    // Stocks soften the blow: crude has climbed about three quarters in a month.
+    expect(oil[0]!.headline).toMatch(/^Crude oil now 7\d% above normal$/);
+    expect(later.dispatches.some((d) => d.headline.startsWith('Fuel now'))).toBe(true);
     expect(later.dispatches.some((d) => d.headline.startsWith('Grain now'))).toBe(true);
     expect(later.dispatches.some((d) => d.headline.startsWith('Steel'))).toBe(false);
   });
@@ -167,7 +170,7 @@ describe('session', () => {
   });
 
   it('keeps a bounded price history for sparklines', () => {
-    expect(days(newSession(quiet, 1), 200).history.oil).toHaveLength(120);
+    expect(days(newSession(quiet, 1), 200).history.fuel).toHaveLength(120);
   });
 
   it('only advances the world while running, and stops at the end', () => {

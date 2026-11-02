@@ -46,8 +46,8 @@ describe('advisor', () => {
     session = days(session, 1);
     expect(session.advisor.current?.id).toBe('strait_closed');
 
-    // Oil climbs past 20% while the first tip is still on screen: it waits.
-    session = days(session, 10);
+    // Fuel climbs past 20% while the first tip is still on screen: it waits.
+    session = days(session, 50);
     expect(session.advisor.current?.id).toBe('strait_closed');
 
     session = days(dismissAdvice(session), 1);

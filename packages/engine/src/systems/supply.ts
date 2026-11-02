@@ -19,13 +19,67 @@ import type { ExplainContext, System } from './types';
  */
 export const KEEP_FOR_SELF_BP = 5_000;
 /**
- * Wells stop pumping once crude piles up beyond this many days of their output:
- * with nowhere to send it, it stays in the ground.
+ * How flows steer stocks back to normal. A route to a country below its
+ * normal stock, and a plant whose country is below normal in what it makes,
+ * may run this much above capacity; above normal, this much below. Without
+ * the headroom, emptied tanks never refill and a crisis never ends; without
+ * the slowdown, a refill overshoots into a lasting glut. In basis points.
  */
-export const WELL_STORAGE_DAYS = 20;
+export const SURGE_BP = 5_000;
+
+type Level = 'below' | 'normal' | 'above';
+
+function surged(capacity: number, level: Level): number {
+  const swing = Math.trunc((capacity * SURGE_BP) / 10_000);
+  return level === 'below' ? capacity + swing : level === 'above' ? capacity - swing : capacity;
+}
+/**
+ * Buyers stop ordering once they hold this many times their normal stock:
+ * a supplier with spare crude (a trade deal, a pipeline) builds a buffer, not
+ * an endless pile.
+ */
+export const FULL_TANKS_MULTIPLE = 2;
 
 const stockOf = (world: World, country: string, resource: string) =>
   world.countries[country]?.stats[stockStat(resource)] ?? 0;
+
+/** Units a day the open routes out of a country could carry of a resource. */
+function outboundCapacity(
+  state: GameState,
+  world: World,
+  country: string,
+  resource: string,
+): number {
+  let units = 0;
+  for (const id of sortedIds(world.links)) {
+    const link = world.links[id]!;
+    if (link.from !== country || link.resource !== resource || !isLinkOpen(world, link)) continue;
+    units += surged(
+      Math.max(0, effectiveStat(state, { kind: 'link', id, stat: 'capacity' })),
+      levelOf(state.world, link.to, resource),
+    );
+  }
+  return units;
+}
+
+/**
+ * Where a country's stock stands against its normal, read from the start of
+ * the day so the whole day steers by the same numbers. A country that
+ * normally holds none is always normal.
+ */
+function levelOf(world: World, country: string, resource: string): Level {
+  const normal = world.countries[country]?.normalStock[resource] ?? 0;
+  if (normal === 0) return 'normal';
+  const stock = stockOf(world, country, resource);
+  return stock < normal ? 'below' : stock > normal ? 'above' : 'normal';
+}
+
+/** How much more a country will take before its tanks are full. Unlimited for a country that holds none normally. */
+function roomAt(world: World, country: string, resource: string): number {
+  const normal = world.countries[country]?.normalStock[resource] ?? 0;
+  if (normal === 0) return Number.MAX_SAFE_INTEGER;
+  return Math.max(0, normal * FULL_TANKS_MULTIPLE - stockOf(world, country, resource));
+}
 
 function setStock(world: World, country: string, resource: string, units: number): World {
   return setBaseStat(world, 'country', country, stockStat(resource), units);
@@ -46,15 +100,18 @@ export function inTransit(state: GameState, resource: string): number {
 }
 
 /**
- * What the world has on hand of a stocked resource: every country's stock, but
- * no more than its normal stock (crude piling up where nobody uses it helps no
- * one), plus everything at sea.
+ * What the world has on hand of a stocked resource: every country's stock, up
+ * to full tanks (crude piling up where nobody uses it helps no one), plus
+ * everything at sea. A refinery fire leaves crude in full tanks: a glut.
  */
 export function usableSupply(state: GameState, resource: string): number {
   let units = inTransit(state, resource);
   for (const id of sortedIds(state.world.countries)) {
     const country = state.world.countries[id]!;
-    units += Math.min(stockOf(state.world, id, resource), country.normalStock[resource] ?? 0);
+    units += Math.min(
+      stockOf(state.world, id, resource),
+      (country.normalStock[resource] ?? 0) * FULL_TANKS_MULTIPLE,
+    );
   }
   return units;
 }
@@ -96,8 +153,12 @@ export const supplySystem: System = {
     // 2. Plants, in a stable order.
     for (const id of sortedIds(world.plants)) {
       const plant = world.plants[id]!;
-      const capacity = plantCapacity(state, id);
-      if (capacity === 0 || !world.resources[plant.output]?.stocked) continue;
+      if (!world.resources[plant.output]?.stocked) continue;
+      const capacity = surged(
+        plantCapacity(state, id),
+        levelOf(state.world, plant.country, plant.output),
+      );
+      if (capacity === 0) continue;
       let made: number;
       if (plant.input) {
         made = Math.min(capacity, stockOf(world, plant.country, plant.input));
@@ -108,11 +169,16 @@ export const supplySystem: System = {
           stockOf(world, plant.country, plant.input) - made,
         );
       } else {
-        const room = Math.max(
-          0,
-          capacity * WELL_STORAGE_DAYS - stockOf(world, plant.country, plant.output),
+        // Wells pump to need: enough to hold the country's normal stock plus a
+        // day's load for every open route out. With nowhere to send it, crude
+        // stays in the ground; spare capacity is there for a new deal.
+        const target =
+          (world.countries[plant.country]?.normalStock[plant.output] ?? 0) +
+          outboundCapacity(state, world, plant.country, plant.output);
+        made = Math.min(
+          capacity,
+          Math.max(0, target - stockOf(world, plant.country, plant.output)),
         );
-        made = Math.min(capacity, room);
       }
       if (made > 0) {
         world = setStock(
@@ -148,13 +214,18 @@ export const supplySystem: System = {
       const link = world.links[id]!;
       if (!world.resources[link.resource]?.stocked) continue;
       const capacity = isLinkOpen(world, link)
-        ? Math.max(0, effectiveStat(state, { kind: 'link', id, stat: 'capacity' }))
+        ? surged(
+            Math.max(0, effectiveStat(state, { kind: 'link', id, stat: 'capacity' })),
+            levelOf(state.world, link.to, link.resource),
+          )
         : 0;
       const keep = Math.trunc(
         ((world.countries[link.from]?.normalStock[link.resource] ?? 0) * KEEP_FOR_SELF_BP) / 10_000,
       );
+      const room = roomAt(world, link.to, link.resource);
       const units = Math.min(
         capacity,
+        room,
         Math.max(0, stockOf(world, link.from, link.resource) - keep),
       );
       if ((link.stats.shipped ?? 0) !== units)

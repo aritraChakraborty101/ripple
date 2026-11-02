@@ -82,7 +82,7 @@
   effects:
     - adjust: { target: country.corvan.treasury, by: 25 }
     - relation: { between: [aldoria, corvan], by: -4, days: 90 }
-    - modify: { target: resource.oil.price, pct: 500, days: 60 }
+    - modify: { target: resource.fuel.price, pct: 500, days: 60 }
   severity: warning
   successHeadline: Corvan raises transit fees in the South Strait
   detail: Shipping through the strait costs more, and Aldoria resents paying.
@@ -487,7 +487,7 @@
       rises: [30, 120]
   cooldownDays: 200
   effects:
-    - modify: { target: resource.oil.price, pct: 600, days: 60 }
+    - modify: { target: resource.fuel.price, pct: 600, days: 60 }
     - adjust: { target: country.kesh.treasury, by: 15 }
   severity: warning
   successHeadline: Kesh raises the price of its crude
@@ -566,16 +566,15 @@
   for: [veskar]
   name: Cut crude output
   description: Pump less, and let scarcity lift the price.
-  drives: { prices(oil): 3, ties(aldoria): -1 }
+  drives: { prices(crude): 3, ties(aldoria): -1 }
   consider:
-    - price: oil
+    - price: crude
       falls: [5, 40]
     - day: true
       rises: [90, 240]
   cooldownDays: 300
   effects:
-    - modify: { target: link.oil_veskar_aldoria.capacity, pct: -1000, days: 45 }
-    - modify: { target: link.oil_veskar_thessa.capacity, pct: -1000, days: 45 }
+    - modify: { target: plant.veskar_wells.capacity, pct: -2500, days: 45 }
   severity: warning
   successHeadline: Veskar cuts crude output
   detail: Less crude reaches the market for six weeks.
@@ -584,13 +583,13 @@
   for: [veskar]
   name: Raise the crude export price
   description: With buyers desperate, charge more.
-  drives: { prices(oil): 2, wealth: 1, ties(aldoria): -1 }
+  drives: { prices(crude): 2, wealth: 1, ties(aldoria): -1 }
   consider:
-    - price: oil
+    - price: crude
       rises: [30, 80]
   cooldownDays: 120
   effects:
-    - modify: { target: resource.oil.price, pct: 1000, days: 45 }
+    - modify: { target: resource.fuel.price, pct: 1000, days: 45 }
   severity: warning
   successHeadline: Veskar raises its crude export price
   detail: With buyers desperate, Veskar adds 10% for six weeks.

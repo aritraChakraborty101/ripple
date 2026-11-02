@@ -32,7 +32,8 @@ export {
   plantCapacity,
   usableSupply,
   KEEP_FOR_SELF_BP,
-  WELL_STORAGE_DAYS,
+  FULL_TANKS_MULTIPLE,
+  SURGE_BP,
 } from './supply';
 export {
   budgetOf,
