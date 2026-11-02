@@ -51,6 +51,12 @@ function playIdle(seed: number): { state: GameState; story: string[] } {
 }
 
 describe('first-crisis scenario', () => {
+  it('files every player order with a ministry, for the cabinet', () => {
+    const unfiled = scenario.decisions.filter((d) => d.for === undefined && !d.ministry);
+    expect(unfiled.map((d) => d.id)).toEqual([]);
+    expect(scenario.decisions.filter((d) => d.for !== undefined && d.ministry)).toEqual([]);
+  });
+
   it('loads and validates', () => {
     expect(scenario.id).toBe('first_crisis');
     expect(scenario.rules.playerCountry).toBe('aldoria');

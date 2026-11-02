@@ -52,7 +52,7 @@ export function Markets({ game, history }: Props) {
                   values={history[rid] ?? [price]}
                   base={resource.basePrice}
                   tone={color}
-                  width={88}
+                  width={76}
                   height={14}
                 />
               </button>
