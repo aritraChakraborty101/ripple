@@ -23,9 +23,9 @@ function playTo(seed: number, tick: number): Session {
   return session;
 }
 
-// The golden game: by day 215 Corvan has chosen to close the strait and
-// stability has collapsed. Played once and shared, since it takes a moment.
-const session = playTo(5, 215);
+// The golden game: Corvan closed the strait on day 160, and by day 255 the
+// tanks have run dry and stability has collapsed. Played once and shared.
+const session = playTo(4, 255);
 const game: GameState = session.game;
 const me = game.rules.playerCountry;
 const stability: WhyTarget = {
@@ -39,13 +39,13 @@ function titles(nodes: readonly WhyNode[]): string[] {
 
 describe('why-trace labels', () => {
   it('asks the question in plain words', () => {
-    expect(questionFor(game, stability)).toMatch(/^Why is stability at \d+\?$/);
+    expect(questionFor(game, stability)).toMatch(/^Why is stability at [−-]?\d+\?$/);
     const relation: WhyTarget = { kind: 'stat', ref: relationRefWith(game, 'corvan') };
     expect(questionFor(game, relation)).toMatch(/^Why are relations with Corvan at /);
   });
 
   it('formats prices as money and effects with a sign', () => {
-    const price = { kind: 'resource', id: 'oil', stat: 'price' } as const;
+    const price = { kind: 'resource', id: 'fuel', stat: 'price' } as const;
     expect(formatStat(price, 16_490)).toBe('164.90');
     expect(formatEffect(stability.ref, -12)).toBe('−12');
     expect(formatEffect(stability.ref, 5)).toBe('+5');
@@ -62,15 +62,9 @@ describe('why-trace chain', () => {
     expect(steps.at(-1)).toMatch(/^Stability/);
   });
 
-  it('runs from the dispute through the strait and the oil price', () => {
+  it('runs from the dispute through the strait and fuel', () => {
     const joined = steps.join(' → ');
-    const order = [
-      /fishing boats/i,
-      /Relations with Corvan/,
-      /South Strait/,
-      /Crude oil price/,
-      /Stability/,
-    ];
+    const order = [/fishing boats/i, /Relations with Corvan/, /South Strait/, /fuel/i, /Stability/];
     let from = 0;
     for (const pattern of order) {
       const match = joined.slice(from).search(pattern);
@@ -114,7 +108,7 @@ describe('why-trace for the treasury', () => {
     expect(text.note).toMatch(/bn over \d+ months$/);
   });
 
-  it('follows the budget into imports and the oil price', () => {
+  it('follows the budget into imports and the fuel price', () => {
     const titles = (nodes: readonly { node: WhyNode }[]) =>
       nodes.map((n) => describeNode(game, n.node).title);
     const sides = childrenOf(game, budget.node);
@@ -124,8 +118,8 @@ describe('why-trace for the treasury', () => {
     const imports = lines.find((l) => l.node.type === 'trade')!;
     expect(describeNode(game, imports.node).title).toMatch(/^Imports cost [\d.]+ bn a month$/);
     const goods = childrenOf(game, imports.node);
-    expect(describeNode(game, goods[0]!.node).title).toMatch(/^Crude oil price/);
-    expect(goods[0]!.note).toBe('40 a day of crude oil');
+    expect(describeNode(game, goods[0]!.node).title).toMatch(/^Fuel price/);
+    expect(goods[0]!.note).toMatch(/^\d+ a day of fuel$/);
   });
 });
 

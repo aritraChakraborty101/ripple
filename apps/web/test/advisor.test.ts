@@ -47,8 +47,9 @@ describe('advisor', () => {
     expect(session.advisor.current?.id).toBe('strait_closed');
 
     // Fuel climbs past 20% while the first tip is still on screen: it waits.
-    session = days(session, 50);
+    session = days(session, 70);
     expect(session.advisor.current?.id).toBe('strait_closed');
+    expect(session.game.world.resources.fuel!.stats.price).toBeGreaterThan(11_400);
 
     session = days(dismissAdvice(session), 1);
     expect(session.advisor.current?.id).toBe('oil_hurting');

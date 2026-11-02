@@ -32,14 +32,33 @@ PR 2 of the oil chain design note. Record 0021 added the supply engine; this rec
 - **Flows steer stocks back to normal** (`SURGE_BP`, 50%). A route to a country below normal, and a plant whose country is below normal in what it makes, run up to 50% above capacity; above normal, 50% below. Without the headroom, emptied tanks never refilled and prices stayed at the ceiling forever after a crisis. Without the slowdown, refills overshot into a lasting glut. Levels are read from the start of each day, so a normal day stays exactly normal.
 - **Buyers stop at full tanks**, twice their normal stock (`FULL_TANKS_MULTIPLE`). Prices count stock up to full tanks, so a refinery fire shows as a crude glut, not a shortage.
 - **Imports of stocked goods** are paid for as they are shipped, and tariffs apply to what is shipped. A country that runs dry buys less, and pays dearly for what it does get.
-- **Shortage weighs half** a price rise of the same size, on top of the price (`SHORTAGE_WEIGHT_BP`). At full weight, idle players were ousted in 98% of games.
+- **Shortage weighs half** a price rise of the same size, on top of the price (`SHORTAGE_WEIGHT_BP`).
+- **Stocked prices follow the square root** of holdings against normal: holdings at a quarter of normal double the price rather than quadrupling it (`isqrt`, exact integers). Stocks are a buffer, and traders know more is on the way. With the straight ratio, prices hit the ceiling as tanks emptied, and idle players were ousted in 97–98% of games even with shortage at half weight.
 
 ## Results
 
-BALANCE_RESULTS
+Standard profile, 100 games each (the 200-game runs before the last two changes agreed):
+
+| Measure                             | Target   | Before (oil, record 0020)                | Now                                                             |
+| ----------------------------------- | -------- | ---------------------------------------- | --------------------------------------------------------------- |
+| Idle ousted                         | 75–90%   | 88%                                      | 87%                                                             |
+| Earliest idle ousting               | day 150+ | 155                                      | 222                                                             |
+| Idle first-crisis causes at 15%+    | 3+       | strait 53%, Kesh coup 29%, explosion 15% | strait 60%, Kesh coup 24%, explosion 13% (two clear, one close) |
+| Steady ousted                       | ≤5%      | 2%                                       | 0%                                                              |
+| Steady player runs out of fuel      | ≤10%     | —                                        | 0%                                                              |
+| Steady top order                    | ≤25%     | 19%                                      | trade deal 20%                                                  |
+| Steady harmful moves, largest share | ≤40%     | Kesh 29%                                 | Kesh 28%                                                        |
+
+Two of the design note's new targets are not met, and are noted honestly rather than tuned around:
+
+- **Idle players run out of fuel in 99% of games** (target 30–60%). An idle player nearly always meets a long closure, and every long closure empties the tanks. The target assumed shorter closures.
+- **Time to the fuel price peak.** In a 120-day closure, fuel keeps rising until the strait reopens and peaks about ten days after: tankers already at sea stop arriving. The 15–35 day target only fits short closures; the property that matters is that fuel moves little for the first month, which holds (+6% at day 30). After reopening, fuel is back within 10% of normal in about 55 days (target 30–60).
+
+The golden game moves to **seed 4**: a fishing dispute on day 74, Corvan closes the strait on day 160, and the leader falls on day 260. That's a hundred days of tanks running down, where the old model took about fifty.
 
 ## Consequences
 
-- A strait closure now unfolds over time. Crude climbs at once, but fuel moves little for a month. Aldoria's tanks run dry about eight to eleven weeks in. After the strait reopens, prices take about two months to settle.
+- A strait closure now unfolds over time. Crude climbs at once, but fuel moves little for a month. Aldoria's tanks run dry about eleven weeks in. After the strait reopens, prices take about two months to settle.
+- **A country that runs dry buys less**, so a closure now costs stability more than money. Aldoria's monthly deficit in a long closure reaches about 4 bn, not the 10+ bn it was, and the treasury barely moves. If money becomes too easy in crises, PR 3's orders (the reserve, the long way round) are where to add cost.
 - Corvan's refinery keeps selling to Aldoria through a closure. That's a reason to keep Corvan sweet even when the strait is shut.
 - The interface still shows crude and fuel as ordinary prices. PR 4 shows stocks, ships and refineries.

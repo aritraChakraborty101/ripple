@@ -97,10 +97,10 @@ describe('session', () => {
   });
 
   it('reports a month that ends in deficit, naming the dearest import', () => {
-    // Stocks hold for the first weeks; by the third month fuel is bought dear.
-    const later = days(closeStrait(newSession(quiet, 1)), 90);
+    // Stocks hold for the first weeks; by the fourth month fuel is bought dear.
+    const later = days(closeStrait(newSession(quiet, 1)), 120);
     const deficit = later.dispatches.find((d) => d.headline.startsWith('The month ends'));
-    expect(deficit).toMatchObject({ tag: 'Home', tick: 89 });
+    expect(deficit).toMatchObject({ tag: 'Home', tick: 119 });
     expect(deficit!.headline).toMatch(/^The month ends [\d.]+ bn in deficit$/);
     expect(deficit!.detail).toMatch(/fuel the most\.$/);
   });
@@ -110,9 +110,8 @@ describe('session', () => {
     const oil = later.dispatches.filter((d) => d.headline.startsWith('Crude oil'));
     expect(oil.length).toBeGreaterThan(1);
     expect(oil.length).toBeLessThanOrEqual(12);
-    // Stocks soften the blow: crude has climbed about three quarters in a month.
-    expect(oil[0]!.headline).toMatch(/^Crude oil now 7\d% above normal$/);
-    expect(later.dispatches.some((d) => d.headline.startsWith('Fuel now'))).toBe(true);
+    // Stocks soften the blow: crude has climbed about a third in a month, fuel barely.
+    expect(oil[0]!.headline).toMatch(/^Crude oil now 3\d% above normal$/);
     expect(later.dispatches.some((d) => d.headline.startsWith('Grain now'))).toBe(true);
     expect(later.dispatches.some((d) => d.headline.startsWith('Steel'))).toBe(false);
   });
@@ -182,10 +181,10 @@ describe('session', () => {
   });
 
   it('pauses the clock and reports when the game ends', () => {
-    // Seed 5, left alone, is ousted on day 214.
-    let session = setPaused(newSession(scenario, 5), false);
+    // Seed 4, left alone, is ousted on day 260.
+    let session = setPaused(newSession(scenario, 4), false);
     while (!session.game.outcome) session = tickSession(session);
-    expect(session.game.outcome).toEqual({ result: 'ousted', tick: 214 });
+    expect(session.game.outcome).toEqual({ result: 'ousted', tick: 260 });
     expect(session.clock.paused).toBe(true);
     expect(session.dispatches[0]!.headline).toBe('The government falls after weeks of unrest');
     expect(session.tallies.crises).toBeGreaterThan(0);
