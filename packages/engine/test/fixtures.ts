@@ -124,3 +124,89 @@ export const tinyScenario: ScenarioDef = {
     },
   ],
 };
+
+/**
+ * A small oil chain for the supply engine: a producer pumps crude, it sails
+ * through a strait to a refiner (5 days), and fuel ships on to the importer
+ * (3 days). Everything starts in balance with 20 days of stock everywhere.
+ */
+export const chainScenario: ScenarioDef = {
+  id: 'chain',
+  name: 'Chain test world',
+  rules: {
+    playerCountry: 'importer',
+    lengthYears: 5,
+    ousting: { stat: 'stability', below: 20, forTicks: 30 },
+  },
+  countries: [
+    {
+      id: 'importer',
+      name: 'Importer',
+      archetype: 'industrial_importer',
+      stats: { stability: 60, treasury: 400 },
+      demand: { fuel: 40 },
+    },
+    {
+      id: 'refiner',
+      name: 'Refiner',
+      archetype: 'rising_power',
+      stats: { stability: 60, treasury: 300 },
+      demand: { fuel: 10 },
+    },
+    {
+      id: 'producer',
+      name: 'Producer',
+      archetype: 'resource_exporter',
+      stats: { stability: 60, treasury: 300 },
+      demand: {},
+    },
+  ],
+  factions: [
+    {
+      id: 'importer_workers',
+      name: 'Workers',
+      country: 'importer',
+      stats: { satisfaction: 55, power: 10 },
+      sensitivity: { fuel: 10_000 },
+    },
+  ],
+  resources: [
+    { id: 'crude', name: 'Crude oil', basePrice: 7_000, stocked: { coverDays: 20 } },
+    { id: 'fuel', name: 'Fuel', basePrice: 9_000, stocked: { coverDays: 20 } },
+  ],
+  plants: [
+    { id: 'wells', name: 'Oil fields', country: 'producer', output: 'crude', capacity: 50 },
+    {
+      id: 'refinery',
+      name: 'Refinery',
+      country: 'refiner',
+      input: 'crude',
+      output: 'fuel',
+      capacity: 50,
+    },
+  ],
+  links: [
+    {
+      id: 'crude_by_sea',
+      resource: 'crude',
+      from: 'producer',
+      to: 'refiner',
+      capacity: 50,
+      via: ['strait'],
+      days: 5,
+    },
+    {
+      id: 'fuel_by_road',
+      resource: 'fuel',
+      from: 'refiner',
+      to: 'importer',
+      capacity: 40,
+      via: [],
+      days: 3,
+    },
+  ],
+  chokepoints: [{ id: 'strait', name: 'The Strait', controlledBy: 'producer', open: true }],
+  relations: [],
+  events: [],
+  decisions: [],
+};

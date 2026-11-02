@@ -11,12 +11,15 @@ import type { DecisionDef, EventDef } from './rules';
 import {
   demandStat,
   relationId,
+  shortageStat,
+  stockStat,
   sortedIds,
   type Archetype,
   type Chokepoint,
   type Country,
   type Faction,
   type Link,
+  type Plant,
   type Relation,
   type Resource,
   type Stats,
@@ -50,6 +53,8 @@ export interface ResourceDef {
   readonly id: string;
   readonly name: string;
   readonly basePrice: number;
+  /** Makes it a stocked resource: held in stocks, shipped with delays, priced by what is on hand. */
+  readonly stocked?: { readonly coverDays: number };
 }
 
 export interface LinkDef {
@@ -59,6 +64,18 @@ export interface LinkDef {
   readonly to: string;
   readonly capacity: number;
   readonly via: readonly string[];
+  /** Days in transit, for stocked resources. Missing: 0. */
+  readonly days?: number;
+}
+
+export interface PlantDef {
+  readonly id: string;
+  readonly name: string;
+  readonly country: string;
+  readonly input?: string;
+  readonly output: string;
+  /** Units a day. */
+  readonly capacity: number;
 }
 
 /** Starting relation between two countries. Pairs not listed start at 0. */
@@ -75,6 +92,8 @@ export interface ScenarioDef {
   readonly factions: readonly FactionDef[];
   readonly resources: readonly ResourceDef[];
   readonly links: readonly LinkDef[];
+  /** Wells and refineries for stocked resources. */
+  readonly plants?: readonly PlantDef[];
   readonly chokepoints: readonly Chokepoint[];
   readonly relations: readonly RelationDef[];
   readonly events: readonly EventDef[];
@@ -130,27 +149,68 @@ function buildRelations(
   return relations;
 }
 
+/**
+ * A country's normal stock of a stocked resource: `coverDays` of its own daily
+ * use, which is what it consumes plus what its plants use up.
+ */
+function normalStockOf(
+  def: ScenarioDef,
+  country: CountryDef,
+  resource: string,
+  coverDays: number,
+): number {
+  let use = country.demand[resource] ?? 0;
+  for (const plant of def.plants ?? []) {
+    if (plant.country === country.id && plant.input === resource) use += plant.capacity;
+  }
+  return use * coverDays;
+}
+
 export function buildWorld(def: ScenarioDef): World {
-  // Demand lives in stats too (`demand_oil`), so modifiers can change it.
+  const stocked = def.resources.filter((r) => r.stocked !== undefined);
+  const stockedIds = new Set(stocked.map((r) => r.id));
+  // Demand and stocks live in stats too (`demand_oil`, `stock_fuel`), so modifiers and effects can change them.
   const countries: Country[] = def.countries.map((c) => {
-    const demandStats: Record<string, number> = {};
-    for (const [resource, units] of Object.entries(c.demand))
-      demandStats[demandStat(resource)] = units;
-    return { ...c, stats: { ...c.stats, ...demandStats } };
+    const extra: Record<string, number> = {};
+    for (const [resource, units] of Object.entries(c.demand)) extra[demandStat(resource)] = units;
+    const normalStock: Record<string, number> = {};
+    for (const r of stocked) {
+      const normal = normalStockOf(def, c, r.id, r.stocked!.coverDays);
+      normalStock[r.id] = normal;
+      extra[stockStat(r.id)] = normal;
+      extra[shortageStat(r.id)] = 0;
+    }
+    return { ...c, stats: { ...c.stats, ...extra }, normalStock };
   });
-  const resources: Resource[] = def.resources.map((r) => ({
-    id: r.id,
-    name: r.name,
-    basePrice: r.basePrice,
-    stats: { price: r.basePrice },
-  }));
+  const resources: Resource[] = def.resources.map((r) => {
+    const base = { id: r.id, name: r.name, basePrice: r.basePrice, stats: { price: r.basePrice } };
+    if (!r.stocked) return base;
+    // Normal holdings: every country's normal stock, plus a full pipeline at sea.
+    let normalSupply = countries.reduce((sum, c) => sum + (c.normalStock[r.id] ?? 0), 0);
+    for (const l of def.links) {
+      if (l.resource === r.id) normalSupply += l.capacity * (l.days ?? 0);
+    }
+    return { ...base, stocked: { coverDays: r.stocked.coverDays, normalSupply } };
+  });
   const links: Link[] = def.links.map((l) => ({
     id: l.id,
     resource: l.resource,
     from: l.from,
     to: l.to,
     via: [...l.via],
-    stats: { capacity: l.capacity },
+    days: l.days ?? 0,
+    // Stocked routes record what they sent each day; at the start, a full day's load.
+    stats: stockedIds.has(l.resource)
+      ? { capacity: l.capacity, shipped: l.capacity }
+      : { capacity: l.capacity },
+  }));
+  const plants: Plant[] = (def.plants ?? []).map((p) => ({
+    id: p.id,
+    name: p.name,
+    country: p.country,
+    ...(p.input !== undefined ? { input: p.input } : {}),
+    output: p.output,
+    stats: { capacity: p.capacity },
   }));
   const countryRecord = byId('country', countries);
   return {
@@ -158,6 +218,7 @@ export function buildWorld(def: ScenarioDef): World {
     factions: byId('faction', def.factions),
     resources: byId('resource', resources),
     links: byId('link', links),
+    plants: byId('plant', plants),
     chokepoints: byId('chokepoint', def.chokepoints),
     relations: buildRelations(countryRecord, def.relations),
     embargoes: [],

@@ -112,7 +112,10 @@ export function tradeItems(state: GameState, country: string, line: TradeLine): 
     for (const id of sortedIds(state.world.links)) {
       const link = state.world.links[id]!;
       if (!isLinkOpen(state.world, link)) continue;
-      const carried = Math.max(0, effectiveStat(state, { kind: 'link', id, stat: 'capacity' }));
+      // Stocked goods earn what was actually sent today, not what the route could carry.
+      const carried = state.world.resources[link.resource]?.stocked
+        ? Math.max(0, link.stats.shipped ?? 0)
+        : Math.max(0, effectiveStat(state, { kind: 'link', id, stat: 'capacity' }));
       if (carried === 0) continue;
       if (line === 'exports' && link.from === country) {
         units[link.resource] = (units[link.resource] ?? 0) + carried;

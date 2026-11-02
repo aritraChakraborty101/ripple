@@ -41,8 +41,8 @@ const NAME = '(?:[a-z]|\\{(?:self|target)\\})(?:[a-z0-9_]|\\{(?:self|target)\\})
 export const statPath = z
   .string()
   .regex(
-    new RegExp(`^(country|faction|resource|link)\\.${NAME}\\.${NAME}$`),
-    'Stat targets look like country.aldoria.stability, or link.deal_{target}.capacity in templates',
+    new RegExp(`^(country|faction|resource|link|plant)\\.${NAME}\\.${NAME}$`),
+    'Stat targets look like country.aldoria.stability, plant.thessa_refinery.capacity, or link.deal_{target}.capacity in templates',
   );
 
 const pair = z.tuple([id, id]);

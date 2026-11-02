@@ -8,6 +8,7 @@ export {
   type GameOutcome,
   type GameState,
   type PendingDecision,
+  type Shipment,
 } from './state';
 export { step, run, type StepResult } from './step';
 export {
@@ -60,6 +61,7 @@ export {
   type CountryDef,
   type FactionDef,
   type LinkDef,
+  type PlantDef,
   type RelationDef,
   type ResourceDef,
   type ScenarioAi,
@@ -68,6 +70,8 @@ export {
 } from './scenario';
 export {
   demandStat,
+  shortageStat,
+  stockStat,
   embargoKey,
   isEmbargoed,
   isLinkOpen,
@@ -78,6 +82,8 @@ export {
   type Country,
   type Faction,
   type Link,
+  type Plant,
+  type StockedRules,
   type Relation,
   type Resource,
   type StatEntityKind,
@@ -93,6 +99,12 @@ export {
   marketSupply,
   monthlyBalance,
   pricePressure,
+  shortagePercent,
+  inTransit,
+  plantCapacity,
+  usableSupply,
+  KEEP_FOR_SELF_BP,
+  WELL_STORAGE_DAYS,
   targetPrice,
   tradeItems,
   tariffStat,
@@ -125,6 +137,7 @@ export {
   type FiringRecord,
   type FlagWhy,
   type MarketWhy,
+  type StockWhy,
   type MoodWhy,
   type PressureWhy,
   type StatWhy,
