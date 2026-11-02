@@ -52,7 +52,7 @@ Standard profile, 100 games each (the 200-game runs before the last two changes 
 Two of the design note's new targets are not met, and are noted honestly rather than tuned around:
 
 - **Idle players run out of fuel in 99% of games** (target 30–60%). An idle player nearly always meets a long closure, and every long closure empties the tanks. The target assumed shorter closures.
-- **Time to the fuel price peak.** In a 120-day closure, fuel keeps rising until the strait reopens and peaks about ten days after: tankers already at sea stop arriving. The 15–35 day target only fits short closures; the property that matters is that fuel moves little for the first month, which holds (+6% at day 30). After reopening, fuel is back within 10% of normal in about 55 days (target 30–60).
+- **Time to the fuel price peak.** In a 120-day closure, fuel keeps rising until the strait reopens and peaks about ten days after it reopens, because new shipments take a week or more to arrive. The 15–35 day target only fits short closures; the property that matters is that fuel moves little for the first month, which holds (+6% at day 30). After reopening, fuel is back within 10% of normal in about 55 days (target 30–60).
 
 The golden game moves to **seed 4**: a fishing dispute on day 74, Corvan closes the strait on day 160, and the leader falls on day 260. That's a hundred days of tanks running down, where the old model took about fifty.
 
