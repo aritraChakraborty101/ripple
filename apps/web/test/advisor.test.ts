@@ -51,8 +51,12 @@ describe('advisor', () => {
     expect(session.advisor.current?.id).toBe('strait_closed');
     expect(session.game.world.resources.fuel!.stats.price).toBeGreaterThan(11_400);
 
+    // Next in line: fuel running low and fuel dear, one at a time.
     session = days(dismissAdvice(session), 1);
-    expect(session.advisor.current?.id).toBe('oil_hurting');
+    expect(['fuel_running_low', 'oil_hurting']).toContain(session.advisor.current?.id);
+    const first = session.advisor.current!.id;
+    session = days(dismissAdvice(session), 1);
+    expect(session.advisor.current?.id).not.toBe(first);
     session = days(dismissAdvice(session), 30);
     expect(session.advisor.shown.filter((id) => id === 'strait_closed')).toHaveLength(1);
   });

@@ -222,6 +222,34 @@
   successHeadline: Thessa curbs steel exports in retaliation
   detail: Steel gets dearer for three months.
 
+# Thessa's refinery serves Thessa first. When relations sour, it serves
+# Aldoria less: a lever that needs no chokepoint.
+- id: thessa_curb_fuel
+  for: [thessa]
+  name: Curb fuel exports to Aldoria
+  description: Send Aldoria less fuel from Thessa's refinery.
+  requires: { chokepointOpen: south_strait }
+  drives: { grievance(aldoria): 3, standing: 1, wealth: -1 }
+  consider:
+    - relation: [aldoria, thessa]
+      rises: [-20, -50]
+    - day: true
+      rises: [90, 220]
+    - flag: treaty_with_thessa
+      falls: [0, 2]
+      gate: true
+    - stat: country.thessa.stability
+      rises: [34, 64]
+      gate: true
+  cooldownDays: 300
+  effects:
+    - modify: { target: link.fuel_thessa_aldoria.capacity, pct: -6000, days: 90 }
+    - relation: { between: [aldoria, thessa], by: -6, days: 120 }
+    - adjust: { target: country.thessa.influence, by: 2 }
+  severity: warning
+  successHeadline: Thessa curbs fuel exports to Aldoria
+  detail: Fuel from Thessa's refinery falls by more than half for three months.
+
 # Covert: if it fails, Aldoria finds out (the news reports a computer order's
 # failure when it has a failure headline). Thessa is warier of a government
 # that keeps an intelligence file on it.

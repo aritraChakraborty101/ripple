@@ -181,10 +181,10 @@ describe('session', () => {
   });
 
   it('pauses the clock and reports when the game ends', () => {
-    // Seed 4, left alone, is ousted on day 260.
-    let session = setPaused(newSession(scenario, 4), false);
+    // Seed 7, left alone, is ousted on day 304.
+    let session = setPaused(newSession(scenario, 7), false);
     while (!session.game.outcome) session = tickSession(session);
-    expect(session.game.outcome).toEqual({ result: 'ousted', tick: 260 });
+    expect(session.game.outcome).toEqual({ result: 'ousted', tick: 304 });
     expect(session.clock.paused).toBe(true);
     expect(session.dispatches[0]!.headline).toBe('The government falls after weeks of unrest');
     expect(session.tallies.crises).toBeGreaterThan(0);
@@ -214,7 +214,7 @@ describe('describing decisions', () => {
 });
 
 describe('crisis alerts', () => {
-  /** Run seed 4 until its first critical world event (the strait closes). */
+  /** Run seed 7 until its first critical world event (the strait closes). */
   function untilAlert(session: Session): Session {
     let current = setPaused(session, false);
     while (!current.alert && !current.game.outcome) current = tickSession(current);
@@ -222,7 +222,7 @@ describe('crisis alerts', () => {
   }
 
   it('raises an alert for a critical world event and pauses the clock', () => {
-    const session = untilAlert(newSession(scenario, 4));
+    const session = untilAlert(newSession(scenario, 7));
     expect(session.alert).toMatchObject({
       source: 'world',
       severity: 'critical',
@@ -233,13 +233,13 @@ describe('crisis alerts', () => {
   });
 
   it('keeps running when auto-pause is off', () => {
-    const session = untilAlert(newSession(scenario, 4, false));
+    const session = untilAlert(newSession(scenario, 7, false));
     expect(session.alert).not.toBeNull();
     expect(session.clock.paused).toBe(false);
   });
 
   it('stops simulating the rest of a fast frame once a crisis pauses the clock', () => {
-    let session = setPaused(newSession(scenario, 4), false);
+    let session = setPaused(newSession(scenario, 7), false);
     // Advance in big real-time steps until the crisis lands mid-frame.
     while (!session.alert) session = advanceSession(session, 1_000);
     const day = session.game.tick;
@@ -247,7 +247,7 @@ describe('crisis alerts', () => {
   });
 
   it('clears the alert when dismissed', () => {
-    const session = untilAlert(newSession(scenario, 4));
+    const session = untilAlert(newSession(scenario, 7));
     expect(dismissAlert(session).alert).toBeNull();
   });
 
@@ -291,6 +291,9 @@ describe('orders concerning a country', () => {
     expect(ids('veskar')).toEqual(
       withTarget('veskar', [
         ...aimed,
+        // Both change how much crude Veskar sends Aldoria.
+        'expand_refinery',
+        'long_way_round',
         'overland_pipeline',
         'tariff',
         'trade_deal',

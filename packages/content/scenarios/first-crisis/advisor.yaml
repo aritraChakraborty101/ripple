@@ -61,7 +61,26 @@
     hold about three weeks of fuel, so the pain comes later and lasts longer.
     Keep the fuel reserve for when tanks run low. For the long run, a pipeline
     from Veskar would avoid the strait altogether.
-  suggest: [release_reserves, overland_pipeline]
+  suggest: [long_way_round, release_reserves, overland_pipeline]
+
+- id: fuel_running_low
+  when:
+    stat: { target: country.aldoria.stock_fuel, below: 300 }
+  text: >-
+    Our fuel stocks are down to about a week. When they run out, the queues
+    at the pumps will hurt more than any price. Release the strategic
+    reserve now, or ration fuel to make what we have last.
+  suggest: [release_reserves, ration_fuel]
+
+- id: thessa_refinery_down
+  when:
+    stat: { target: plant.thessa_refinery.capacity, below: 20 }
+  text: >-
+    Thessa's refinery is barely running, and a third of the fuel we use came
+    from it or through it. Our own tanks will carry us a few weeks. For the
+    long run, a bigger refinery at home means a fire abroad cannot do this
+    to us again.
+  suggest: [ration_fuel, expand_refinery]
 
 - id: oil_hurting
   when:

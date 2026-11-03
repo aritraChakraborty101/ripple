@@ -51,8 +51,8 @@ describe('intelligence', () => {
   });
 
   it('warns before Corvan closes the strait in the golden game', () => {
-    // Seed 4, the golden game: Corvan closes the strait on day 160.
-    const session = playTo(newSession(scenario, 4), 160);
+    // Seed 7, the golden game: Corvan closes the strait on day 185.
+    const session = playTo(newSession(scenario, 7), 185);
     const warnings = session.dispatches.filter((d) => d.source === 'intel');
     expect(warnings.some((d) => d.headline === 'Corvan is weighing: Close the South Strait')).toBe(
       true,
@@ -64,7 +64,7 @@ describe('intelligence', () => {
   });
 
   it('does not repeat a warning within the waiting period', () => {
-    const session = playTo(newSession(scenario, 4), 260);
+    const session = playTo(newSession(scenario, 7), 300);
     const byKey = new Map<string, number[]>();
     for (const d of session.dispatches.filter((x) => x.source === 'intel')) {
       byKey.set(d.headline, [...(byKey.get(d.headline) ?? []), d.tick]);
