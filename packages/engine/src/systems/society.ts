@@ -11,10 +11,13 @@ export const MAX_RELIEF = 5;
 /** Stability points per point of satisfaction change, per unit of faction power, divided by this. */
 export const MOOD_DIVISOR = 50;
 
+/** How much a shortage weighs against a price rise of the same percentage, in basis points. */
+export const SHORTAGE_WEIGHT_BP = 5_000;
+
 /**
  * For a stocked resource: the share of a country's use that went unmet
- * yesterday, in percent. Running out weighs on people like a price rise of
- * the same size, on top of the price.
+ * yesterday, in percent, weighted by SHORTAGE_WEIGHT_BP. Running out weighs
+ * on people on top of the price: half as much as a price rise of that size.
  */
 export function shortagePercent(state: GameState, country: string, resource: string): number {
   if (!state.world.resources[resource]?.stocked) return 0;
@@ -22,7 +25,9 @@ export function shortagePercent(state: GameState, country: string, resource: str
   if (short <= 0) return 0;
   const wanted = effectiveStat(state, { kind: 'country', id: country, stat: demandStat(resource) });
   if (wanted <= 0) return 0;
-  return Math.min(100, Math.trunc((short * 100) / wanted));
+  return Math.trunc(
+    (Math.min(100, Math.trunc((short * 100) / wanted)) * SHORTAGE_WEIGHT_BP) / 10_000,
+  );
 }
 
 /**

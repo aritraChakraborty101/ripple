@@ -1,8 +1,17 @@
 # basePrice is in cents, so 7300 is 73.00 per unit.
 
-- id: oil
+# Oil moves as a chain (see plants.yaml): wells pump crude, tankers carry it,
+# refineries turn it into fuel, and people feel the price of fuel. Countries
+# hold 20 days of their own use in stock, so trouble arrives late and lingers.
+- id: crude
   name: Crude oil
   basePrice: 7300
+  stocked: { coverDays: 20 }
+
+- id: fuel
+  name: Fuel
+  basePrice: 9500
+  stocked: { coverDays: 20 }
 
 - id: grain
   name: Grain

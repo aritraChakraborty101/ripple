@@ -1,0 +1,54 @@
+# Wells pump crude; refineries turn it into fuel, one unit for one. capacity
+# is units a day. Wells pump to need (their own stock plus what open routes can
+# carry), so spare capacity is there for a new deal or pipeline. A fire is a
+# capacity modifier: plant.<id>.capacity.
+
+# Crude: Veskar pumps 80 a day for its customers, Kesh 20, each with spare
+# capacity for deals.
+- id: veskar_wells
+  name: Veskari oil fields
+  country: veskar
+  output: crude
+  capacity: 95
+
+- id: kesh_wells
+  name: Keshi oil fields
+  country: kesh
+  output: crude
+  capacity: 30
+
+# Fuel: 100 a day, refined in five places. Thessa's is the region's big one.
+- id: thessa_refinery
+  name: Thessan refinery
+  country: thessa
+  input: crude
+  output: fuel
+  capacity: 45
+
+- id: aldoria_refinery
+  name: Aldorian refinery
+  country: aldoria
+  input: crude
+  output: fuel
+  capacity: 15
+
+- id: corvan_refinery
+  name: Corvani refinery
+  country: corvan
+  input: crude
+  output: fuel
+  capacity: 15
+
+- id: velmont_refinery
+  name: Velmontese refinery
+  country: velmont
+  input: crude
+  output: fuel
+  capacity: 15
+
+- id: veskar_refinery
+  name: Veskari refinery
+  country: veskar
+  input: crude
+  output: fuel
+  capacity: 10

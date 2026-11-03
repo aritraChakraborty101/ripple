@@ -5,8 +5,9 @@ focusCountry: corvan
 sections:
   - heading: Your country
     text: >-
-      Aldoria is an industrial nation. Its factories run on imported oil, its
-      people eat imported grain, its builders depend on steel from Thessa, and
+      Aldoria is an industrial nation. Its factories and drivers run on fuel,
+      most of it refined abroad from crude that comes by sea; its people eat
+      imported grain, its builders depend on steel from Thessa, and
       its industry and army on microchips from the island of Ilmar. When those
       prices rise, people feel it, and so does your government. Your budget
       feels it too: imports are paid for every month.
@@ -19,11 +20,14 @@ sections:
 
   - heading: Your weak spot
     text: >-
-      Most of your oil sails through the South Strait, and Corvan controls it.
+      Your crude, and the crude for Thessa's refinery that makes much of your
+      fuel, sails through the South Strait, and Corvan controls it. Tankers take
+      a week or more, and you hold about three weeks of fuel, so trouble there
+      reaches your pumps late and lingers.
       Relations with Corvan are already cool. If they sour far enough, Corvan
       can close the strait, and everything that follows starts there. Thessa
       holds a second gate, the Narrows, that your chips pass through. Kesh
-      sells oil that avoids the strait, but its government is shaky, and
+      sells crude that comes overland, avoiding the strait, but its government is shaky, and
       distant Velmont would like to be your friend.
 
   - heading: How to act

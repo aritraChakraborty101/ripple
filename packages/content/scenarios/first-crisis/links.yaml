@@ -2,48 +2,80 @@
 # equal to demand, so prices only move when something happens.
 # Routes through the South Strait carry nothing while it is closed.
 
-# Oil: 100 units of demand: 80 from Veskar, 20 from Kesh.
-- id: oil_veskar_aldoria
-  resource: oil
+# Crude: 100 a day to the refineries. 55 of it passes the South Strait: all
+# of Aldoria's and Velmont's sea crude and Thessa's from Veskar. Corvan's comes
+# straight across from Veskar, so closing the strait spares Corvan's refinery.
+- id: crude_veskar_aldoria
+  resource: crude
   from: veskar
   to: aldoria
-  capacity: 40
+  capacity: 15
   via: [south_strait]
+  days: 8
 
-- id: oil_veskar_orrin
-  resource: oil
-  from: veskar
-  to: orrin
-  capacity: 5
-  via: [south_strait]
-
-- id: oil_veskar_thessa
-  resource: oil
+- id: crude_veskar_thessa
+  resource: crude
   from: veskar
   to: thessa
-  capacity: 23
+  capacity: 33
+  via: [south_strait]
+  days: 9
 
-# Velmont's crude comes partly from Veskar by sea, so the strait matters to it too.
-- id: oil_veskar_velmont
-  resource: oil
+- id: crude_veskar_velmont
+  resource: crude
   from: veskar
   to: velmont
   capacity: 7
   via: [south_strait]
+  days: 12
 
-- id: oil_veskar_corvan
-  resource: oil
+- id: crude_veskar_corvan
+  resource: crude
   from: veskar
   to: corvan
-  capacity: 5
+  capacity: 15
+  days: 3
 
 # Planned overland pipeline that avoids the strait. It carries nothing until
 # the player funds it (decision: overland_pipeline).
-- id: oil_veskar_aldoria_overland
-  resource: oil
+- id: crude_veskar_aldoria_overland
+  resource: crude
   from: veskar
   to: aldoria
   capacity: 0
+  days: 5
+
+# Fuel: 100 a day of use. Aldoria refines 15 and buys 25: 15 from Thessa,
+# 10 from Corvan. Veskar's small refinery serves Orrin and Ilmar by sea.
+- id: fuel_thessa_aldoria
+  resource: fuel
+  from: thessa
+  to: aldoria
+  capacity: 15
+  days: 3
+
+- id: fuel_corvan_aldoria
+  resource: fuel
+  from: corvan
+  to: aldoria
+  capacity: 10
+  days: 2
+
+- id: fuel_veskar_orrin
+  resource: fuel
+  from: veskar
+  to: orrin
+  capacity: 5
+  via: [south_strait]
+  days: 7
+
+- id: fuel_veskar_ilmar
+  resource: fuel
+  from: veskar
+  to: ilmar
+  capacity: 5
+  via: [south_strait, narrows]
+  days: 10
 
 # Grain: 45 units of demand, all supplied by Orrin.
 - id: grain_orrin_aldoria
@@ -78,27 +110,20 @@
   to: veskar
   capacity: 5
 
-# Kesh's crude goes overland to Velmont and Thessa, and by sea to Ilmar
-# through both the strait and the Narrows. In all, 57 of the world's 100 units
-# of oil a day pass the strait.
-- id: oil_kesh_velmont
-  resource: oil
+# Kesh's crude goes overland to Thessa and Velmont: it never sees the strait.
+- id: crude_kesh_velmont
+  resource: crude
   from: kesh
   to: velmont
   capacity: 8
+  days: 6
 
-- id: oil_kesh_thessa
-  resource: oil
+- id: crude_kesh_thessa
+  resource: crude
   from: kesh
   to: thessa
-  capacity: 7
-
-- id: oil_kesh_ilmar
-  resource: oil
-  from: kesh
-  to: ilmar
-  capacity: 5
-  via: [south_strait, narrows]
+  capacity: 12
+  days: 5
 
 - id: grain_orrin_ilmar
   resource: grain
@@ -152,11 +177,12 @@
 # Aldoria signs a deal with that country, and stops when the deal ends or
 # either side imposes sanctions. Named deal_<country> so one template finds them.
 - id: deal_veskar
-  resource: oil
+  resource: crude
   from: veskar
   to: aldoria
   capacity: 0
   via: [south_strait]
+  days: 8
 
 - id: deal_orrin
   resource: grain
@@ -171,12 +197,13 @@
   capacity: 0
 
 # Kesh's deal route runs overland: crude that avoids the strait, from a
-# supplier that may not last.
+# supplier that may not last. Extra crude fills Aldoria's tanks as a buffer.
 - id: deal_kesh
-  resource: oil
+  resource: crude
   from: kesh
   to: aldoria
   capacity: 0
+  days: 6
 
 - id: deal_ilmar
   resource: chips
