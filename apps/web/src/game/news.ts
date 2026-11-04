@@ -18,12 +18,23 @@ import {
   type EngineEvent,
   type GameState,
   type Severity,
+  stockStat,
+  type StatRef,
+  type EventDef,
 } from '@ripple/engine';
+import {
+  consumedGoods,
+  coverDays,
+  heldGoods,
+  LOW_COVER_DAYS,
+  RECOVERED_COVER_DAYS,
+  shortageOf,
+} from './chain';
 import { fillNames, formatDate, formatMillions, formatPrice } from './format';
 
 export type { Severity };
 
-export type DispatchSource = 'world' | 'order' | 'market' | 'outcome' | 'intel';
+export type DispatchSource = 'world' | 'order' | 'market' | 'outcome' | 'intel' | 'supply';
 
 export interface Dispatch {
   readonly id: string;
@@ -42,6 +53,8 @@ export interface Dispatch {
   readonly event?: string;
   /** The computer country's choice behind this news, for asking why it did it. */
   readonly choice?: { readonly decision: string; readonly country: string; readonly tick: number };
+  /** The number behind this news (such as a stock), for asking why it moved. */
+  readonly stat?: StatRef;
 }
 
 export const BAND_PERCENT = 10;
@@ -54,12 +67,109 @@ export function priceBand(price: number, basePrice: number): number {
   return Math.trunc(pct / BAND_PERCENT);
 }
 
+/** How a stock of yours stands, for reporting only when that changes. */
+export type StockLevel = 'ok' | 'low' | 'out';
+
 export interface NewsState {
   readonly bands: Readonly<Record<string, number>>;
+  /** Your stocks by resource; missing means ok. */
+  readonly stocks: Readonly<Record<string, StockLevel>>;
   readonly nextId: number;
 }
 
-export const initialNews: NewsState = { bands: {}, nextId: 1 };
+export const initialNews: NewsState = { bands: {}, stocks: {}, nextId: 1 };
+
+/**
+ * Where a stock of yours stands now, given where it stood. Low below
+ * LOW_COVER_DAYS; out while anyone goes without; back to ok only at
+ * RECOVERED_COVER_DAYS, so a stock hovering near the line reports once.
+ */
+export function stockLevel(state: GameState, resource: string, was: StockLevel): StockLevel {
+  const player = state.rules.playerCountry;
+  if (shortageOf(state, player, resource) > 0) return 'out';
+  const days = coverDays(state, player, resource);
+  if (days === null) return 'ok';
+  if (days < LOW_COVER_DAYS) return was === 'out' ? 'out' : 'low';
+  if (days >= RECOVERED_COVER_DAYS) return 'ok';
+  return was === 'ok' ? 'ok' : 'low';
+}
+
+function stockDraft(
+  state: GameState,
+  resource: string,
+  from: StockLevel,
+  to: StockLevel,
+  tick: number,
+): DispatchDraft | null {
+  const player = state.rules.playerCountry;
+  const name = state.world.resources[resource]?.name ?? resource;
+  const consumed = consumedGoods(state, player).includes(resource);
+  const days = coverDays(state, player, resource) ?? 0;
+  const base = {
+    tick,
+    tag: 'Home',
+    source: 'supply' as const,
+    country: player,
+    stat: { kind: 'country' as const, id: player, stat: stockStat(resource) },
+  };
+  if (to === 'low' && from === 'ok') {
+    return {
+      ...base,
+      severity: 'warning',
+      headline: `${name} stocks down to ${days} ${days === 1 ? 'day' : 'days'}`,
+      detail: consumed
+        ? 'Ships are not bringing it in as fast as the country uses it. Ration it, release the reserve, or find another route.'
+        : 'The refinery at home will stand idle when it runs out.',
+    };
+  }
+  if (to === 'out') {
+    if (from === 'out') return null;
+    return consumed
+      ? {
+          ...base,
+          severity: 'critical',
+          headline: `Queues at the pumps: ${lowerFirst(name)} has run out`,
+          detail: 'Every day without it angers workers and industry alike.',
+        }
+      : {
+          ...base,
+          severity: 'warning',
+          headline: `${name} runs out: the refinery at home stands idle`,
+          detail: 'More of the fuel you use must now be bought from abroad.',
+        };
+  }
+  if (to === 'ok' && from !== 'ok') {
+    return {
+      ...base,
+      severity: 'info',
+      headline: `${name} stocks back to ${days} days`,
+    };
+  }
+  return null;
+}
+
+/**
+ * A world event that cuts a plant at home, or one in a country that ships
+ * you what it makes (on a route in use, not a deal you have yet to sign), is urgent for you whatever its usual severity.
+ */
+function hitsYourSupply(state: GameState, def: EventDef): boolean {
+  const player = state.rules.playerCountry;
+  return def.effects.some((e) => {
+    if (e.type !== 'modify' || e.target.kind !== 'plant' || e.amount >= 0) return false;
+    const plant = state.world.plants[e.target.id];
+    if (!plant) return false;
+    if (plant.country === player) return true;
+    return sortedIds(state.world.links).some((id) => {
+      const link = state.world.links[id]!;
+      return (
+        link.from === plant.country &&
+        link.to === player &&
+        link.resource === plant.output &&
+        effectiveStat(state, { kind: 'link', id, stat: 'capacity' }) > 0
+      );
+    });
+  });
+}
 
 /** The label shown for an event's tag: a country's name, or Home, Markets or World. */
 export function tagLabel(state: GameState, tag: string): string {
@@ -109,7 +219,7 @@ function eventDraft(state: GameState, event: EngineEvent): DispatchDraft | null 
       return {
         tick: event.tick,
         tag: tagLabel(state, def.tag),
-        severity: def.severity,
+        severity: hitsYourSupply(state, def) ? 'critical' : def.severity,
         headline: def.headline,
         ...(def.detail ? { detail: def.detail } : {}),
         source: 'world',
@@ -222,6 +332,7 @@ export function dispatchesFor(
   tick: number = Math.max(0, state.tick - 1),
 ): { news: NewsState; dispatches: Dispatch[] } {
   let bands = news.bands;
+  let stocks = news.stocks;
   let nextId = news.nextId;
   const dispatches: Dispatch[] = [];
   const push = (draft: DispatchDraft) => {
@@ -243,10 +354,22 @@ export function dispatchesFor(
     push(priceDraft(state, id, price, band, tick));
   }
 
-  return { news: { bands, nextId }, dispatches };
+  for (const id of heldGoods(state, state.rules.playerCountry)) {
+    const was = stocks[id] ?? 'ok';
+    const now = stockLevel(state, id, was);
+    if (now === was) continue;
+    stocks = { ...stocks, [id]: now };
+    const draft = stockDraft(state, id, was, now, tick);
+    if (draft) push(draft);
+  }
+
+  return { news: { bands, stocks, nextId }, dispatches };
 }
 
-/** True for news that should interrupt the player: a critical world event. */
+/** True for news that should interrupt the player: a critical world event, or running out at home. */
 export function isAlert(dispatch: Dispatch): boolean {
-  return dispatch.source === 'world' && dispatch.severity === 'critical';
+  return (
+    (dispatch.source === 'world' || dispatch.source === 'supply') &&
+    dispatch.severity === 'critical'
+  );
 }

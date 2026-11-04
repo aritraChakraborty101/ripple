@@ -6,6 +6,7 @@
  */
 
 import { sortedIds, type GameState } from '@ripple/engine';
+import { refineriesRunningLow } from './chain';
 import type { Dispatch } from './news';
 
 /** What a ripple means, in the palette's terms. */
@@ -32,7 +33,10 @@ export const MAX_RIPPLES = 6;
  * Where the world changed in a way worth seeing:
  * - a chokepoint closing (threat) or reopening (friend), from the world itself;
  * - a critical world event in a country (threat), a warning one (quiet);
- * - one of your orders aimed at a country taking effect there (you).
+ * - one of your orders aimed at a country taking effect there (you);
+ * - running out at home (threat), or running low (quiet);
+ * - a refinery's crude falling below a few days' worth (quiet): the second,
+ *   later ring of a closure, between the strait and the queues at home.
  * One ripple per place per batch, the most severe first.
  */
 export function ripplesFor(
@@ -63,12 +67,19 @@ export function ripplesFor(
     if (d.source === 'world' && d.severity === 'critical') add(at, 'threat');
     else if (d.source === 'world' && d.severity === 'warning') add(at, 'quiet');
     else if (d.source === 'order' && d.severity === 'info') add(at, 'you');
+    else if (d.source === 'supply' && d.severity === 'critical') add(at, 'threat');
+    else if (d.source === 'supply' && d.severity === 'warning') add(at, 'quiet');
+  }
+
+  for (const id of refineriesRunningLow(before, after)) {
+    const country = after.world.plants[id]!.country;
+    if (after.world.countries[country]) add({ kind: 'country', id: country }, 'quiet');
   }
   return drafts;
 }
 
 function rank(d: Dispatch): number {
-  if (d.source === 'world' && d.severity === 'critical') return 0;
+  if ((d.source === 'world' || d.source === 'supply') && d.severity === 'critical') return 0;
   if (d.source === 'order') return 1;
   return 2;
 }
