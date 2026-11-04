@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addModifier,
   canIssue,
   createGame,
   policiesInForce,
@@ -146,11 +147,11 @@ describe('first-crisis full games', () => {
     expect(a.story).toEqual(b.story);
   });
 
-  it('matches the recorded idle game for seed 4 (golden run)', () => {
+  it('matches the recorded idle game for seed 7 (golden run)', () => {
     // If this changes, the scenario or the simulation changed. Update deliberately,
     // after checking `pnpm balance` still looks healthy.
-    const { state, story } = playIdle(4);
-    expect({ outcome: state.outcome, story: story.slice(0, 16) }).toEqual(GOLDEN_IDLE_SEED_4);
+    const { state, story } = playIdle(7);
+    expect({ outcome: state.outcome, story: story.slice(0, 16) }).toEqual(GOLDEN_IDLE_SEED_7);
   });
 
   it('lets the player lift tariffs on Thessa, at a price', () => {
@@ -442,6 +443,55 @@ describe('first-crisis full games', () => {
     expect(coups).toBeGreaterThan(2);
   }, 20_000);
 
+  it('expands the refinery at home twice at most, buying more crude each time', () => {
+    const me = 'aldoria';
+    const rich = createGame(quiet, 1);
+    const refinery = (state: GameState) =>
+      effectiveStat(state, { kind: 'plant', id: 'aldoria_refinery', stat: 'capacity' });
+    const crude = (state: GameState) =>
+      effectiveStat(state, { kind: 'link', id: 'crude_veskar_aldoria', stat: 'capacity' });
+    const expand = (state: GameState) =>
+      run(step(state, [{ kind: 'decide', decision: 'expand_refinery', by: me }]).state, 240);
+    const once = expand(rich);
+    expect(refinery(once)).toBe(30);
+    expect(crude(once)).toBe(30);
+    const twice = expand(once);
+    expect(refinery(twice)).toBe(45);
+    expect(canIssue(twice, 'expand_refinery', me).ok).toBe(false);
+  });
+
+  it('sends the tankers the long way round: slower, dearer, but past a closed strait', () => {
+    const me = 'aldoria';
+    const closed = setChokepointOpen(createGame(quiet, 1), 'south_strait', false);
+    const stock = (state: GameState) => state.world.countries[me]!.stats.stock_crude ?? 0;
+    const plain = run(closed, 60);
+    const longWay = run(
+      step(closed, [{ kind: 'decide', decision: 'long_way_round', by: me }]).state,
+      60,
+    );
+    expect(stock(longWay)).toBeGreaterThan(stock(plain));
+    expect(longWay.world.links.crude_veskar_aldoria_long!.stats.shipped).toBeGreaterThan(0);
+    expect(monthlyBalance(longWay, me)).toBeLessThan(monthlyBalance(plain, me));
+    const back = step(longWay, [{ kind: 'decide', decision: 'end_long_way_round', by: me }]).state;
+    expect(back.flags).not.toContain('long_way_round');
+    expect(
+      effectiveStat(back, { kind: 'link', id: 'crude_veskar_aldoria_long', stat: 'capacity' }),
+    ).toBe(0);
+  });
+
+  it("lets a fire at Thessa's refinery run fuel short without touching crude", () => {
+    const fire = addModifier(createGame(quiet, 1), {
+      target: { kind: 'plant', id: 'thessa_refinery', stat: 'capacity' },
+      op: 'pct',
+      amount: -7_500,
+      source: { kind: 'event', id: 'thessa_refinery_fire', tick: 0 },
+      expiresAt: 60,
+    });
+    const later = run(fire, 50);
+    expect(price(later, 'fuel')).toBeGreaterThan(9_500);
+    expect(price(later, 'crude')).toBeLessThanOrEqual(7_300);
+  });
+
   it('recovers spent influence by a point a month, up to where it started', () => {
     const me = 'aldoria';
     const influence = (state: GameState) =>
@@ -479,29 +529,29 @@ describe('first-crisis full games', () => {
   }, 20_000);
 });
 
-// Left alone, Aldoria is squeezed from every side. Velmont courts it, but Thessa
-// pulls Corvan into a pact; Veskar's terminal explodes, Corvan detains a tanker
-// and denounces Aldoria, and after a fishing dispute Corvan closes the strait
-// on day 176. Three weeks later the army seizes power in Kesh, the other oil
-// exporter. Strikes and doubting officers follow, and the leader falls on day 230.
-const GOLDEN_IDLE_SEED_4 = {
-  outcome: { result: 'ousted', tick: 260 },
+// Left alone, Aldoria is courted by Velmont and Orrin while Corvan tightens its
+// customs checks. A fishing dispute on day 105 sets Corvan raising fees and
+// detaining a tanker; Thessa pulls Corvan into a pact and Veskar cuts output.
+// Corvan denounces Aldoria and closes the strait on day 185, protests break out
+// in Kesh, fuel runs short at home, and the leader falls on day 304.
+const GOLDEN_IDLE_SEED_7 = {
+  outcome: { result: 'ousted', tick: 304 },
   story: [
-    '27:orrin.court>aldoria',
-    '27:corvan_customs_checks',
-    '46:thessa.court>corvan',
-    '64:ilmar.court>velmont',
-    '74:fishing_dispute',
-    '75:kesh.kesh_raise_crude',
-    '98:corvan_nationalists',
-    '114:corvan.corvan_detain_tanker',
-    '118:veskar.veskar_cut_output',
-    '118:kesh_protests',
-    '124:corvan.denounce_aldoria>aldoria',
-    '125:thessa.thessa_aid>corvan',
-    '134:velmont.velmont_court_aldoria',
-    '140:velmont.court>aldoria',
-    '160:corvan.corvan_close_strait',
-    '171:thessa.thessa_corvan_pact',
+    '6:velmont.court>aldoria',
+    '13:orrin.court>aldoria',
+    '14:corvan_customs_checks',
+    '26:thessa.court>corvan',
+    '105:fishing_dispute',
+    '106:corvan.corvan_raise_fees',
+    '114:thessa.thessa_corvan_pact',
+    '119:corvan.corvan_detain_tanker',
+    '119:veskar.veskar_cut_output',
+    '139:kesh.kesh_raise_crude',
+    '152:velmont.velmont_court_aldoria',
+    '160:velmont.velmont_aid>kesh',
+    '176:ilmar.ilmar_restrict_chips',
+    '180:corvan.denounce_aldoria>aldoria',
+    '185:corvan.corvan_close_strait',
+    '190:kesh_protests',
   ],
 };

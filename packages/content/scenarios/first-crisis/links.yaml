@@ -45,6 +45,17 @@
   capacity: 0
   days: 5
 
+# The long way round (decision: long_way_round): Veskar's crude to Aldoria
+# around the south, avoiding the strait. Ten more days at sea. It carries
+# nothing until the player orders it, and the strait route carries nothing
+# while it does.
+- id: crude_veskar_aldoria_long
+  resource: crude
+  from: veskar
+  to: aldoria
+  capacity: 0
+  days: 18
+
 # Fuel: 100 a day of use. Aldoria refines 15 and buys 25: 15 from Thessa,
 # 10 from Corvan. Veskar's small refinery serves Orrin and Ilmar by sea.
 - id: fuel_thessa_aldoria

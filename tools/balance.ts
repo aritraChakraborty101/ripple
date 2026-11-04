@@ -63,8 +63,19 @@ const steady: Player = (state) => {
   if (relation('corvan') < -32) want('transit_fees');
   if (stat('country', me, 'stability') < 45) want('fuel_subsidy');
   if (fuelUp > 0.4) want('veskar_discount');
-  // The reserve goes in when the tanks run low, not when prices first move.
+  // The reserve goes in when the tanks run low, not when prices first move,
+  // and is refilled once money allows.
   if (fuelDays < 6) want('release_reserves');
+  if (state.flags.includes('reserves_used') && stat('country', me, 'treasury') > 180) {
+    want('refill_reserve');
+  }
+  // With the strait shut, send the tankers the long way; bring them back when it opens.
+  const straitOpen = state.world.chokepoints.south_strait?.open !== false;
+  const longWay = state.flags.includes('long_way_round');
+  if (!straitOpen && !longWay) want('long_way_round');
+  if (straitOpen && longWay) want('end_long_way_round');
+  // Build refining at home once the treasury can bear it.
+  if (state.tick > 120 && stat('country', me, 'treasury') > 280) want('expand_refinery');
   if (stat('country', me, 'stability') < 30) want('address_nation');
   if (state.tick > 60 && stat('country', me, 'treasury') > 200) want('overland_pipeline');
   // Friends first: deals and a treaty with whoever is friendly enough.

@@ -199,6 +199,84 @@
   effects:
     - modify: { target: plant.veskar_wells.capacity, pct: -5000, days: 40 }
 
+# --- The oil chain ------------------------------------------------------------
+
+- id: thessa_refinery_fire
+  tag: thessa
+  severity: critical
+  headline: Fire guts Thessa's refinery
+  detail: The region's biggest refinery runs at a quarter for about two months. Crude piles up there; fuel runs short everywhere.
+  cooldownDays: 400
+  trigger:
+    all:
+      - afterDay: 120
+      - chance: 7
+  effects:
+    - modify: { target: plant.thessa_refinery.capacity, pct: -7500, days: 60 }
+
+- id: corvan_refinery_fire
+  tag: corvan
+  severity: warning
+  headline: Fire shuts Corvan's refinery
+  detail: Corvan's refinery is down for about six weeks, and with it a quarter of Aldoria's fuel imports.
+  cooldownDays: 400
+  trigger:
+    all:
+      - afterDay: 120
+      - chance: 5
+  effects:
+    - modify: { target: plant.corvan_refinery.capacity, pct: -10000, days: 42 }
+
+- id: strait_collision
+  tag: corvan
+  severity: warning
+  headline: Tankers collide in the South Strait
+  detail: Shipping through the strait is halved for ten days while the wreck is cleared.
+  cooldownDays: 300
+  trigger:
+    all:
+      - afterDay: 60
+      - chance: 10
+      - chokepointOpen: south_strait
+  effects:
+    - modify: { target: link.crude_veskar_aldoria.capacity, pct: -5000, days: 10 }
+    - modify: { target: link.crude_veskar_thessa.capacity, pct: -5000, days: 10 }
+    - modify: { target: link.crude_veskar_velmont.capacity, pct: -5000, days: 10 }
+    - modify: { target: link.fuel_veskar_orrin.capacity, pct: -5000, days: 10 }
+    - modify: { target: link.fuel_veskar_ilmar.capacity, pct: -5000, days: 10 }
+
+# Storms slow every tanker at sea: routes carry less for a month.
+- id: storm_season
+  tag: world
+  severity: warning
+  headline: Storm season slows shipping
+  detail: Tankers at sea move slowly for about a month; every sea route carries a third less.
+  cooldownDays: 330
+  trigger:
+    all:
+      - afterDay: 200
+      - chance: 12
+  effects:
+    - modify: { target: link.crude_veskar_aldoria.capacity, pct: -3300, days: 30 }
+    - modify: { target: link.crude_veskar_thessa.capacity, pct: -3300, days: 30 }
+    - modify: { target: link.crude_veskar_velmont.capacity, pct: -3300, days: 30 }
+    - modify: { target: link.crude_veskar_aldoria_long.capacity, pct: -3300, days: 30 }
+    - modify: { target: link.fuel_veskar_orrin.capacity, pct: -3300, days: 30 }
+    - modify: { target: link.fuel_veskar_ilmar.capacity, pct: -3300, days: 30 }
+
+- id: kesh_well_blowout
+  tag: kesh
+  severity: warning
+  headline: Blowout stops Kesh's oil fields
+  detail: Kesh pumps nothing for about six weeks. Thessa and Velmont lose a fifth of their crude, and any deal with Kesh dries up.
+  cooldownDays: 400
+  trigger:
+    all:
+      - afterDay: 90
+      - chance: 6
+  effects:
+    - modify: { target: plant.kesh_wells.capacity, pct: -10000, days: 42 }
+
 - id: orrin_drought
   tag: orrin
   severity: warning

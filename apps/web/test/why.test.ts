@@ -25,7 +25,7 @@ function playTo(seed: number, tick: number): Session {
 
 // The golden game: Corvan closed the strait on day 160, and by day 255 the
 // tanks have run dry and stability has collapsed. Played once and shared.
-const session = playTo(4, 255);
+const session = playTo(7, 300);
 const game: GameState = session.game;
 const me = game.rules.playerCountry;
 const stability: WhyTarget = {

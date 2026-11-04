@@ -108,6 +108,60 @@
     - setFlag: pipeline_built
   successHeadline: The overland pipeline opens
 
+# --- The oil chain -----------------------------------------------------------
+#
+# A bigger refinery makes Aldoria less dependent on Thessa's and Corvan's fuel,
+# and more dependent on crude through the strait: each expansion also buys 15
+# more crude a day from Veskar. Twice at most.
+- id: expand_refinery
+  ministry: interior
+  name: Expand the refinery at home
+  description: Add 15 fuel a day to Aldoria's refinery, for good, and contract 15 more crude a day from Veskar to feed it. Less reliance on Thessa's and Corvan's refineries; more crude through the strait. 150 bn, and about eight months. Twice at most.
+  requires:
+    all:
+      - stat: { target: plant.aldoria_refinery.capacity, below: 45 }
+      - stat: { target: country.aldoria.treasury, above: 149 }
+  unavailableText: Needs 150 bn, and can be done twice at most.
+  costs:
+    - adjust: { target: country.aldoria.treasury, by: -150 }
+  durationDays: 240
+  effects:
+    - adjust: { target: plant.aldoria_refinery.capacity, by: 15 }
+    - adjust: { target: link.crude_veskar_aldoria.capacity, by: 15 }
+  successHeadline: Aldoria's expanded refinery comes on stream
+
+# Tankers can go around the long way: no strait, ten more days at sea, and a
+# running cost for the longer voyages. Lift it when the strait reopens.
+- id: long_way_round
+  ministry: trade
+  name: Send tankers the long way round
+  description: Route Aldoria's crude from Veskar around the south instead of through the strait. Ten more days at sea and about 3 bn a month, but Corvan cannot stop it. Stays in force until you end it.
+  requires:
+    all:
+      - noFlag: long_way_round
+      - stat: { target: country.aldoria.treasury, above: 29 }
+  unavailableText: Needs 30 bn, and the tankers are already going the long way.
+  cooldownDays: 30
+  policyFlag: long_way_round
+  effects:
+    - modify: { target: link.crude_veskar_aldoria.capacity, pct: -10000 }
+    - modify: { target: link.crude_veskar_aldoria_long.capacity, add: 15 }
+    - modify: { target: country.aldoria.spending, add: 3000 }
+    - setFlag: long_way_round
+  successHeadline: Aldoria's tankers take the long way round
+
+- id: end_long_way_round
+  ministry: trade
+  name: Bring the tankers back through the strait
+  description: End the long voyages and their cost. Crude takes the short route through the strait again.
+  requires:
+    flag: long_way_round
+  unavailableText: The tankers already use the strait.
+  effects:
+    - endEffectsOf: { decision: long_way_round }
+    - clearFlag: long_way_round
+  successHeadline: Aldoria's tankers return to the strait
+
 # --- Trade -------------------------------------------------------------------
 #
 # Policies that are also templates: each stays in force against its target
