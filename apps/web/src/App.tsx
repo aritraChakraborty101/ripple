@@ -4,6 +4,7 @@ import { BriefingDialog } from './components/BriefingDialog';
 import { DevPanel } from './components/DevPanel';
 import { CrisisBanner } from './components/CrisisBanner';
 import { Cabinet } from './components/Cabinet';
+import { FieldNoteCard } from './components/FieldNoteCard';
 import { FirstSteps, STEP_IDS, type StepId } from './components/FirstSteps';
 import { GameOver } from './components/GameOver';
 import { HowToPlay } from './components/HowToPlay';
@@ -18,6 +19,7 @@ import { WhyContext } from './components/WhyContext';
 import { WhyDialog } from './components/WhyDialog';
 import { WorldMap } from './components/WorldMap';
 import { openTargets, readyCount } from './game/cabinet';
+import { dueNote, FIELD_NOTES } from './game/fieldNotes';
 import { fillNames } from './game/format';
 import { LENSES, type Lens } from './game/lenses';
 import { readPref, writePref } from './game/prefs';
@@ -25,6 +27,16 @@ import { firstCrisisGuide, firstCrisisMap } from './game/scenario';
 import type { Selection } from './game/selection';
 import { actions, devMode, startLoop, useSession } from './game/store';
 import type { WhyTarget } from './game/why';
+
+/**
+ * Pref keys carry a version, so a returning player sees the briefing and first
+ * steps again when they change (v2: the oil chain, lenses and field notes).
+ */
+const BRIEFING_SEEN = 'briefing.v2.seen';
+const STEPS_DONE = 'steps.v2.done';
+const STEPS_HIDDEN = 'steps.v2.hidden';
+const NOTES_SEEN = 'notes.v1.seen';
+const NOTES_OFF = 'notes.off';
 
 interface Shortcuts {
   readonly setLens: (lens: Lens) => void;
@@ -93,16 +105,16 @@ function useFirstSteps(): {
   restart: () => void;
 } {
   const [done, setDone] = useState<ReadonlySet<StepId>>(
-    () => new Set(readPref<StepId[]>('steps.done', [])),
+    () => new Set(readPref<StepId[]>(STEPS_DONE, [])),
   );
-  const [visible, setVisible] = useState(() => !readPref('steps.hidden', false));
+  const [visible, setVisible] = useState(() => !readPref(STEPS_HIDDEN, false));
 
   const mark = useCallback((step: StepId) => {
     setDone((prev) => {
       if (prev.has(step)) return prev;
       const next = new Set(prev).add(step);
       writePref(
-        'steps.done',
+        STEPS_DONE,
         STEP_IDS.filter((s) => next.has(s)),
       );
       return next;
@@ -110,16 +122,51 @@ function useFirstSteps(): {
   }, []);
   const hide = useCallback(() => {
     setVisible(false);
-    writePref('steps.hidden', true);
+    writePref(STEPS_HIDDEN, true);
   }, []);
   const restart = useCallback(() => {
     setDone(new Set());
     setVisible(true);
-    writePref('steps.done', []);
-    writePref('steps.hidden', false);
+    writePref(STEPS_DONE, []);
+    writePref(STEPS_HIDDEN, false);
   }, []);
 
   return { done, visible, mark, hide, restart };
+}
+
+/** Which field notes the player has read, and whether they want any more. */
+function useFieldNotes(): {
+  seen: ReadonlySet<string>;
+  off: boolean;
+  read: (id: string) => void;
+  turnOff: () => void;
+  restart: () => void;
+} {
+  const [seen, setSeen] = useState<ReadonlySet<string>>(
+    () => new Set(readPref<string[]>(NOTES_SEEN, [])),
+  );
+  const [off, setOff] = useState(() => readPref(NOTES_OFF, false));
+  const read = useCallback((id: string) => {
+    setSeen((prev) => {
+      const next = new Set(prev).add(id);
+      writePref(
+        NOTES_SEEN,
+        FIELD_NOTES.map((n) => n.id).filter((n) => next.has(n)),
+      );
+      return next;
+    });
+  }, []);
+  const turnOff = useCallback(() => {
+    setOff(true);
+    writePref(NOTES_OFF, true);
+  }, []);
+  const restart = useCallback(() => {
+    setSeen(new Set());
+    setOff(false);
+    writePref(NOTES_SEEN, []);
+    writePref(NOTES_OFF, false);
+  }, []);
+  return { seen, off, read, turnOff, restart };
 }
 
 export function App() {
@@ -127,7 +174,7 @@ export function App() {
   const [ordersOpen, setOrdersOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [briefingOpen, setBriefingOpen] = useState(
-    () => firstCrisisGuide.briefing !== null && !readPref('briefing.seen', false),
+    () => firstCrisisGuide.briefing !== null && !readPref(BRIEFING_SEEN, false),
   );
   const [aiming, setAiming] = useState<string | null>(null);
   const [lens, setLens] = useState<Lens>('relations');
@@ -135,6 +182,7 @@ export function App() {
   const [whyTarget, setWhyTarget] = useState<WhyTarget | null>(null);
   const [devOpen, setDevOpen] = useState(devMode);
   const steps = useFirstSteps();
+  const notes = useFieldNotes();
   useEffect(() => startLoop(), []);
 
   const openOrders = useCallback(() => setOrdersOpen(true), []);
@@ -175,10 +223,19 @@ export function App() {
   useEffect(() => {
     if (selection?.kind === 'country' && selection.id === game.rules.playerCountry) mark('home');
   }, [selection, game.rules.playerCountry, mark]);
+  useEffect(() => {
+    if (lens === 'trade') mark('trade');
+  }, [lens, mark]);
+  useEffect(() => {
+    if (whyTarget) mark('why');
+  }, [whyTarget, mark]);
+  useEffect(() => {
+    if (ordersOpen) mark('cabinet');
+  }, [ordersOpen, mark]);
 
   const closeBriefing = () => {
     setBriefingOpen(false);
-    writePref('briefing.seen', true);
+    writePref(BRIEFING_SEEN, true);
   };
 
   const respondToAlert = () => {
@@ -210,6 +267,9 @@ export function App() {
   };
 
   const briefing = firstCrisisGuide.briefing;
+  const stepsShowing =
+    steps.visible && briefing !== null && !STEP_IDS.every((id) => steps.done.has(id));
+  const note = notes.off ? null : dueNote(session, notes.seen, stepsShowing);
   const focusName = briefing ? (game.world.countries[briefing.focusCountry]?.name ?? '') : '';
   let firstSteps: ReactNode = null;
   if (steps.visible && briefing) {
@@ -293,7 +353,20 @@ export function App() {
             <Reports
               dispatches={session.dispatches}
               onSelectCountry={selectCountry}
-              top={firstSteps}
+              top={
+                <>
+                  {/* A note is about what is happening now, so it goes above the checklist. */}
+                  {note && (
+                    <FieldNoteCard
+                      key={note.id}
+                      note={note}
+                      onRead={() => notes.read(note.id)}
+                      onTurnOff={notes.turnOff}
+                    />
+                  )}
+                  {firstSteps}
+                </>
+              }
             />
           )}
           <button
@@ -325,6 +398,7 @@ export function App() {
           }}
           onRestartSteps={() => {
             steps.restart();
+            notes.restart();
             setHelpOpen(false);
           }}
           autoPause={session.autoPause}
@@ -335,7 +409,12 @@ export function App() {
           }}
         />
         {briefing && (
-          <BriefingDialog briefing={briefing} open={briefingOpen} onClose={closeBriefing} />
+          <BriefingDialog
+            briefing={briefing}
+            open={briefingOpen}
+            countryName={(id) => game.world.countries[id]?.name ?? id}
+            onClose={closeBriefing}
+          />
         )}
         <WhyDialog
           game={game}

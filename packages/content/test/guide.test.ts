@@ -30,6 +30,16 @@ describe('first-crisis guide', () => {
     expect(guide.briefing?.sections.length).toBeGreaterThanOrEqual(3);
   });
 
+  it('draws how trouble travels, and introduces every neighbour', () => {
+    const sections = guide.briefing!.sections;
+    const chain = sections.find((s) => s.chain)!.chain!;
+    expect(chain[0]).toEqual({ label: 'Corvan closes the strait', note: 'day one' });
+    expect(chain.at(-1)).toEqual({ label: 'Stability falls' });
+    const cast = sections.find((s) => s.cast)!.cast!.map((c) => c.country);
+    const neighbours = scenario.countries.map((c) => c.id).filter((id) => id !== 'aldoria');
+    expect([...cast].sort()).toEqual([...neighbours].sort());
+  });
+
   it('has advisor tips that each suggest orders that exist', () => {
     expect(guide.tips.length).toBeGreaterThanOrEqual(6);
     const decisions = new Set(scenario.decisions.map((d) => d.id));
@@ -88,6 +98,24 @@ describe('guide validation', () => {
       'advisor[0].suggest[1]: "transit_fees" is not aimed at a country',
       'advisor[0].suggest[2]: "envoy" cannot be aimed at "aldoria"',
       'advisor[0].suggest[3]: "tariff" cannot be aimed at "corvan"',
+    ]);
+  });
+
+  it('reports an unknown country in the who-is-who, and a chain of one step', () => {
+    const briefing = {
+      title: 'T',
+      focusCountry: 'corvan',
+      sections: [
+        { heading: 'H', text: 'X', cast: [{ country: 'atlantis', text: 'Sunk.' }] },
+        { heading: 'C', text: 'Y', chain: [{ label: 'Only' }] },
+      ],
+    };
+    expect(problemsOf({ briefing })).toEqual([
+      'briefing.sections[1].chain: Too small: expected array to have >=2 items',
+    ]);
+    const castOnly = { ...briefing, sections: [briefing.sections[0]] };
+    expect(problemsOf({ briefing: castOnly })).toEqual([
+      'briefing.sections[0].cast[0].country: Unknown country "atlantis"',
     ]);
   });
 

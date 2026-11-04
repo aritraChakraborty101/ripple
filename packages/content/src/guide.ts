@@ -25,9 +25,26 @@ import { ContentError, formatPath } from './schema';
 
 const text = z.string().min(1);
 
+/** A step in a chain of cause and effect, drawn as boxes joined by arrows. */
+const chainStepSchema = z.strictObject({ label: text, note: text.optional() });
+/** A country and one line on what it wants. */
+const castSchema = z.strictObject({ country: id, text });
+
 export const briefingSchema = z.strictObject({
   title: text,
-  sections: z.array(z.strictObject({ heading: text, text })).min(1),
+  /** Each section is one page of the briefing. */
+  sections: z
+    .array(
+      z.strictObject({
+        heading: text,
+        text,
+        /** Optional: a cause-and-effect chain drawn under the text. */
+        chain: z.array(chainStepSchema).min(2).optional(),
+        /** Optional: who's who, one line per country. */
+        cast: z.array(castSchema).min(1).optional(),
+      }),
+    )
+    .min(1),
   /** The country the first steps point the player toward. */
   focusCountry: id,
 });
@@ -48,9 +65,16 @@ export const advisorTipSchema = z.strictObject({
   country: id.optional(),
 });
 
+export interface BriefingSection {
+  readonly heading: string;
+  readonly text: string;
+  readonly chain?: readonly { readonly label: string; readonly note?: string }[];
+  readonly cast?: readonly { readonly country: string; readonly text: string }[];
+}
+
 export interface Briefing {
   readonly title: string;
-  readonly sections: readonly { readonly heading: string; readonly text: string }[];
+  readonly sections: readonly BriefingSection[];
   readonly focusCountry: string;
 }
 
@@ -101,10 +125,37 @@ export function parseGuide(
         problems.push(`briefing.${formatPath(i.path) || '(root)'}: ${i.message}`);
       }
     } else {
-      briefing = result.data;
-      if (!countries.has(briefing.focusCountry)) {
-        problems.push(`briefing.focusCountry: Unknown country "${briefing.focusCountry}"`);
+      const data = result.data;
+      if (!countries.has(data.focusCountry)) {
+        problems.push(`briefing.focusCountry: Unknown country "${data.focusCountry}"`);
       }
+      data.sections.forEach((section, i) =>
+        section.cast?.forEach((c, j) => {
+          if (!countries.has(c.country)) {
+            problems.push(
+              `briefing.sections[${i}].cast[${j}].country: Unknown country "${c.country}"`,
+            );
+          }
+        }),
+      );
+      // Optional keys are left out, not set to undefined, under exactOptionalPropertyTypes.
+      briefing = {
+        title: data.title,
+        focusCountry: data.focusCountry,
+        sections: data.sections.map((s) => ({
+          heading: s.heading,
+          text: s.text,
+          ...(s.chain
+            ? {
+                chain: s.chain.map((c) => ({
+                  label: c.label,
+                  ...(c.note ? { note: c.note } : {}),
+                })),
+              }
+            : {}),
+          ...(s.cast ? { cast: s.cast } : {}),
+        })),
+      };
     }
   }
 

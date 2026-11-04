@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react';
+import { FIELD_NOTES } from '../game/fieldNotes';
+import { LENSES } from '../game/lenses';
 
 interface Props {
   readonly open: boolean;
@@ -65,6 +67,13 @@ export function HowToPlay({
             coming: watch relations and prices, and act before they tip over.
           </p>
           <p>
+            Oil travels as a chain. Wells pump crude, tankers carry it for a week or more, a few
+            refineries turn it into fuel, and every country holds a few weeks of stock. So when a
+            route is cut, nothing runs out at once: the shortage arrives weeks later and lingers
+            after the route reopens. Use that time. Release the reserve, ration, reroute the
+            tankers, or build up the refinery at home.
+          </p>
+          <p>
             Your neighbours have goals of their own and act on them without waiting for you. Poor
             Corvan wants money from the strait, Thessa wants Corvan as an ally, Veskar wants dearer
             oil, and Orrin wants to be your friend. The worse relations get, the bolder they become.
@@ -95,10 +104,20 @@ export function HowToPlay({
               <dt>Map</dt>
               <dd>
                 Click a country or a strait to see its trade and the orders that concern it; click
-                your own country for the mood at home. Lenses under the map (keys 1 to 5) show
-                relations, trade, prices, unrest or intelligence.
+                your own country for the mood at home. Rings spread from wherever something just
+                happened.
               </dd>
             </div>
+            {LENSES.map((l, i) => (
+              <div key={l.id}>
+                <dt>
+                  {l.label} lens <kbd>{i + 1}</kbd>
+                </dt>
+                <dd>
+                  {l.question}. {l.guide}
+                </dd>
+              </div>
+            ))}
             <div>
               <dt>Unfolding</dt>
               <dd>Bottom left: policies in force and orders still under way.</dd>
@@ -120,6 +139,19 @@ export function HowToPlay({
             Policies such as tariffs stay in force until you lift them. You can sign orders while
             paused.
           </p>
+        </section>
+
+        <section>
+          <h3>Field notes</h3>
+          <p>Each of these appears once, the first time it happens in play.</p>
+          <dl className="help-list">
+            {FIELD_NOTES.map((n) => (
+              <div key={n.id}>
+                <dt>{n.title}</dt>
+                <dd>{n.text}</dd>
+              </div>
+            ))}
+          </dl>
         </section>
 
         <section>
@@ -157,6 +189,12 @@ export function HowToPlay({
             </div>
             <div>
               <dt>
+                <kbd>←</kbd> <kbd>→</kbd>
+              </dt>
+              <dd>Turn the briefing's pages</dd>
+            </div>
+            <div>
+              <dt>
                 <kbd>Esc</kbd>
               </dt>
               <dd>Close details or a dialog</dd>
@@ -183,7 +221,7 @@ export function HowToPlay({
           New game
         </button>
         <button type="button" className="button" onClick={onRestartSteps}>
-          Show first steps again
+          Show first steps and notes again
         </button>
         <button type="button" className="button" onClick={onShowBriefing}>
           Read the briefing again

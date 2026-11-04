@@ -1,38 +1,73 @@
 # Shown before the first game starts, and again from "How to play".
+# Each section is one page. A page can draw a chain of cause and effect
+# (chain) or a who's-who of countries (cast) under its text.
 
 title: You lead Aldoria
 focusCountry: corvan
 sections:
   - heading: Your country
     text: >-
-      Aldoria is an industrial nation. Its factories and drivers run on fuel,
-      most of it refined abroad from crude that comes by sea; its people eat
-      imported grain, its builders depend on steel from Thessa, and
-      its industry and army on microchips from the island of Ilmar. When those
-      prices rise, people feel it, and so does your government. Your budget
-      feels it too: imports are paid for every month.
+      Aldoria is an industrial nation that makes little of what it uses. Its
+      factories and drivers run on fuel, most of it refined abroad from crude
+      that comes by sea. Its people eat imported grain, its builders depend on
+      steel from Thessa, and its industry and army run on microchips from the
+      island of Ilmar. Imports are paid for every month, so when prices rise
+      your treasury feels it as well as your people.
 
   - heading: How you win or lose
     text: >-
-      Stay in power for five years. If stability stays below 20 for 30 days,
-      you are ousted. Stability falls when the factions at home are unhappy,
-      and they are unhappy when what they buy gets dearer.
+      Stay in power for five years. Three factions decide whether you can:
+      industry, workers and the military. Each cares about different prices
+      (industry and workers above all about fuel) and grows unhappy as those
+      prices climb or run short. Unhappy factions drag stability down. If
+      stability stays below 20 for 30 days, you are ousted. The Stability
+      meter, top right, warns you and counts down when you are in danger.
 
-  - heading: Your weak spot
+  - heading: How trouble travels
     text: >-
       Your crude, and the crude for Thessa's refinery that makes much of your
-      fuel, sails through the South Strait, and Corvan controls it. Tankers take
-      a week or more, and you hold about three weeks of fuel, so trouble there
-      reaches your pumps late and lingers.
-      Relations with Corvan are already cool. If they sour far enough, Corvan
-      can close the strait, and everything that follows starts there. Thessa
-      holds a second gate, the Narrows, that your chips pass through. Kesh
-      sells crude that comes overland, avoiding the strait, but its government is shaky, and
-      distant Velmont would like to be your friend.
+      fuel, sails through the South Strait, which Corvan controls. Relations
+      with Corvan are already cool; if they sour far enough, Corvan can close
+      it. Nothing happens at once when it does. Tankers already at sea still
+      arrive, and you hold about three weeks of fuel, so the shortage reaches
+      your pumps weeks later and lingers after the strait reopens. That delay
+      is your chance to act.
+    chain:
+      - { label: Corvan closes the strait, note: day one }
+      - { label: Tankers stop arriving, note: a week or two }
+      - { label: Fuel stocks run down, note: about three weeks }
+      - { label: 'Prices climb, queues form' }
+      - { label: Factions turn on you }
+      - { label: Stability falls }
+
+  - heading: Your neighbours
+    text: >-
+      Every neighbour has goals of its own and acts on them without waiting
+      for you. The worse relations get, the bolder they become; the better,
+      the more they will do for you. Click any country to see what it wants
+      and what it is working towards now.
+    cast:
+      - { country: corvan, text: 'Poor, and holds the South Strait. Wants it to pay.' }
+      - {
+          country: thessa,
+          text: "Refines much of your fuel and holds the Narrows, your chips' route. Wants Corvan as an ally.",
+        }
+      - { country: veskar, text: "Pumps most of the region's crude. Wants it dear." }
+      - {
+          country: kesh,
+          text: 'Sells crude overland, clear of the strait, but its government is shaky.',
+        }
+      - { country: orrin, text: 'Your grain. Wants to be your friend.' }
+      - { country: ilmar, text: 'Makes the chips. Wants friends on every shore.' }
+      - { country: velmont, text: 'A distant power that wants a say here, and you on its side.' }
 
   - heading: How to act
     text: >-
-      Time runs on its own; pause whenever you like. Click a country on the
-      map to see what you can do about it, or open the Cabinet for every
-      order, filed by ministry. Orders cost money or influence, some take weeks, and some can
-      fail. Your advisor will speak up when something needs your attention.
+      Time runs on its own; pause whenever you like, and sign orders while
+      paused. Click a country to see the orders that concern it, or open the
+      Cabinet for every order, filed by ministry. Orders cost money or
+      influence when you sign them; some take weeks, and some can fail.
+      Policies such as tariffs stay in force until you lift them. Your advisor
+      speaks up when something needs you, and Intelligence warns you when a
+      neighbour is close to a harmful move. To see why anything happened,
+      click it.

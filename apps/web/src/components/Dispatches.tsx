@@ -11,12 +11,7 @@ interface Props {
 export function Dispatches({ dispatches, onSelectCountry }: Props) {
   const why = useWhy();
   if (dispatches.length === 0) {
-    return (
-      <p className="empty">
-        All quiet. Press play (Space) to start the clock; news will arrive here as the world
-        changes.
-      </p>
-    );
+    return <p className="empty">All quiet. News will arrive here as the world changes.</p>;
   }
   return (
     <ol className="feed" aria-live="polite" aria-label="Dispatches, newest first">
