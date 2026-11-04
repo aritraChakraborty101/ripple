@@ -13,7 +13,16 @@ import { lensView, type CountryLook, type Ink, type Lens, type RouteLook } from 
 import type { Selection } from '../game/selection';
 import type { ScenarioMap } from '@ripple/content';
 import type { Ripple } from '../game/ripples';
-import { curve, outlinePoints, throughPath, type Point } from '../map/layout';
+import { shipMarks, type PlantMark } from '../game/chain';
+import {
+  curveQuads,
+  outlinePoints,
+  pointAlong,
+  quadsPath,
+  throughQuads,
+  type Point,
+  type Quad,
+} from '../map/layout';
 import { RippleLayer } from './RippleLayer';
 
 interface Props {
@@ -60,15 +69,45 @@ const LAND: Record<CountryLook['land'], { fill: string; stroke: string; width: n
   plain: { fill: 'var(--land-d)', stroke: 'var(--coast)', width: 1 },
 };
 
-function routePath(map: ScenarioMap, link: Link, bend: number): string | null {
+function routeQuads(map: ScenarioMap, link: Link, bend: number): Quad[] | null {
   const from = map.countries[link.from]?.anchor;
   const to = map.countries[link.to]?.anchor;
   if (!from || !to) return null;
-  if (link.via.length === 0) return curve(from, to, bend);
+  if (link.via.length === 0) return curveQuads(from, to, bend);
   const waypoints: Point[] = link.via
     .map((id) => map.chokepoints[id])
     .filter((p): p is Point => p !== undefined);
-  return throughPath([from, ...waypoints, to]);
+  return throughQuads([from, ...waypoints, to]);
+}
+
+/** A drop of oil, for wells, centred on 0,0. */
+const DROP = 'M0 -6.5 C2.5 -3 5 -0.5 5 2 A5 5 0 0 1 -5 2 C-5 -0.5 -2.5 -3 0 -6.5 Z';
+
+/** A well (a drop of oil) or a refinery (a tower and tank), about 12 units across, centred on 0,0. */
+function PlantGlyph({ mark }: { mark: PlantMark }) {
+  const color =
+    mark.status === 'cut'
+      ? 'var(--threat)'
+      : mark.status === 'working'
+        ? 'var(--ink-quiet)'
+        : 'var(--ink-faint)';
+  const opacity = mark.status === 'starved' || mark.status === 'off' ? 0.5 : 1;
+  return (
+    <g className={`plant plant-${mark.status}`} opacity={opacity}>
+      <title>{mark.summary}</title>
+      {mark.kind === 'well' ? (
+        <path d={DROP} fill={color} />
+      ) : (
+        <>
+          <rect x={-6} y={-6} width={4} height={12} rx={0.8} fill={color} />
+          <rect x={-1} y={0} width={7} height={6} rx={1.5} fill={color} />
+        </>
+      )}
+      {mark.status === 'cut' && (
+        <circle className="pulse" r={9} fill="none" stroke="var(--threat)" />
+      )}
+    </g>
+  );
 }
 
 function routeTitle(game: GameState, link: Link, open: boolean, capacity: number): string {
@@ -122,7 +161,14 @@ export function WorldMap({
   // The lens decides each link's look; a group keeps its strongest.
   const groups = new Map<
     string,
-    { link: Link; open: boolean; planned: boolean; titles: string[]; look: RouteLook }
+    {
+      link: Link;
+      links: string[];
+      open: boolean;
+      planned: boolean;
+      titles: string[];
+      look: RouteLook;
+    }
   >();
   for (const id of sortedIds(game.world.links)) {
     const link = game.world.links[id]!;
@@ -133,11 +179,13 @@ export function WorldMap({
     const key = `${link.from}>${link.to}>${link.via.join(',')}>${open}>${planned}>${look.ink}`;
     const group = groups.get(key);
     if (group) {
+      group.links.push(id);
       group.titles.push(routeTitle(game, link, open, capacity));
       if (look.width > group.look.width) group.look = look;
     } else {
       groups.set(key, {
         link,
+        links: [id],
         open,
         planned,
         titles: [routeTitle(game, link, open, capacity)],
@@ -150,8 +198,24 @@ export function WorldMap({
     const pair = [group.link.from, group.link.to].sort().join('|');
     const index = pairCounts.get(pair) ?? 0;
     pairCounts.set(pair, index + 1);
-    return { key, ...group, d: routePath(map, group.link, 22 + index * 18) };
+    const quads = routeQuads(map, group.link, 22 + index * 18);
+    return { key, ...group, quads, d: quads ? quadsPath(quads) : null };
   });
+  // Each link runs along the drawn line of its group, so its ships sit on it.
+  const quadsOfLink = new Map<string, readonly Quad[]>();
+  for (const route of routes) {
+    if (route.quads) for (const id of route.links) quadsOfLink.set(id, route.quads);
+  }
+  const ships =
+    lens === 'trade'
+      ? shipMarks(game).flatMap((mark) => {
+          const quads = quadsOfLink.get(mark.link);
+          const at = quads ? pointAlong(quads, mark.progress) : null;
+          if (!at) return [];
+          const link = game.world.links[mark.link]!;
+          return [{ ...mark, at, mine: link.to === player }];
+        })
+      : [];
 
   const lookOf = (id: string): CountryLook =>
     view.countries[id] ?? { land: 'plain', note: '', noteInk: 'faint', dim: false };
@@ -203,7 +267,7 @@ export function WorldMap({
               aria-label={
                 isPlayer
                   ? `${name}, your country.${look.note && lens !== 'relations' ? ` ${look.note}.` : ''} Show details.`
-                  : `${name}, relations ${value}, ${relationLabel(value)}.${lens !== 'relations' && look.note ? ` ${look.note}.` : ''} Show details.`
+                  : `${name}, relations ${value}, ${relationLabel(value)}.${lens !== 'relations' && look.note ? ` ${look.note}.` : ''}${look.plants ? look.plants.map((p) => ` ${p.summary}.`).join('') : ''} Show details.`
               }
               onClick={select}
               onKeyDown={activateOnKey(select)}
@@ -240,6 +304,23 @@ export function WorldMap({
             </path>
           );
         })}
+
+        {/* Shipments at sea or on the road: one mark per day's sending */}
+        {ships.length > 0 && (
+          <g className="ships" aria-hidden="true" pointerEvents="none">
+            {ships.map((ship) => (
+              <circle
+                key={ship.key}
+                className="ship"
+                r={Math.min(4.5, 1.6 + Math.sqrt(ship.units) / 2)}
+                style={{ transform: `translate(${ship.at.x}px, ${ship.at.y}px)` }}
+                fill={ship.mine ? 'var(--you)' : 'var(--ink-quiet)'}
+                stroke="var(--map-sea)"
+                strokeWidth={1}
+              />
+            ))}
+          </g>
+        )}
 
         {/* Chokepoints */}
         {sortedIds(game.world.chokepoints).map((id) => {
@@ -371,6 +452,14 @@ export function WorldMap({
                     {isPlayer && lens === 'relations' ? 'YOU' : look.note}
                   </text>
                 )}
+                {look.plants?.map((mark, i, all) => (
+                  <g
+                    key={mark.id}
+                    transform={`translate(${shape.label.x + (i - (all.length - 1) / 2) * 18} ${shape.label.y + (look.note ? 38 : 20)})`}
+                  >
+                    <PlantGlyph mark={mark} />
+                  </g>
+                ))}
               </g>
             );
           })}
@@ -399,10 +488,40 @@ export function WorldMap({
             </svg>
             Route cut
           </span>
-          <span>
-            <span className="legend-number">+10</span>
-            Relations with you
-          </span>
+          {lens === 'trade' ? (
+            <>
+              <span>
+                <svg width="10" height="10">
+                  <circle cx="5" cy="5" r="3.5" fill="var(--you)" />
+                </svg>
+                On its way to you
+              </span>
+              <span>
+                <svg width="10" height="10">
+                  <circle cx="5" cy="5" r="3.5" fill="var(--ink-quiet)" />
+                </svg>
+                Other shipments
+              </span>
+              <span>
+                <svg width="14" height="14" viewBox="-7 -7 14 14">
+                  <rect x={-6} y={-6} width={4} height={12} rx={0.8} fill="var(--ink-quiet)" />
+                  <rect x={-1} y={0} width={7} height={6} rx={1.5} fill="var(--ink-quiet)" />
+                </svg>
+                Refinery
+              </span>
+              <span>
+                <svg width="14" height="14" viewBox="-7 -7 14 14">
+                  <path d={DROP} fill="var(--ink-quiet)" />
+                </svg>
+                Wells
+              </span>
+            </>
+          ) : (
+            <span>
+              <span className="legend-number">+10</span>
+              Relations with you
+            </span>
+          )}
         </div>
       )}
       {paused && <div className="paused-badge">Paused</div>}

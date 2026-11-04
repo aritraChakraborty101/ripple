@@ -37,6 +37,7 @@ export type WhyTarget =
 export function whyOfDispatch(d: Dispatch): WhyTarget | null {
   if (d.choice) return { kind: 'choice', ...d.choice };
   if (d.event) return { kind: 'event', event: d.event, tick: d.tick };
+  if (d.stat) return { kind: 'stat', ref: d.stat };
   return null;
 }
 

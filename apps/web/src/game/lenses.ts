@@ -5,6 +5,14 @@
  */
 
 import { effectiveStat, isLinkOpen, relationId, sortedIds, type GameState } from '@ripple/engine';
+import {
+  consumedGoods,
+  coverDays,
+  LOW_COVER_DAYS,
+  plantMarks,
+  shortageOf,
+  type PlantMark,
+} from './chain';
 import { relationTone, stabilityTone, type Tone } from './describe';
 import { formatChange } from './format';
 import { brewing } from './intel';
@@ -34,6 +42,8 @@ export interface CountryLook {
   readonly noteInk: Ink;
   /** Fade a country the lens has nothing to say about. */
   readonly dim: boolean;
+  /** Wells and refineries to mark on the country, on the Trade lens. */
+  readonly plants?: readonly PlantMark[];
 }
 
 export interface RouteLook {
@@ -113,6 +123,28 @@ function mainExport(game: GameState, country: string): string | null {
   return best;
 }
 
+/** Anyone queuing for a good this country consumes. */
+function queuing(game: GameState, country: string): boolean {
+  return consumedGoods(game, country).some((r) => shortageOf(game, country, r) > 0);
+}
+
+/**
+ * "Fuel 18 days" for the first stocked good a country consumes, inked by how
+ * worrying it is; "Fuel run out" while people queue. Null if it holds none.
+ */
+export function coverNote(game: GameState, country: string): { text: string; ink: Ink } | null {
+  const good = consumedGoods(game, country)[0];
+  if (!good) return null;
+  const name = game.world.resources[good]!.name;
+  if (shortageOf(game, country, good) > 0) return { text: `${name} run out`, ink: 'threat' };
+  const days = coverDays(game, country, good);
+  if (days === null) return null;
+  return {
+    text: `${name} ${days} ${days === 1 ? 'day' : 'days'}`,
+    ink: days < LOW_COVER_DAYS / 2 ? 'threat' : days < LOW_COVER_DAYS ? 'warning' : 'quiet',
+  };
+}
+
 export function lensView(game: GameState, lens: Lens): LensView {
   const player = game.rules.playerCountry;
   const countries: Record<string, CountryLook> = {};
@@ -156,18 +188,16 @@ export function lensView(game: GameState, lens: Lens): LensView {
       };
     }
     for (const id of ids) {
+      const cover = coverNote(game, id);
       const sells = mainExport(game, id);
       const name = sells ? game.world.resources[sells]!.name : '';
+      const plants = plantMarks(game, id);
       countries[id] = {
         land: id === player ? 'you' : 'plain',
-        note:
-          id === player
-            ? 'You buy (amber), sell (blue)'
-            : name
-              ? `Sells ${name.toLowerCase()}`
-              : '',
-        noteInk: id === player ? 'you' : 'quiet',
+        note: cover ? cover.text : name ? `Sells ${name.toLowerCase()}` : '',
+        noteInk: cover && cover.ink !== 'quiet' ? cover.ink : id === player ? 'you' : 'quiet',
         dim: false,
+        ...(plants.length > 0 ? { plants } : {}),
       };
     }
     return { countries, routes };
@@ -225,8 +255,8 @@ export function lensView(game: GameState, lens: Lens): LensView {
               : tone === 'warning'
                 ? 'warning'
                 : 'plain',
-        note: `Stability ${value}`,
-        noteInk: toneInk(tone),
+        note: `Stability ${value}${queuing(game, id) ? ' · queues' : ''}`,
+        noteInk: queuing(game, id) && tone === 'calm' ? 'warning' : toneInk(tone),
         dim: false,
       };
     }

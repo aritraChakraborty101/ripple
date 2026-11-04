@@ -1231,6 +1231,10 @@ kbd {
       opacity 600ms ease;
   }
 
+  .ship {
+    transition: transform 420ms linear;
+  }
+
   .pulse {
     transform-box: fill-box;
     transform-origin: center;

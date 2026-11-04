@@ -29,7 +29,7 @@ export function Markets({ game, history }: Props) {
           <li key={rid}>
             <Hint
               focusable={false}
-              text={`${resource.name}: price per unit, normally ${formatPrice(resource.basePrice)}. It rises when open routes supply less than countries demand, and dearer goods upset factions at home. Click to see why.`}
+              text={`${resource.name}: price per unit, normally ${formatPrice(resource.basePrice)}. ${resource.stocked ? 'It rises as the world’s stocks run down, so it climbs for weeks after a route is cut and eases slowly after it reopens.' : 'It rises when open routes supply less than countries demand.'} Dearer goods upset factions at home. Click to see why.`}
             >
               <button
                 type="button"
