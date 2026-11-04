@@ -25,6 +25,7 @@ export {
   type AdvisorTip,
   type Suggestion,
   type Briefing,
+  type BriefingSection,
   type Guide,
 } from './guide';
 export {

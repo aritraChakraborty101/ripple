@@ -19,15 +19,40 @@ import { brewing } from './intel';
 
 export type Lens = 'relations' | 'trade' | 'prices' | 'unrest' | 'intelligence';
 
-export const LENSES: readonly { id: Lens; label: string; question: string }[] = [
-  { id: 'relations', label: 'Relations', question: 'Who is with you, and who against?' },
-  { id: 'trade', label: 'Trade', question: 'What flows where, and what you pay for it' },
-  { id: 'prices', label: 'Prices', question: 'Which goods are dear, and who sells them' },
-  { id: 'unrest', label: 'Unrest', question: 'Which governments are shaky' },
+/**
+ * Each lens asks one question of the map, and says in a line how to read the
+ * answer: shown under the lens bar.
+ */
+export const LENSES: readonly { id: Lens; label: string; question: string; guide: string }[] = [
+  {
+    id: 'relations',
+    label: 'Relations',
+    question: 'Who is with you, and who against?',
+    guide: 'How each country feels about you, from −100 to 100. Red land is hostile.',
+  },
+  {
+    id: 'trade',
+    label: 'Trade',
+    question: 'What flows where, and what you pay for it',
+    guide: 'Dots are shipments, amber when bound for you. Under each country: days of fuel left.',
+  },
+  {
+    id: 'prices',
+    label: 'Prices',
+    question: 'Which goods are dear, and who sells them',
+    guide: 'Each seller shows its good against the normal price. Red routes carry dear goods.',
+  },
+  {
+    id: 'unrest',
+    label: 'Unrest',
+    question: 'Which governments are shaky',
+    guide: 'Stability from 0 to 100. Below 20 for a month, a government falls, yours too.',
+  },
   {
     id: 'intelligence',
     label: 'Intelligence',
     question: 'What your files say others are weighing',
+    guide: 'Red land is weighing a move against you. An intelligence file shows plans sooner.',
   },
 ];
 

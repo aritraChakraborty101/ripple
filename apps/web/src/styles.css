@@ -292,11 +292,22 @@ button {
 
 /* --------------------------------------------------------------- Markets */
 
+/* Five equal tiles that always fit the dock; a price change wraps under its price. */
 .markets {
   display: flex;
+  width: 100%;
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.markets > li {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.markets > li > .market {
+  width: 100%;
 }
 
 .markets > li + li {
@@ -307,7 +318,7 @@ button {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  padding: 9px 12px;
+  padding: 9px 10px;
   border: 0;
   background: transparent;
   text-align: left;
@@ -326,8 +337,9 @@ button {
 
 .market-price {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 6px;
+  column-gap: 6px;
   font-size: 16px;
   font-weight: 600;
 }
@@ -342,7 +354,8 @@ button {
 }
 
 .market .sparkline {
-  width: 76px;
+  width: 100%;
+  max-width: 76px;
   height: 14px;
 }
 
@@ -403,7 +416,8 @@ button {
 .legend {
   position: absolute;
   right: 0;
-  bottom: -8px;
+  /* Clear of the lens bar's question and guide line, below and to the left. */
+  bottom: 14px;
   display: flex;
   flex-wrap: wrap;
   gap: 16px;
@@ -1379,6 +1393,37 @@ kbd {
   box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
 }
 
+.field-note {
+  margin: 4px 0 8px;
+  padding: 12px 14px 12px;
+  border-top: 3px solid var(--friend);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
+}
+
+.field-note .eyebrow {
+  margin: 0 0 2px;
+}
+
+.field-note h2 {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.field-note p.small {
+  margin: 4px 0 10px;
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+
+.field-note-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
 .first-steps-head {
   display: flex;
   align-items: center;
@@ -1390,6 +1435,13 @@ kbd {
   font-family: var(--serif);
   font-size: 16px;
   font-weight: 500;
+}
+
+.steps-count {
+  margin-left: 4px;
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--ink-quiet);
 }
 
 .first-steps p {
@@ -1534,6 +1586,129 @@ kbd {
 
 .briefing .sheet-actions {
   justify-content: space-between;
+  align-items: center;
+}
+
+/* One page of the briefing at a time; the sheet keeps its height between pages. */
+.briefing-page {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 330px;
+  animation: page-in 220ms ease-out;
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+}
+
+.briefing-chain {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.briefing-chain li {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 12px;
+  margin-left: 18px;
+  padding: 5px 0 5px 16px;
+  border-left: 1px solid var(--line);
+}
+
+/* A dot on the line for each step; the first is the cause, in threat red. */
+.briefing-chain li::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: 12px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-quiet);
+}
+
+.briefing-chain li:first-child::before {
+  background: var(--threat);
+}
+
+.briefing-chain li:last-child {
+  border-left-color: transparent;
+}
+
+.chain-label {
+  color: var(--ink);
+  font-size: 15px;
+}
+
+.chain-note {
+  color: var(--ink-quiet);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-align: right;
+}
+
+.briefing-cast {
+  display: grid;
+  gap: 7px;
+  margin: 6px 0 0;
+}
+
+.briefing-cast div {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 12px;
+  align-items: baseline;
+}
+
+.briefing-cast dt {
+  font-family: var(--serif);
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.briefing-cast dd {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.briefing-dots {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin: 18px 0 14px;
+}
+
+.briefing-dots button {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 1px solid var(--ink-quiet);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+
+.briefing-dots button[aria-selected='true'] {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .briefing-page {
+    animation: none;
+  }
 }
 
 @media (max-width: 560px) {
@@ -2279,7 +2454,19 @@ button.why-chain-step:hover {
   font-size: 15px;
   font-style: italic;
   color: var(--ink-quiet);
+  text-align: center;
   text-shadow: 0 1px 6px var(--sea);
+}
+
+/* How to read the lens, in a quiet line under its question. */
+.lens-guide {
+  display: block;
+  white-space: nowrap;
+  margin-top: 2px;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-style: normal;
+  color: var(--ink-faint);
 }
 
 /* ------------------------------------------------------------ Reports */

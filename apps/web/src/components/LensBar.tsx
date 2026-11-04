@@ -26,6 +26,7 @@ export function LensBar({ lens, onLens }: Props) {
       </div>
       <p className="lens-question" aria-live="polite">
         {current.question}
+        <span className="lens-guide">{current.guide}</span>
       </p>
     </nav>
   );

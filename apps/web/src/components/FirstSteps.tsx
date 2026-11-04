@@ -1,6 +1,14 @@
-export type StepId = 'play' | 'country' | 'order' | 'home';
+export type StepId = 'play' | 'country' | 'trade' | 'why' | 'cabinet' | 'order' | 'home';
 
-export const STEP_IDS: readonly StepId[] = ['play', 'country', 'order', 'home'];
+export const STEP_IDS: readonly StepId[] = [
+  'play',
+  'country',
+  'trade',
+  'why',
+  'cabinet',
+  'order',
+  'home',
+];
 
 interface Props {
   readonly done: ReadonlySet<StepId>;
@@ -15,7 +23,10 @@ interface Props {
 export function FirstSteps({ done, focusName, homeName, onHide }: Props) {
   const steps: { id: StepId; text: string }[] = [
     { id: 'play', text: 'Press play (or Space) to start the clock' },
-    { id: 'country', text: `Click ${focusName} on the map to see your options` },
+    { id: 'country', text: `Click ${focusName} on the map: what it wants, and what you can do` },
+    { id: 'trade', text: 'Press 2 for the Trade lens: ships at sea, and days of fuel left' },
+    { id: 'why', text: 'Click a meter or a price to ask why it is where it is' },
+    { id: 'cabinet', text: 'Open the Cabinet (D): every order, by ministry' },
     { id: 'order', text: 'Sign your first order' },
     { id: 'home', text: `Click ${homeName} to see who is unhappy at home, and why` },
   ];
@@ -24,14 +35,22 @@ export function FirstSteps({ done, focusName, homeName, onHide }: Props) {
   return (
     <section className="first-steps paper" aria-labelledby="first-steps-title">
       <div className="first-steps-head">
-        <h2 id="first-steps-title">First steps</h2>
+        <h2 id="first-steps-title">
+          First steps{' '}
+          {!finished && (
+            <span className="steps-count">
+              {steps.filter((s) => done.has(s.id)).length} of {steps.length}
+            </span>
+          )}
+        </h2>
         <button type="button" className="text-button inline" onClick={onHide}>
           {finished ? 'Done' : 'Hide'}
         </button>
       </div>
       {finished ? (
         <p className="small">
-          That is the basics. Your advisor will speak up when something needs you.
+          That is the basics. Field notes will explain the rest as it happens, and your advisor will
+          speak up when something needs you.
         </p>
       ) : (
         <ol className="steps">
